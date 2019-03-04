@@ -1,4 +1,4 @@
-module github.com/SmartEnergyPlatform/permission-search
+module github.com/SENERGY-Platform/permission-search
 
 require (
 	github.com/JumboInteractiveLimited/jsonpath v0.0.0-20180321012328-6fcdcc9066b5

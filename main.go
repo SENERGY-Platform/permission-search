@@ -21,7 +21,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/SmartEnergyPlatform/permission-search/lib"
+	"github.com/SENERGY-Platform/permission-search/lib"
 )
 
 func main() {
