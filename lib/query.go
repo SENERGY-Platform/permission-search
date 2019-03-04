@@ -163,6 +163,7 @@ func GetListFromIds(kind string, ids []string, user string, groups []string, rig
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return result, nil
@@ -196,6 +197,7 @@ func GetListFromIdsOrdered(kind string, ids []string, user string, groups []stri
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return result, nil
@@ -244,6 +246,7 @@ func getListForUserOrGroup(kind string, user string, groups []string, rights str
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -273,6 +276,7 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -408,6 +412,7 @@ func SelectByFieldOrdered(kind string, field string, value string, user string, 
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -444,6 +449,7 @@ func selectByField(kind string, field string, value string, user string, groups 
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -477,6 +483,7 @@ func searchList(kind string, query string, user string, groups []string, rights 
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -506,6 +513,7 @@ func SearchOrderedList(kind string, query string, user string, groups []string, 
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -571,6 +579,7 @@ func SearchOrderedListWithSelection(kind string, query string, user string, grou
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
@@ -600,7 +609,51 @@ func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups 
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
+		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)
 	}
 	return
+}
+
+func getSharedState(reqUser string, entry Entry) bool {
+	isShared := false
+	isAdmin := false
+	for _, user := range entry.AdminUsers {
+		if reqUser == user {
+			isAdmin = true
+		}else{
+			isShared = true
+		}
+		if isAdmin && isShared {
+			return true
+		}
+	}
+	if !isAdmin {
+		return false
+	}
+	for _, user := range entry.ReadUsers {
+		if reqUser != user {
+			isShared = true
+		}
+		if isAdmin && isShared {
+			return true
+		}
+	}
+	for _, user := range entry.WriteUsers {
+		if reqUser != user {
+			isShared = true
+		}
+		if isAdmin && isShared {
+			return true
+		}
+	}
+	for _, user := range entry.ExecuteUsers {
+		if reqUser != user {
+			isShared = true
+		}
+		if isAdmin && isShared {
+			return true
+		}
+	}
+	return false
 }
