@@ -22,7 +22,7 @@
             "Features":[
                 {"Name": "name", "Path": "$.processmodel.process.definitions.process._id+"},
                 {"Name": "date", "Path": "$.processmodel.date+"},
-                {"Name": "svg", "Path": "$.processmodel.svg+"},
+                {"Name": "svgXML", "Path": "$.processmodel.svgXML+"},
                 {"Name": "publish", "Path": "$.processmodel.publish+"},
                 {"Name": "parent_id", "Path": "$.processmodel.parent_id+"},
                 {"Name": "description", "Path": "$.processmodel.description+"}
