@@ -28,33 +28,28 @@
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         },
-		"deviceinstance":{
+		"devices":{
             "Features":[
                 {"Name": "name", "Path": "$.device_instance.name+"},
-                {"Name": "tag", "Path": "$.device_instance.tags+"},
-                {"Name": "usertag", "Path": "$.device_instance.user_tags+"},
-                {"Name": "devicetype", "Path": "$.device_instance.device_type+"},
-                {"Name": "uri", "Path": "$.device_instance.uri+"},
-                {"Name": "img", "Path": "$.device_instance.img+"}
+                {"Name": "device-type", "Path": "$.device.device_type+"},
+                {"Name": "local_id", "Path": "$.device.local_id+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         },
-		"devicetype":{
+		"device-types":{
             "Features":[
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "description", "Path": "$.device_type.description+"},
-                {"Name": "maintenance", "Path": "$.device_type.maintenance+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
-                {"Name": "vendor", "Path": "$.device_type.vendor.name+"},
                 {"Name": "device_class", "Path": "$.device_type.device_class.name+"},
-                {"Name": "img", "Path": "$.device_type.img+"}
+                {"Name": "image", "Path": "$.device_type.image+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         },
-        "gateway": {
+        "hubs": {
             "Features": [
                 {"Name": "name", "Path": "$.name+"},
-                {"Name": "devices", "Path": "$.devices+"}
+                {"Name": "device_local_ids", "Path": "$.device_local_ids+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         }
@@ -62,13 +57,12 @@
     "InitialGroupRightsUpdate": "false",
 
     "ElasticMapping": {
-        "devicetype": {
+        "device-types": {
             "description":  {"type": "text", "copy_to": "feature_search"},
-            "maintenance":  {"type": "keyword"},
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "service":      {"type": "keyword"},
-            "img":          {"type": "keyword"},
-            "vendor":       {"type": "keyword", "copy_to": "feature_search"}
+            "image":          {"type": "keyword"},
+            "device_class":          {"type": "keyword"}
         },
         "processmodel":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
@@ -76,18 +70,15 @@
             "publish":      {"type": "boolean"},
             "parent_id":    {"type": "keyword"}
         },
-        "deviceinstance":{
+        "devices":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "description":  {"type": "text",    "copy_to": "feature_search"},
-            "usertag":      {"type": "keyword", "copy_to": "feature_search"},
-            "tag":          {"type": "keyword", "copy_to": "feature_search"},
-            "devicetype":   {"type": "keyword"},
-            "uri":          {"type": "keyword"},
-            "img":          {"type": "keyword"}
+            "device-type":   {"type": "keyword"},
+            "local_id":          {"type": "keyword"}
         },
-        "gateway":{
+        "hubs":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "devices":      {"type": "keyword"}
+            "device_local_ids":      {"type": "keyword"}
         }
     }
 }
