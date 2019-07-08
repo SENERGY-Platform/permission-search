@@ -123,7 +123,7 @@ func getBroker(zkUrl string) (brokers []string, err error) {
 	}
 }
 
-func GetKafkaControler(zkUrl string) (controller string, err error) {
+func GetKafkaController(zkUrl string) (controller string, err error) {
 	zookeeper := kazoo.NewConfig()
 	zookeeper.Logger = log.New(ioutil.Discard, "", 0)
 	zk, chroot := kazoo.ParseConnectionString(zkUrl)
@@ -147,8 +147,9 @@ func InitTopic(zkUrl string, topics ...string) (err error) {
 	return InitTopicWithConfig(zkUrl, 1, 1, topics...)
 }
 
+
 func InitTopicWithConfig(zkUrl string, numPartitions int, replicationFactor int, topics ...string) (err error) {
-	controller, err := GetKafkaControler(zkUrl)
+	controller, err := GetKafkaController(zkUrl)
 	if err != nil {
 		log.Println("ERROR: unable to find controller", err)
 		return err
@@ -168,6 +169,12 @@ func InitTopicWithConfig(zkUrl string, numPartitions int, replicationFactor int,
 			Topic:             topic,
 			NumPartitions:     numPartitions,
 			ReplicationFactor: replicationFactor,
+			ConfigEntries: []kafka.ConfigEntry{
+				{ConfigName: "cleanup.policy", ConfigValue: "compact"},
+				{ConfigName: "delete.retention.ms", ConfigValue: "100"},
+				{ConfigName: "segment.ms", ConfigValue: "100"},
+				{ConfigName: "min.cleanable.dirty.ratio", ConfigValue: "0.01"},
+			},
 		})
 		if err != nil {
 			return
