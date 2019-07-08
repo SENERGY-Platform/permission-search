@@ -18,10 +18,8 @@ package main
 
 import (
 	"flag"
-	"log"
-	"time"
-
 	"github.com/SENERGY-Platform/permission-search/lib"
+	"log"
 )
 
 func main() {
@@ -32,7 +30,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	time.Sleep(time.Duration(lib.Config.AmqpReconnectTimeout) * time.Second)
 
 	if lib.Config.DbInitOnly == "true" {
 		lib.GetClient()

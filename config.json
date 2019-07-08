@@ -5,9 +5,8 @@
 	"PermTopic": "permissions",
 	"UserTopic": "user",
 
-	"AmqpUrl": "amqp://user:pw@rabbitmq:5672/",
-	"AmqpConsumerName": "permsearch",
-	"AmqpReconnectTimeout": 10,
+    "ZookeeperUrl": "zk:2181",
+    "GroupId": "permsearch",
 
 	"ForceUser": "true",
 	"ForceAuth": "true",

@@ -27,34 +27,51 @@ import (
 var conn *amqp_wrapper_lib.Connection
 
 func InitEventHandling() (err error) {
-	conn, err = amqp_wrapper_lib.Init(Config.AmqpUrl, append(Config.ResourceList, Config.PermTopic, Config.UserTopic), Config.AmqpReconnectTimeout)
+
+	_, err = NewConsumer(Config.ZookeeperUrl, Config.GroupId, Config.PermTopic, func(topic string, msg []byte) error {
+		return handlePermissionCommand(msg)
+	}, func(err error, consumer *Consumer) {
+		log.Fatal(err)
+	})
 	if err != nil {
-		log.Fatal("ERROR: while initializing amqp connection", err)
+		log.Fatal("ERROR: while initializing kafka connection", err)
 		return
 	}
 
-	log.Println("init permissions handler")
-	err = conn.Consume(Config.AmqpConsumerName+"_"+Config.PermTopic, Config.PermTopic, handlePermissionCommand)
+	_, err = NewConsumer(Config.ZookeeperUrl, Config.GroupId, Config.UserTopic, func(topic string, msg []byte) error {
+		return handleUserCommand(msg)
+	}, func(err error, consumer *Consumer) {
+		log.Fatal(err)
+	})
 	if err != nil {
-		log.Fatal("ERROR: while initializing perm consumer", err)
+		log.Fatal("ERROR: while initializing kafka connection", err)
 		return
 	}
 
-	log.Println("init user handler")
-	err = conn.Consume(Config.AmqpConsumerName+"_"+Config.UserTopic, Config.UserTopic, handleUserCommand)
+	_, err = NewConsumer(Config.ZookeeperUrl, Config.GroupId, Config.UserTopic, func(topic string, msg []byte) error {
+		return handleUserCommand(msg)
+	}, func(err error, consumer *Consumer) {
+		log.Fatal(err)
+	})
 	if err != nil {
-		log.Fatal("ERROR: while initializing user consumer", err)
+		log.Fatal("ERROR: while initializing kafka connection", err)
 		return
 	}
 
 	log.Println("init features handler", Config.ResourceList)
 	for _, resource := range Config.ResourceList {
-		err = conn.Consume(Config.AmqpConsumerName+"_"+resource, resource, getResourceCommandHandler(resource))
+		f := getResourceCommandHandler(resource)
+		_, err = NewConsumer(Config.ZookeeperUrl, Config.GroupId, resource, func(topic string, msg []byte) error {
+			return f(msg)
+		}, func(err error, consumer *Consumer) {
+			log.Fatal(err)
+		})
 		if err != nil {
-			log.Fatal("ERROR: while initializing resource consumer ", resource, " ", err)
+			log.Fatal("ERROR: while initializing kafka connection", err)
 			return
 		}
 	}
+
 	return
 }
 

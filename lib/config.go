@@ -42,9 +42,7 @@ type ConfigStruct struct {
 	ServerPort string
 	LogLevel   string
 
-	AmqpUrl              string
-	AmqpReconnectTimeout int64
-	AmqpConsumerName     string
+	ZookeeperUrl	string
 
 	PermTopic string
 	UserTopic string
@@ -65,6 +63,7 @@ type ConfigStruct struct {
 	ConsumptionPause string
 
 	DbInitOnly string
+	GroupId string
 }
 
 type ConfigType *ConfigStruct
