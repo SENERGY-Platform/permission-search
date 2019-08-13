@@ -20,11 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-
-	"github.com/SmartEnergyPlatform/amqp-wrapper-lib"
 )
 
-var conn *amqp_wrapper_lib.Connection
 
 func InitEventHandling() (err error) {
 
@@ -118,7 +115,7 @@ func handleUserCommand(msg []byte) (err error) {
 	return nil
 }
 
-func getResourceCommandHandler(resourceName string) amqp_wrapper_lib.ConsumerFunc {
+func getResourceCommandHandler(resourceName string) func(delivery []byte) error {
 	return func(msg []byte) (err error) {
 		command := CommandWrapper{}
 		err = json.Unmarshal(msg, &command)
@@ -133,14 +130,4 @@ func getResourceCommandHandler(resourceName string) amqp_wrapper_lib.ConsumerFun
 		}
 		return errors.New("unable to handle command: " + resourceName + " " + string(msg))
 	}
-}
-
-func sendEvent(topic string, event interface{}) error {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		log.Println("ERROR: event marshaling:", err)
-		return err
-	}
-	log.Println("DEBUG: send amqp event: ", topic, string(payload))
-	return conn.Publish(topic, payload)
 }
