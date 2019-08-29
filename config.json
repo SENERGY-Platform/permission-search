@@ -17,6 +17,19 @@
     "ConsumptionPause": "false",
 
 	"Resources": {
+        "concepts": {
+            "Features":[
+                {"Name": "name", "Path": "$.concept.name+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
+        "characteristics": {
+            "Features":[
+                {"Name": "name", "Path": "$.characteristic.name+"},
+                {"Name": "concept_id", "Path": "$.concept_id+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
 		"processmodel":{
             "Features":[
                 {"Name": "name", "Path": "$.processmodel.process.definitions.process._id+"},
@@ -57,12 +70,19 @@
     "InitialGroupRightsUpdate": "false",
 
     "ElasticMapping": {
+        "concepts": {
+            "name":   {"type": "keyword", "copy_to": "feature_search"}
+        },
+        "characteristics": {
+            "name":                 {"type": "keyword", "copy_to": "feature_search"},
+            "concept_id":           {"type": "keyword"}
+        },
         "device-types": {
             "description":  {"type": "text", "copy_to": "feature_search"},
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "service":      {"type": "keyword"},
-            "image":          {"type": "keyword"},
-            "device_class":          {"type": "keyword"}
+            "image":        {"type": "keyword"},
+            "device_class": {"type": "keyword"}
         },
         "processmodel":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
@@ -73,8 +93,8 @@
         "devices":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "description":  {"type": "text",    "copy_to": "feature_search"},
-            "device-type":   {"type": "keyword"},
-            "local_id":          {"type": "keyword"}
+            "device-type":  {"type": "keyword"},
+            "local_id":     {"type": "keyword"}
         },
         "hubs":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
