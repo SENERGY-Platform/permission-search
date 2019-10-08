@@ -44,7 +44,7 @@
 		"devices":{
             "Features":[
                 {"Name": "name", "Path": "$.device.name+"},
-                {"Name": "device-type", "Path": "$.device.device_type_id+"},
+                {"Name": "device_type_id", "Path": "$.device.device_type_id+"},
                 {"Name": "local_id", "Path": "$.device.local_id+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
