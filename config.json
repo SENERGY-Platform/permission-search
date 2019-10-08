@@ -93,7 +93,7 @@
         "devices":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "description":  {"type": "text",    "copy_to": "feature_search"},
-            "device-type":  {"type": "keyword"},
+            "device_type_id":  {"type": "keyword"},
             "local_id":     {"type": "keyword"}
         },
         "hubs":{
