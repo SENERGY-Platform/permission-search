@@ -106,7 +106,6 @@ func (this *Consumer) Restart() {
 	this.start()
 }
 
-
 func GetBroker(zk string) (brokers []string, err error) {
 	return getBroker(zk)
 }
@@ -147,7 +146,6 @@ func InitTopic(zkUrl string, topics ...string) (err error) {
 	return InitTopicWithConfig(zkUrl, 1, 1, topics...)
 }
 
-
 func InitTopicWithConfig(zkUrl string, numPartitions int, replicationFactor int, topics ...string) (err error) {
 	controller, err := GetKafkaController(zkUrl)
 	if err != nil {
@@ -170,6 +168,8 @@ func InitTopicWithConfig(zkUrl string, numPartitions int, replicationFactor int,
 			NumPartitions:     numPartitions,
 			ReplicationFactor: replicationFactor,
 			ConfigEntries: []kafka.ConfigEntry{
+				{ConfigName: "retention.ms", ConfigValue: "-1"},
+				{ConfigName: "retention.bytes", ConfigValue: "-1"},
 				{ConfigName: "cleanup.policy", ConfigValue: "compact"},
 				{ConfigName: "delete.retention.ms", ConfigValue: "100"},
 				{ConfigName: "segment.ms", ConfigValue: "100"},
