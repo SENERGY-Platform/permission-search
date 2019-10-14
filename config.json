@@ -66,6 +66,14 @@
                 {"Name": "device_local_ids", "Path": "$.device_local_ids+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
+        },
+        "protocols": {
+            "Features":[
+                {"Name": "name", "Path": "$.protocol.name+"},
+                {"Name": "handler", "Path": "$.protocol.handler+"},
+                {"Name": "segments", "Path": "$.protocol.protocol_segments[*].name+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         }
 	},
     "InitialGroupRightsUpdate": "false",
@@ -97,6 +105,11 @@
             "description":  {"type": "text",    "copy_to": "feature_search"},
             "device_type_id":  {"type": "keyword"},
             "local_id":     {"type": "keyword"}
+        },
+        "protocols":{
+            "name":     {"type": "keyword", "copy_to": "feature_search"},
+            "handler":  {"type": "keyword"},
+            "segments":  {"type": "keyword"}
         },
         "hubs":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
