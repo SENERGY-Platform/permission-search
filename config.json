@@ -54,6 +54,7 @@
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "description", "Path": "$.device_type.description+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
+                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"},
                 {"Name": "device_class", "Path": "$.device_type.device_class.name+"},
                 {"Name": "image", "Path": "$.device_type.image+"}
             ],
@@ -81,6 +82,7 @@
             "description":  {"type": "text", "copy_to": "feature_search"},
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "service":      {"type": "keyword"},
+            "protocols":    {"type": "keyword"},
             "image":        {"type": "keyword"},
             "device_class": {"type": "keyword"}
         },
