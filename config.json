@@ -62,8 +62,8 @@
         },
         "hubs": {
             "Features": [
-                {"Name": "name", "Path": "$.name+"},
-                {"Name": "device_local_ids", "Path": "$.device_local_ids+"}
+                {"Name": "name", "Path": "$.hub.name+"},
+                {"Name": "device_local_ids", "Path": "$.hub.device_local_ids+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         },
