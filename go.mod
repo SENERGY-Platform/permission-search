@@ -1,5 +1,7 @@
 module github.com/SENERGY-Platform/permission-search
 
+go 1.13
+
 require (
 	github.com/JumboInteractiveLimited/jsonpath v0.0.0-20180321012328-6fcdcc9066b5
 	github.com/SmartEnergyPlatform/jwt-http-router v0.0.0-20190111100649-8c1c5434af3c
