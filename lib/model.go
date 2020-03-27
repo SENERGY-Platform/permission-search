@@ -21,8 +21,6 @@ import (
 	"log"
 )
 
-const ElasticPermissionType = "resource"
-
 func (entry *Entry) setDefaultPermissions(kind string, owner string) {
 	if owner != "" {
 		entry.AdminUsers = []string{owner}
@@ -257,7 +255,7 @@ const ElasticPermissionMapping = `{
 	"feature_search": {"type": "text", "analyzer": "autocomplete", "search_analyzer": "standard"}
 }`
 
-func createMapping(kind string) (result map[string]map[string]map[string]map[string]interface{}, err error) {
+func createMapping(kind string) (result map[string]interface{}, err error) {
 	mapping := map[string]interface{}{}
 	err = json.Unmarshal([]byte(ElasticPermissionMapping), &mapping)
 	if err != nil {
@@ -269,22 +267,20 @@ func createMapping(kind string) (result map[string]map[string]map[string]map[str
 			"properties": featureMappings,
 		}
 	}
-	result = map[string]map[string]map[string]map[string]interface{}{
-		"mappings": {
-			ElasticPermissionType: {
-				"properties": mapping,
-			},
+	result = map[string]interface{}{
+		"mappings": map[string]interface{}{
+			"properties": mapping,
 		},
-		"settings": {
-			"analysis": {
-				"filter": {
+		"settings": map[string]interface{}{
+			"analysis": map[string]interface{}{
+				"filter": map[string]interface{}{
 					"autocomplete_filter": map[string]interface{}{
 						"type":     "edge_ngram",
 						"min_gram": 1,
 						"max_gram": 20,
 					},
 				},
-				"analyzer": {
+				"analyzer": map[string]interface{}{
 					"autocomplete": map[string]interface{}{
 						"type":      "custom",
 						"tokenizer": "standard",

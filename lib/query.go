@@ -18,7 +18,6 @@ package lib
 
 import (
 	"context"
-	"log"
 	"strconv"
 
 	"encoding/json"
@@ -33,7 +32,7 @@ func ResourceExists(kind string, resource string) (exists bool, err error) {
 }
 
 func resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
-	exists, err = elastic.NewExistsService(GetClient()).Index(kind).Type(ElasticPermissionType).Id(resource).Do(context)
+	exists, err = elastic.NewExistsService(GetClient()).Index(kind).Id(resource).Do(context)
 	return
 }
 
@@ -91,15 +90,11 @@ func getRightsQuery(rights string, user string, groups []string) (result []elast
 func GetRightsToAdministrate(kind string, user string, groups []string) (result []ResourceRights, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		if hit.Type != ElasticPermissionType {
-			log.Println("DEBUG: GetRightsToAdministrate: unknown type", hit.Type)
-			continue
-		}
 		entry := Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
@@ -113,7 +108,7 @@ func GetRightsToAdministrate(kind string, user string, groups []string) (result 
 func CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
@@ -128,7 +123,7 @@ func CheckListUserOrGroup(kind string, ids []string, user string, groups []strin
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Query(query).Size(len(ids)).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
 	if err != nil {
 		return allowed, err
 	}
@@ -150,7 +145,7 @@ func GetListFromIds(kind string, ids []string, user string, groups []string, rig
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Query(query).Size(len(ids)).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -184,7 +179,7 @@ func GetListFromIdsOrdered(kind string, ids []string, user string, groups []stri
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -233,7 +228,7 @@ func GetListForUserOrGroup(kind string, user string, groups []string, rights str
 func getListForUserOrGroup(kind string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -263,7 +258,7 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -285,7 +280,7 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 func GetListForUser(kind string, user string, rights string) (result []string, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, []string{})...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -303,7 +298,7 @@ func GetListForUser(kind string, user string, rights string) (result []string, e
 func CheckUser(kind string, resource string, user string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, []string{}), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
@@ -313,7 +308,7 @@ func CheckUser(kind string, resource string, user string, rights string) (err er
 func GetListForGroup(kind string, groups []string, rights string) (result []string, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, "", groups)...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -331,7 +326,7 @@ func GetListForGroup(kind string, groups []string, rights string) (result []stri
 func CheckGroups(kind string, resource string, groups []string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, "", groups), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
@@ -358,7 +353,7 @@ func SearchRightsToAdministrate(kind string, user string, groups []string, query
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -399,7 +394,7 @@ func SelectByFieldOrdered(kind string, field string, value string, user string, 
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Query(query).From(offset).Size(limit).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Query(query).From(offset).Size(limit).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -436,7 +431,7 @@ func SelectByFieldAll(kind string, field string, value string, user string, grou
 func selectByField(kind string, field string, value string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -470,7 +465,7 @@ func SearchList(kind string, query string, user string, groups []string, rights 
 func searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -500,7 +495,7 @@ func SearchOrderedList(kind string, query string, user string, groups []string, 
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -525,7 +520,7 @@ func GetResourceEntry(kind string, resource string) (result Entry, err error) {
 }
 
 func getResourceEntry(ctx context.Context, kind string, resource string) (result Entry, version int64, err error) {
-	resp, err := GetClient().Get().Index(kind).Type(ElasticPermissionType).Id(resource).Do(ctx)
+	resp, err := GetClient().Get().Index(kind).Id(resource).Do(ctx)
 	if err != nil {
 		return result, version, err
 	}
@@ -566,7 +561,7 @@ func SearchOrderedListWithSelection(kind string, query string, user string, grou
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -596,7 +591,7 @@ func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups 
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Filter(selection)
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}

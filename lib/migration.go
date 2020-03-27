@@ -66,7 +66,7 @@ func ImportResource(kind string, resource ResourceRights) (err error) {
 	ctx := context.Background()
 	entry := Entry{Resource: resource.ResourceId, Features: resource.Features, Creator: resource.Creator}
 	entry.SetResourceRights(resource)
-	_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(resource.ResourceId).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource.ResourceId).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -102,15 +102,11 @@ func ExportKindAll(kind string) (result []ResourceRights, err error) {
 func ExportKind(kind string, limit int, offset int) (result []ResourceRights, err error) {
 	ctx := context.Background()
 	query := elastic.NewMatchAllQuery()
-	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Query(query).Size(limit).From(offset).Do(ctx)
+	resp, err := GetClient().Search().Index(kind).Query(query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		if hit.Type != ElasticPermissionType {
-			log.Println("DEBUG: unknown type", hit.Type)
-			continue
-		}
 		entry := Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {

@@ -32,7 +32,7 @@ func SetUserRight(kind string, resource string, user string, rights string) (err
 	}
 	entry.removeUserRights(user)
 	entry.addUserRights(user, rights)
-	_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -44,7 +44,7 @@ func SetGroupRight(kind string, resource string, group string, rights string) (e
 	}
 	entry.removeGroupRights(group)
 	entry.addGroupRights(group, rights)
-	_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -55,7 +55,7 @@ func DeleteUserRight(kind string, resource string, user string) (err error) {
 		return err
 	}
 	entry.removeUserRights(user)
-	_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -66,7 +66,7 @@ func DeleteGroupRight(kind string, resource string, group string) (err error) {
 		return err
 	}
 	entry.removeGroupRights(group)
-	_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -89,11 +89,11 @@ func UpdateFeatures(kind string, msg []byte, command CommandWrapper) (err error)
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
 		}
-		_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(command.Id).Version(version).BodyJson(entry).Do(ctx)
+		_, err = GetClient().Index().Index(kind).Id(command.Id).Version(version).BodyJson(entry).Do(ctx)
 	} else {
 		entry := Entry{Resource: command.Id, Features: features, Creator: command.Owner}
 		entry.setDefaultPermissions(kind, command.Owner)
-		_, err = GetClient().Index().Index(kind).Type(ElasticPermissionType).Id(command.Id).BodyJson(entry).Do(ctx)
+		_, err = GetClient().Index().Index(kind).Id(command.Id).BodyJson(entry).Do(ctx)
 	}
 	return
 
@@ -101,13 +101,13 @@ func UpdateFeatures(kind string, msg []byte, command CommandWrapper) (err error)
 
 func DeleteFeatures(kind string, command CommandWrapper) (err error) {
 	ctx := context.Background()
-	exists, err := GetClient().Exists().Index(kind).Type(ElasticPermissionType).Id(command.Id).Do(ctx)
+	exists, err := GetClient().Exists().Index(kind).Id(command.Id).Do(ctx)
 	if err != nil {
 		log.Println("ERROR: DeleteFeatures() check existence ", err)
 		return err
 	}
 	if exists {
-		_, err = GetClient().Delete().Index(kind).Type(ElasticPermissionType).Id(command.Id).Do(ctx)
+		_, err = GetClient().Delete().Index(kind).Id(command.Id).Do(ctx)
 	}
 	return
 }
@@ -129,15 +129,11 @@ func DeleteUserFromResourceKind(kind string, user string) (err error) {
 		elastic.NewTermQuery("read_users", user),
 		elastic.NewTermQuery("write_users", user),
 		elastic.NewTermQuery("execute_users", user))
-	result, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Do(ctx)
+	result, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return err
 	}
 	for _, hit := range result.Hits.Hits {
-		if hit.Type != ElasticPermissionType {
-			log.Println("DEBUG: DeleteUserFromResourceKind: unknown type", hit.Type)
-			continue
-		}
 		err = DeleteUserRight(kind, hit.Id, user)
 		if err != nil {
 			return err

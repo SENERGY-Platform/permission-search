@@ -158,7 +158,7 @@ func ExampleSearch() {
 		elastic.NewTermQuery("read_users", "testOwner"),
 		elastic.NewTermQuery("write_users", "testOwner"),
 		elastic.NewTermQuery("execute_users", "testOwner"))
-	result, err := GetClient().Search().Index("devicetype").Type(ElasticPermissionType).Query(query).Do(context.Background())
+	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
 	fmt.Println(err)
 
 	var entity Entry
@@ -220,7 +220,7 @@ func ExampleDeleteUser() {
 		panic(err)
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("devicetype").Type(ElasticPermissionType).Query(query).Do(context.Background())
+	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
 	fmt.Println(err)
 	var entity Entry
 	if result != nil {
@@ -276,7 +276,7 @@ func ExampleDeleteFeatures() {
 		panic(err)
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("devicetype").Type(ElasticPermissionType).Query(query).Do(context.Background())
+	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
 	fmt.Println(err)
 	var entity Entry
 	if result != nil {
