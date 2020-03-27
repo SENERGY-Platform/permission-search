@@ -19,21 +19,20 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ory/dockertest"
 	"log"
+	"net/http"
+	"os"
+	"testing"
 
 	"context"
 
 	"reflect"
 
-	"github.com/olivere/elastic"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 func Example() {
-	err := LoadConfig("./../config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Config.ElasticUrl = "http://localhost:9200"
 	Config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
@@ -71,7 +70,7 @@ func Example() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err = GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -81,23 +80,28 @@ func Example() {
 	}
 	err = UpdateFeatures("devicetype", test, testCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", foo1, foo1Cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", foo2, foo2Cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", bar, barCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", zway, zwayCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	_, err = client.Flush().Index("devicetype").Do(context.Background())
 	if err != nil {
@@ -131,12 +135,14 @@ func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command Com
 	}`
 	dtStr, err := json.Marshal(dt)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	msg = []byte(fmt.Sprintf(text, id, string(dtStr)))
 	err = json.Unmarshal(msg, &command)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	return
 }
@@ -178,11 +184,6 @@ func ExampleSearch() {
 }
 
 func ExampleDeleteUser() {
-	err := LoadConfig("./../config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Config.ElasticUrl = "http://localhost:9200"
 	Config.ElasticRetry = 3
 	msg, cmd := getDtTestObj("del", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
@@ -191,7 +192,7 @@ func ExampleDeleteUser() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err = GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -201,15 +202,18 @@ func ExampleDeleteUser() {
 	}
 	err = UpdateFeatures("devicetype", msg, cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = DeleteUser("testOwner")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = DeleteGroupRight("devicetype", "del", "user")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	_, err = client.Flush().Index("devicetype").Do(context.Background())
 	if err != nil {
@@ -233,11 +237,6 @@ func ExampleDeleteUser() {
 }
 
 func ExampleDeleteFeatures() {
-	err := LoadConfig("./../config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Config.ElasticUrl = "http://localhost:9200"
 	Config.ElasticRetry = 3
 	msg, cmd := getDtTestObj("del1", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
@@ -246,7 +245,7 @@ func ExampleDeleteFeatures() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	err = UpdateFeatures("devicetype", msg, cmd)
+	err := UpdateFeatures("devicetype", msg, cmd)
 	msg, cmd = getDtTestObj("nodel", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
 		"description": "desc",
@@ -264,11 +263,13 @@ func ExampleDeleteFeatures() {
 	}
 	err = UpdateFeatures("devicetype", msg, cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = DeleteFeatures("devicetype", CommandWrapper{Id: "del1"})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	_, err = client.Flush().Index("devicetype").Do(context.Background())
 	if err != nil {
@@ -325,11 +326,6 @@ func ExampleGetRightsToAdministrate() {
 }
 
 func ExampleCheckUserOrGroup() {
-	err := LoadConfig("./../config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Config.ElasticUrl = "http://localhost:9200"
 	Config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("check3", map[string]interface{}{
 		"name":        "test",
@@ -338,7 +334,7 @@ func ExampleCheckUserOrGroup() {
 		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err = GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -348,12 +344,14 @@ func ExampleCheckUserOrGroup() {
 	}
 	UpdateFeatures("devicetype", test, testCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	_, err = client.Flush().Index("devicetype").Do(context.Background())
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 
 	fmt.Println(CheckUserOrGroup("devicetype", "check3", "nope", []string{}, "a"))
@@ -1040,11 +1038,6 @@ func ExampleJsonpath() {
 }
 
 func initDb() {
-	err := LoadConfig("./../config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Config.ElasticUrl = "http://localhost:9200"
 	Config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
@@ -1083,7 +1076,7 @@ func initDb() {
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
 
-	_, err = GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -1093,27 +1086,78 @@ func initDb() {
 	}
 	err = UpdateFeatures("devicetype", test, testCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", foo1, foo1Cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", foo2, foo2Cmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	err = UpdateFeatures("devicetype", bar, barCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 
 	err = UpdateFeatures("devicetype", zway, zwayCmd)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	_, err = client.Flush().Index("devicetype").Do(context.Background())
 	if err != nil {
 		panic(err)
 	}
+}
+
+func Elasticsearch(pool *dockertest.Pool) (closer func(), hostPort string, ipAddress string, err error) {
+	log.Println("start elasticsearch")
+	repo, err := pool.Run("docker.elastic.co/elasticsearch/elasticsearch", "7.6.1", []string{"discovery.type=single-node"})
+	if err != nil {
+		return func() {}, "", "", err
+	}
+	hostPort = repo.GetPort("9200/tcp")
+	err = pool.Retry(func() error {
+		log.Println("try elastic connection...")
+		_, err := http.Get("http://" + repo.Container.NetworkSettings.IPAddress + ":9200/_cluster/health")
+		return err
+	})
+	if err != nil {
+		log.Println(err)
+	}
+	return func() { repo.Close() }, hostPort, repo.Container.NetworkSettings.IPAddress, err
+}
+
+func TestMain(m *testing.M) {
+	var code int
+	func() {
+		pool, err := dockertest.NewPool("")
+		if err != nil {
+			fmt.Println(err)
+			code = 1
+			return
+		}
+		close, port, _, err := Elasticsearch(pool)
+		if err != nil {
+			fmt.Println(err)
+			code = 1
+			return
+		}
+		defer close()
+		err = LoadConfig("./../config.json")
+		if err != nil {
+			fmt.Println(err)
+			code = 1
+			return
+		}
+		Config.ElasticUrl = "http://localhost:" + port
+		code = m.Run()
+	}()
+	os.Exit(code)
 }

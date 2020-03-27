@@ -21,7 +21,7 @@ import (
 
 	"log"
 
-	"github.com/olivere/elastic"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 func SetUserRight(kind string, resource string, user string, rights string) (err error) {

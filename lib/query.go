@@ -25,7 +25,7 @@ import (
 
 	"errors"
 
-	"github.com/olivere/elastic"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 func ResourceExists(kind string, resource string) (exists bool, err error) {
@@ -101,7 +101,7 @@ func GetRightsToAdministrate(kind string, user string, groups []string) (result 
 			continue
 		}
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -114,7 +114,7 @@ func CheckUserOrGroup(kind string, resource string, user string, groups []string
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", resource))...)
 	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits == 0 {
+	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
@@ -134,7 +134,7 @@ func CheckListUserOrGroup(kind string, ids []string, user string, groups []strin
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return allowed, err
 		}
@@ -156,7 +156,7 @@ func GetListFromIds(kind string, ids []string, user string, groups []string, rig
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -190,7 +190,7 @@ func GetListFromIdsOrdered(kind string, ids []string, user string, groups []stri
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -239,7 +239,7 @@ func getListForUserOrGroup(kind string, user string, groups []string, rights str
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -269,7 +269,7 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -291,7 +291,7 @@ func GetListForUser(kind string, user string, rights string) (result []string, e
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -304,7 +304,7 @@ func CheckUser(kind string, resource string, user string, rights string) (err er
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, []string{}), elastic.NewTermQuery("resource", resource))...)
 	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits == 0 {
+	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
@@ -319,7 +319,7 @@ func GetListForGroup(kind string, groups []string, rights string) (result []stri
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -332,7 +332,7 @@ func CheckGroups(kind string, resource string, groups []string, rights string) (
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, "", groups), elastic.NewTermQuery("resource", resource))...)
 	resp, err := GetClient().Search().Index(kind).Type(ElasticPermissionType).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits == 0 {
+	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
@@ -364,7 +364,7 @@ func SearchRightsToAdministrate(kind string, user string, groups []string, query
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -405,7 +405,7 @@ func SelectByFieldOrdered(kind string, field string, value string, user string, 
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -442,7 +442,7 @@ func selectByField(kind string, field string, value string, user string, groups 
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -476,7 +476,7 @@ func searchList(kind string, query string, user string, groups []string, rights 
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -506,7 +506,7 @@ func SearchOrderedList(kind string, query string, user string, groups []string, 
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -530,7 +530,7 @@ func getResourceEntry(ctx context.Context, kind string, resource string) (result
 		return result, version, err
 	}
 	version = *resp.Version
-	err = json.Unmarshal(*resp.Source, &result)
+	err = json.Unmarshal(resp.Source, &result)
 	return
 }
 
@@ -572,7 +572,7 @@ func SearchOrderedListWithSelection(kind string, query string, user string, grou
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -602,7 +602,7 @@ func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups 
 	}
 	for _, hit := range resp.Hits.Hits {
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
@@ -621,7 +621,7 @@ func getSharedState(reqUser string, entry Entry) bool {
 	for _, user := range entry.AdminUsers {
 		if reqUser == user {
 			isAdmin = true
-		}else{
+		} else {
 			isShared = true
 		}
 		if isAdmin && isShared {

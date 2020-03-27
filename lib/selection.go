@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/olivere/elastic"
 	"github.com/SmartEnergyPlatform/jwt-http-router"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 type QueryOperationType string

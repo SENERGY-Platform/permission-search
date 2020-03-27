@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/olivere/elastic"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 func UpdateInitialGroupRights() {
@@ -112,7 +112,7 @@ func ExportKind(kind string, limit int, offset int) (result []ResourceRights, er
 			continue
 		}
 		entry := Entry{}
-		err = json.Unmarshal(*hit.Source, &entry)
+		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}

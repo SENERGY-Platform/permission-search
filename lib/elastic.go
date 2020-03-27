@@ -30,7 +30,7 @@ import (
 
 	"encoding/json"
 
-	"github.com/olivere/elastic"
+	elastic "github.com/olivere/elastic/v7"
 )
 
 var client *elastic.Client
