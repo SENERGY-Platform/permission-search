@@ -23,7 +23,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"testing"
+	"time"
 
 	"context"
 
@@ -70,53 +72,56 @@ func Example() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	err = UpdateFeatures("devicetype", test, testCmd)
+	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", foo1, foo1Cmd)
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", foo2, foo2Cmd)
+	err = UpdateFeatures("device-types", test, testCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", bar, barCmd)
+	err = UpdateFeatures("device-types", foo1, foo1Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", zway, zwayCmd)
+	err = UpdateFeatures("device-types", foo2, foo2Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
+	err = UpdateFeatures("device-types", bar, barCmd)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
-	e, err := GetResourceEntry("devicetype", "test")
+	err = UpdateFeatures("device-types", zway, zwayCmd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = client.Flush().Index("device-types").Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	e, err := GetResourceEntry("device-types", "test")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("devicetype", "foo1")
+	e, err = GetResourceEntry("device-types", "foo1")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("devicetype", "foo2")
+	e, err = GetResourceEntry("device-types", "foo2")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("devicetype", "zway")
+	e, err = GetResourceEntry("device-types", "zway")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("devicetype", "bar")
-	fmt.Println(err, e.Resource)
+	_, err = GetResourceEntry("device-types", "bar")
+	fmt.Println(err)
 
 	//Output:
 	//<nil> test
@@ -148,17 +153,20 @@ func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command Com
 }
 
 func ExampleSearch() {
+	time.Sleep(1 * time.Second)
 	Example()
-	_, err := client.Flush().Index("devicetype").Do(context.Background())
+	_, err := client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	query := elastic.NewBoolQuery().Should(
 		elastic.NewTermQuery("admin_users", "testOwner"),
 		elastic.NewTermQuery("read_users", "testOwner"),
 		elastic.NewTermQuery("write_users", "testOwner"),
 		elastic.NewTermQuery("execute_users", "testOwner"))
-	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
+	time.Sleep(1 * time.Second)
+	result, err := GetClient().Search().Index("device-types").Query(query).Sort("resource", true).Do(context.Background())
 	fmt.Println(err)
 
 	var entity Entry
@@ -177,10 +185,11 @@ func ExampleSearch() {
 	//<nil> zway
 	//elastic: Error 404 (Not Found)
 	//<nil>
-	//foo2
 	//foo1
+	//foo2
 	//test
 	//zway
+
 }
 
 func ExampleDeleteUser() {
@@ -192,35 +201,47 @@ func ExampleDeleteUser() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	err = UpdateFeatures("devicetype", msg, cmd)
+	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
+		debug.PrintStack()
 		return
 	}
+	_, err = client.Flush().Index("device-types").Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		debug.PrintStack()
+		return
+	}
+	err = UpdateFeatures("device-types", msg, cmd)
+	if err != nil {
+		fmt.Println(err)
+		debug.PrintStack()
+		return
+	}
+	time.Sleep(1 * time.Second)
 	err = DeleteUser("testOwner")
 	if err != nil {
 		fmt.Println(err)
+		debug.PrintStack()
 		return
 	}
-	err = DeleteGroupRight("devicetype", "del", "user")
+	time.Sleep(1 * time.Second)
+	err = DeleteGroupRight("device-types", "del", "user")
 	if err != nil {
 		fmt.Println(err)
+		debug.PrintStack()
 		return
 	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
+	time.Sleep(1 * time.Second)
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		debug.PrintStack()
+		return
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
+	result, err := GetClient().Search().Index("device-types").Query(query).Do(context.Background())
 	fmt.Println(err)
 	var entity Entry
 	if result != nil {
@@ -233,7 +254,7 @@ func ExampleDeleteUser() {
 
 	//Output:
 	//<nil>
-	//del [testOwner] [testOwner] [testOwner] [testOwner] [admin] [admin] [admin] [admin]
+	//del [] [] [] [] [admin] [admin] [admin] [admin]
 }
 
 func ExampleDeleteFeatures() {
@@ -245,7 +266,7 @@ func ExampleDeleteFeatures() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	err := UpdateFeatures("devicetype", msg, cmd)
+	err := UpdateFeatures("device-types", msg, cmd)
 	msg, cmd = getDtTestObj("nodel", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
 		"description": "desc",
@@ -253,30 +274,36 @@ func ExampleDeleteFeatures() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err = GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	err = UpdateFeatures("devicetype", msg, cmd)
+	_, err = GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = DeleteFeatures("devicetype", CommandWrapper{Id: "del1"})
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
+	time.Sleep(1 * time.Second)
+	err = UpdateFeatures("device-types", msg, cmd)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	err = DeleteFeatures("device-types", CommandWrapper{Id: "del1"})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	_, err = client.Flush().Index("device-types").Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("devicetype").Query(query).Do(context.Background())
+	result, err := GetClient().Search().Index("device-types").Query(query).Do(context.Background())
 	fmt.Println(err)
 	var entity Entry
 	if result != nil {
@@ -294,25 +321,26 @@ func ExampleDeleteFeatures() {
 
 func ExampleGetRightsToAdministrate() {
 	initDb()
-	rights, err := GetRightsToAdministrate("devicetype", "nope", []string{})
+	time.Sleep(1 * time.Second)
+	rights, err := GetRightsToAdministrate("device-types", "nope", []string{})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "testOwner", []string{})
+	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "testOwner", []string{"nope"})
+	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"nope"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "testOwner", []string{"nope", "admin"})
+	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"nope", "admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "testOwner", []string{"admin"})
+	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "nope", []string{"nope", "admin"})
+	rights, err = GetRightsToAdministrate("device-types", "nope", []string{"nope", "admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("devicetype", "nope", []string{"admin"})
+	rights, err = GetRightsToAdministrate("device-types", "nope", []string{"admin"})
 	fmt.Println(len(rights), err)
 
 	//Output:
@@ -334,36 +362,39 @@ func ExampleCheckUserOrGroup() {
 		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	UpdateFeatures("devicetype", test, testCmd)
+	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
+	_, err = client.Flush().Index("device-types").Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	err = UpdateFeatures("device-types", test, testCmd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	time.Sleep(1 * time.Second)
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{}, "a"))
 
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "nope", []string{}, "a"))
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "a"))
 
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "nope", []string{"user"}, "a"))
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "r"))
 
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "nope", []string{"user"}, "r"))
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "a"))
 
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "testOwner", []string{"user"}, "a"))
-
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "testOwner", []string{"user"}, "ra"))
-	fmt.Println(CheckUserOrGroup("devicetype", "check3", "nope", []string{"user"}, "ra"))
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "ra"))
+	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "ra"))
 
 	//Output:
 	//access denied
@@ -376,8 +407,8 @@ func ExampleCheckUserOrGroup() {
 
 func ExampleGetFullListForUserOrGroup() {
 	initDb()
-
-	result, err := GetFullListForUserOrGroup("devicetype", "testOwner", []string{}, "r")
+	time.Sleep(1 * time.Second)
+	result, err := GetFullListForUserOrGroup("device-types", "testOwner", []string{}, "r")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -385,25 +416,25 @@ func ExampleGetFullListForUserOrGroup() {
 	//Output:
 	//<nil>
 	//foo1
+	//foo2
 	//test
 	//ZWay-SwitchMultilevel
-	//foo2
 }
 
 func ExampleGetListForUserOrGroup() {
 	initDb()
-
-	result, err := GetListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "20", "0")
+	time.Sleep(1 * time.Second)
+	result, err := GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "3", "0")
+	result, err = GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "3", "3")
+	result, err = GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -411,36 +442,36 @@ func ExampleGetListForUserOrGroup() {
 	//Output:
 	//<nil>
 	//foo1
+	//foo2
 	//test
 	//ZWay-SwitchMultilevel
-	//foo2
 	//<nil>
 	//foo1
-	//test
-	//ZWay-SwitchMultilevel
-	//<nil>
 	//foo2
+	//test
+	//<nil>
+	//ZWay-SwitchMultilevel
 }
 
 func ExampleGetOrderedListForUserOrGroup() {
 	initDb()
-
-	result, err := GetOrderedListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "20", "0", "name", true)
+	time.Sleep(1 * time.Second)
+	result, err := GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "20", "0", "name", false)
+	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", false)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("devicetype", "testOwner", []string{}, "r", "3", "3", "name", true)
+	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -466,29 +497,29 @@ func ExampleGetOrderedListForUserOrGroup() {
 
 func ExampleSearchRightsToAdministrate() {
 	initDb()
+	time.Sleep(1 * time.Second)
+	result, err := SearchRightsToAdministrate("device-types", "testOwner", []string{}, "z", "20", "0")
+	fmt.Println(err)
+	for _, r := range result {
+		fmt.Println("found: ", r.ResourceId)
+	}
+	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway", "20", "0")
+	fmt.Println(err)
+	for _, r := range result {
+		fmt.Println("found: ", r.ResourceId)
+	}
+	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway switch", "20", "0")
+	fmt.Println(err)
+	for _, r := range result {
+		fmt.Println("found: ", r.ResourceId)
+	}
+	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "switch", "20", "0")
+	fmt.Println(err)
+	for _, r := range result {
+		fmt.Println("found: ", r.ResourceId)
+	}
 
-	result, err := SearchRightsToAdministrate("devicetype", "testOwner", []string{}, "z", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = SearchRightsToAdministrate("devicetype", "testOwner", []string{}, "zway", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = SearchRightsToAdministrate("devicetype", "testOwner", []string{}, "zway switch", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = SearchRightsToAdministrate("devicetype", "testOwner", []string{}, "switch", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-
-	result, err = SearchRightsToAdministrate("devicetype", "testOwner", []string{}, "nope", "20", "0")
+	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "nope", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
@@ -504,544 +535,13 @@ func ExampleSearchRightsToAdministrate() {
 	//<nil>
 	//found:  zway
 	//<nil>
-}
-
-func ExampleSelectByFieldAll() {
-	initDb()
-
-	result, err := SelectByFieldAll("devicetype", "service", "foo2Service", "testOwner", []string{}, "r")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r["name"])
-	}
-	result, err = SelectByFieldAll("devicetype", "service", "foo", "testOwner", []string{}, "r")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r["name"])
-	}
-	result, err = SelectByFieldAll("devicetype", "maintenance", "something", "testOwner", []string{}, "r")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r["name"])
-	}
-	result, err = SelectByFieldAll("devicetype", "maintenance", "so", "testOwner", []string{}, "r")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r["name"])
-	}
-
-	//Output:
-	//<nil>
-	//found:  foo2
-	//<nil>
-	//<nil>
-	//found:  test
-	//<nil>
-}
-
-func ExampleJsonpath() {
-	jsonStr := `{  
-   "command":"PUT",
-   "processmodel":{  
-      "process":{  
-         "definitions":{  
-            "process":{  
-               "startEvent":{  
-                  "outgoing":{  
-                     "__prefix":"bpmn",
-                     "__text":"SequenceFlow_0mfiuuu"
-                  },
-                  "_id":"StartEvent_1",
-                  "__prefix":"bpmn"
-               },
-               "endEvent":{  
-                  "incoming":{  
-                     "__prefix":"bpmn",
-                     "__text":"SequenceFlow_0mfiuuu"
-                  },
-                  "_id":"EndEvent_0oe34u0",
-                  "__prefix":"bpmn"
-               },
-               "sequenceFlow":{  
-                  "_id":"SequenceFlow_0mfiuuu",
-                  "_sourceRef":"StartEvent_1",
-                  "_targetRef":"EndEvent_0oe34u0",
-                  "__prefix":"bpmn"
-               },
-               "_id":"FooBar1",
-               "_isExecutable":"true",
-               "__prefix":"bpmn"
-            },
-            "BPMNDiagram":{  
-               "BPMNPlane":{  
-                  "BPMNShape":[  
-                     {  
-                        "Bounds":{  
-                           "_x":"173",
-                           "_y":"102",
-                           "_width":"36",
-                           "_height":"36",
-                           "__prefix":"dc"
-                        },
-                        "_id":"_BPMNShape_StartEvent_2",
-                        "_bpmnElement":"StartEvent_1",
-                        "__prefix":"bpmndi"
-                     },
-                     {  
-                        "Bounds":{  
-                           "_x":"231",
-                           "_y":"102",
-                           "_width":"36",
-                           "_height":"36",
-                           "__prefix":"dc"
-                        },
-                        "BPMNLabel":{  
-                           "Bounds":{  
-                              "_x":"249",
-                              "_y":"138",
-                              "_width":"0",
-                              "_height":"0",
-                              "__prefix":"dc"
-                           },
-                           "__prefix":"bpmndi"
-                        },
-                        "_id":"EndEvent_0oe34u0_di",
-                        "_bpmnElement":"EndEvent_0oe34u0",
-                        "__prefix":"bpmndi"
-                     }
-                  ],
-                  "BPMNEdge":{  
-                     "waypoint":[  
-                        {  
-                           "_xsi:type":"dc:Point",
-                           "_x":"209",
-                           "_y":"120",
-                           "__prefix":"di"
-                        },
-                        {  
-                           "_xsi:type":"dc:Point",
-                           "_x":"231",
-                           "_y":"120",
-                           "__prefix":"di"
-                        }
-                     ],
-                     "BPMNLabel":{  
-                        "Bounds":{  
-                           "_x":"220",
-                           "_y":"95",
-                           "_width":"0",
-                           "_height":"0",
-                           "__prefix":"dc"
-                        },
-                        "__prefix":"bpmndi"
-                     },
-                     "_id":"SequenceFlow_0mfiuuu_di",
-                     "_bpmnElement":"SequenceFlow_0mfiuuu",
-                     "__prefix":"bpmndi"
-                  },
-                  "_id":"BPMNPlane_1",
-                  "_bpmnElement":"FooBar1",
-                  "__prefix":"bpmndi"
-               },
-               "_id":"BPMNDiagram_1",
-               "__prefix":"bpmndi"
-            },
-            "_xmlns:xsi":"http://www.w3.org/2001/XMLSchema-instance",
-            "_xmlns:bpmn":"http://www.omg.org/spec/BPMN/20100524/MODEL",
-            "_xmlns:bpmndi":"http://www.omg.org/spec/BPMN/20100524/DI",
-            "_xmlns:dc":"http://www.omg.org/spec/DD/20100524/DC",
-            "_xmlns:di":"http://www.omg.org/spec/DD/20100524/DI",
-            "_id":"Definitions_1",
-            "_targetNamespace":"http://bpmn.io/schema/bpmn",
-            "__prefix":"bpmn"
-         }
-      },
-      "svg":{  
-         "svg":{  
-            "defs":{  
-               "marker":[  
-                  {  
-                     "path":{  
-                        "_d":"M 1 5 L 11 10 L 1 15 Z",
-                        "_style":"stroke-width: 1; stroke-linecap: round; stroke-dasharray: 10000, 1;",
-                        "_fill":"#000000"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"10",
-                     "_markerHeight":"10",
-                     "_orient":"auto",
-                     "_refX":"11",
-                     "_refY":"10",
-                     "_id":"markerSjhrbfypa4"
-                  },
-                  {  
-                     "circle":{  
-                        "_cx":"6",
-                        "_cy":"6",
-                        "_r":"3.5",
-                        "_style":"stroke-width: 1; stroke-linecap: round; stroke-dasharray: 10000, 1;",
-                        "_fill":"#ffffff",
-                        "_stroke":"#000000"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"20",
-                     "_markerHeight":"20",
-                     "_orient":"auto",
-                     "_refX":"6",
-                     "_refY":"6",
-                     "_id":"markerSjhrbfypa6"
-                  },
-                  {  
-                     "path":{  
-                        "_d":"m 1 5 l 0 -3 l 7 3 l -7 3 z",
-                        "_fill":"#ffffff",
-                        "_stroke":"#000000",
-                        "_style":"stroke-width: 1; stroke-linecap: butt; stroke-dasharray: 10000, 1;"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"20",
-                     "_markerHeight":"20",
-                     "_orient":"auto",
-                     "_refX":"8.5",
-                     "_refY":"5",
-                     "_id":"markerSjhrbfypa8"
-                  },
-                  {  
-                     "path":{  
-                        "_d":"M 11 5 L 1 10 L 11 15",
-                        "_fill":"none",
-                        "_stroke":"#000000",
-                        "_style":"stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 10000, 1;"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"10",
-                     "_markerHeight":"10",
-                     "_orient":"auto",
-                     "_refX":"1",
-                     "_refY":"10",
-                     "_id":"markerSjhrbfypaa"
-                  },
-                  {  
-                     "path":{  
-                        "_d":"M 1 5 L 11 10 L 1 15",
-                        "_fill":"none",
-                        "_stroke":"#000000",
-                        "_style":"stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 10000, 1;"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"10",
-                     "_markerHeight":"10",
-                     "_orient":"auto",
-                     "_refX":"12",
-                     "_refY":"10",
-                     "_id":"markerSjhrbfypac"
-                  },
-                  {  
-                     "path":{  
-                        "_d":"M 0 10 L 8 6 L 16 10 L 8 14 Z",
-                        "_fill":"#ffffff",
-                        "_stroke":"#000000",
-                        "_style":"stroke-width: 1; stroke-linecap: round; stroke-dasharray: 10000, 1;"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"10",
-                     "_markerHeight":"10",
-                     "_orient":"auto",
-                     "_refX":"-1",
-                     "_refY":"10",
-                     "_id":"markerSjhrbfypae"
-                  },
-                  {  
-                     "path":{  
-                        "_d":"M 1 4 L 5 16",
-                        "_fill":"#000000",
-                        "_stroke":"#000000",
-                        "_style":"stroke-width: 1; stroke-linecap: round; stroke-dasharray: 10000, 1;"
-                     },
-                     "_viewBox":"0 0 20 20",
-                     "_markerWidth":"10",
-                     "_markerHeight":"10",
-                     "_orient":"auto",
-                     "_refX":"-5",
-                     "_refY":"10",
-                     "_id":"markerSjhrbfypag"
-                  }
-               ]
-            },
-            "g":[  
-               {  
-                  "g":{  
-                     "g":{  
-                        "circle":{  
-                           "_cx":"18",
-                           "_cy":"18",
-                           "_r":"18",
-                           "_stroke":"#000000",
-                           "_fill":"#ffffff",
-                           "_style":"stroke-width: 2;"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "rect":[  
-                        {  
-                           "_x":"0",
-                           "_y":"0",
-                           "_width":"36",
-                           "_height":"36",
-                           "_fill":"none",
-                           "_stroke":"#ffffff",
-                           "_style":"stroke-opacity: 0; stroke-width: 15;",
-                           "_class":"djs-hit"
-                        },
-                        {  
-                           "_x":"-6",
-                           "_y":"-6",
-                           "_width":"48",
-                           "_height":"48",
-                           "_fill":"none",
-                           "_style":"",
-                           "_class":"djs-outline"
-                        }
-                     ],
-                     "_data-element-id":"StartEvent_1",
-                     "_transform":"matrix(1,0,0,1,173,102)",
-                     "_style":"display: block;",
-                     "_class":"djs-element djs-shape"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               },
-               {  
-                  "g":{  
-                     "g":{  
-                        "text":{  
-                           "tspan":{  
-                              "_x":"45",
-                              "_y":"0"
-                           },
-                           "_class":" djs-label",
-                           "_style":"font-family: Arial, sans-serif; font-size: 11px;",
-                           "_transform":"matrix(1,0,0,1,0,0)"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "rect":[  
-                        {  
-                           "_x":"0",
-                           "_y":"0",
-                           "_width":"0",
-                           "_height":"0",
-                           "_fill":"none",
-                           "_stroke":"#ffffff",
-                           "_style":"stroke-opacity: 0; stroke-width: 15;",
-                           "_class":"djs-hit"
-                        },
-                        {  
-                           "_x":"-6",
-                           "_y":"-6",
-                           "_width":"12",
-                           "_height":"12",
-                           "_fill":"none",
-                           "_style":"",
-                           "_class":"djs-outline"
-                        }
-                     ],
-                     "_data-element-id":"StartEvent_1_label",
-                     "_class":"djs-element djs-shape",
-                     "_transform":"matrix(1,0,0,1,191,138)",
-                     "_style":"display: none;"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               },
-               {  
-                  "g":{  
-                     "g":{  
-                        "circle":{  
-                           "_cx":"18",
-                           "_cy":"18",
-                           "_r":"18",
-                           "_stroke":"#000000",
-                           "_fill":"#ffffff",
-                           "_style":"stroke-width: 4;"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "rect":[  
-                        {  
-                           "_x":"0",
-                           "_y":"0",
-                           "_width":"36",
-                           "_height":"36",
-                           "_fill":"none",
-                           "_stroke":"#ffffff",
-                           "_style":"stroke-opacity: 0; stroke-width: 15;",
-                           "_class":"djs-hit"
-                        },
-                        {  
-                           "_x":"-6",
-                           "_y":"-6",
-                           "_width":"48",
-                           "_height":"48",
-                           "_fill":"none",
-                           "_style":"",
-                           "_class":"djs-outline"
-                        }
-                     ],
-                     "_data-element-id":"EndEvent_0oe34u0",
-                     "_transform":"matrix(1,0,0,1,231,102)",
-                     "_style":"display: block;",
-                     "_class":"djs-element djs-shape"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               },
-               {  
-                  "g":{  
-                     "g":{  
-                        "text":{  
-                           "tspan":{  
-                              "_x":"45",
-                              "_y":"0"
-                           },
-                           "_class":" djs-label",
-                           "_style":"font-family: Arial, sans-serif; font-size: 11px;",
-                           "_transform":"matrix(1,0,0,1,0,0)"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "rect":[  
-                        {  
-                           "_x":"0",
-                           "_y":"0",
-                           "_width":"0",
-                           "_height":"0",
-                           "_fill":"none",
-                           "_stroke":"#ffffff",
-                           "_style":"stroke-opacity: 0; stroke-width: 15;",
-                           "_class":"djs-hit"
-                        },
-                        {  
-                           "_x":"-6",
-                           "_y":"-6",
-                           "_width":"12",
-                           "_height":"12",
-                           "_fill":"none",
-                           "_style":"",
-                           "_class":"djs-outline"
-                        }
-                     ],
-                     "_data-element-id":"EndEvent_0oe34u0_label",
-                     "_class":"djs-element djs-shape",
-                     "_transform":"matrix(1,0,0,1,249,138)",
-                     "_style":"display: none;"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               },
-               {  
-                  "g":{  
-                     "g":{  
-                        "path":{  
-                           "_d":"m  209,120L231,120 ",
-                           "_fill":"none",
-                           "_stroke":"#000000",
-                           "_style":"stroke-width: 2; stroke-linejoin: round; marker-end: url(\"#markerSjhrbfypa4\");"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "polyline":{  
-                        "_points":"209,120 231,120 ",
-                        "_fill":"none",
-                        "_stroke":"#ffffff",
-                        "_style":"stroke-opacity: 0; stroke-width: 15;",
-                        "_class":"djs-hit"
-                     },
-                     "rect":{  
-                        "_x":"203",
-                        "_y":"114",
-                        "_width":"34",
-                        "_height":"12",
-                        "_fill":"none",
-                        "_style":"",
-                        "_class":"djs-outline"
-                     },
-                     "_data-element-id":"SequenceFlow_0mfiuuu",
-                     "_class":"djs-element djs-connection",
-                     "_style":"display: block;"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               },
-               {  
-                  "g":{  
-                     "g":{  
-                        "text":{  
-                           "tspan":{  
-                              "_x":"45",
-                              "_y":"0"
-                           },
-                           "_class":" djs-label",
-                           "_style":"font-family: Arial, sans-serif; font-size: 11px;",
-                           "_transform":"matrix(1,0,0,1,0,0)"
-                        },
-                        "_class":"djs-visual"
-                     },
-                     "rect":[  
-                        {  
-                           "_x":"0",
-                           "_y":"0",
-                           "_width":"0",
-                           "_height":"0",
-                           "_fill":"none",
-                           "_stroke":"#ffffff",
-                           "_style":"stroke-opacity: 0; stroke-width: 15;",
-                           "_class":"djs-hit"
-                        },
-                        {  
-                           "_x":"-6",
-                           "_y":"-6",
-                           "_width":"12",
-                           "_height":"12",
-                           "_fill":"none",
-                           "_style":"",
-                           "_class":"djs-outline"
-                        }
-                     ],
-                     "_data-element-id":"SequenceFlow_0mfiuuu_label",
-                     "_class":"djs-element djs-shape",
-                     "_transform":"matrix(1,0,0,1,220,95)",
-                     "_style":"display: none;"
-                  },
-                  "_xmlns":"http://www.w3.org/2000/svg",
-                  "_class":"djs-group"
-               }
-            ],
-            "_xmlns":"http://www.w3.org/2000/svg",
-            "_xmlns:xlink":"http://www.w3.org/1999/xlink",
-            "_width":"106",
-            "_height":"48",
-            "_viewBox":"167 96 106 48",
-            "_version":"1.1"
-         }
-      },
-      "date":1527577962056,
-      "_id":"5b0812f2d10ea4001614e002"
-   },
-   "id":"5b0812f2d10ea4001614e002"
-}`
-
-	fmt.Println(UseJsonPath([]byte(jsonStr), "$.processmodel.svg+"))
-
-	//Output:
-	//
 }
 
 func initDb() {
 	Config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
-		"description": "desc",
+		"description": "something",
 		"maintenance": []string{"something", "onotherthing"},
 		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
 		"vendor":      map[string]interface{}{"name": "vendor"},
@@ -1076,43 +576,46 @@ func initDb() {
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
 
-	_, err := GetClient().DeleteByQuery("devicetype").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	err = UpdateFeatures("devicetype", test, testCmd)
+	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", foo1, foo1Cmd)
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", foo2, foo2Cmd)
+	err = UpdateFeatures("device-types", test, testCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("devicetype", bar, barCmd)
+	err = UpdateFeatures("device-types", foo1, foo1Cmd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = UpdateFeatures("device-types", foo2, foo2Cmd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = UpdateFeatures("device-types", bar, barCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = UpdateFeatures("devicetype", zway, zwayCmd)
+	err = UpdateFeatures("device-types", zway, zwayCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("devicetype").Do(context.Background())
+	_, err = client.Flush().Index("device-types").Do(context.Background())
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 }
 
@@ -1157,6 +660,21 @@ func TestMain(m *testing.M) {
 			return
 		}
 		Config.ElasticUrl = "http://localhost:" + port
+
+		ctx := context.Background()
+		client, err := elastic.NewClient(elastic.SetURL(Config.ElasticUrl), elastic.SetRetrier(newRetrier()))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		for kind := range Config.Resources {
+			err = createIndex(kind, client, ctx)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+		client.Stop()
 		code = m.Run()
 	}()
 	os.Exit(code)

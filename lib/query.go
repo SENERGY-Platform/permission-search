@@ -519,12 +519,18 @@ func GetResourceEntry(kind string, resource string) (result Entry, err error) {
 	return
 }
 
-func getResourceEntry(ctx context.Context, kind string, resource string) (result Entry, version int64, err error) {
+type resourceVersion struct {
+	SeqNo       int64
+	PrimaryTerm int64
+}
+
+func getResourceEntry(ctx context.Context, kind string, resource string) (result Entry, version resourceVersion, err error) {
 	resp, err := GetClient().Get().Index(kind).Id(resource).Do(ctx)
 	if err != nil {
 		return result, version, err
 	}
-	version = *resp.Version
+	version.PrimaryTerm = *resp.PrimaryTerm
+	version.SeqNo = *resp.SeqNo
 	err = json.Unmarshal(resp.Source, &result)
 	return
 }

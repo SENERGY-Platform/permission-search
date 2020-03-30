@@ -18,6 +18,7 @@ package lib
 
 import (
 	"context"
+	"runtime/debug"
 
 	"log"
 
@@ -32,7 +33,7 @@ func SetUserRight(kind string, resource string, user string, rights string) (err
 	}
 	entry.removeUserRights(user)
 	entry.addUserRights(user, rights)
-	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -44,7 +45,7 @@ func SetGroupRight(kind string, resource string, group string, rights string) (e
 	}
 	entry.removeGroupRights(group)
 	entry.addGroupRights(group, rights)
-	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -55,7 +56,7 @@ func DeleteUserRight(kind string, resource string, user string) (err error) {
 		return err
 	}
 	entry.removeUserRights(user)
-	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -63,10 +64,11 @@ func DeleteGroupRight(kind string, resource string, group string) (err error) {
 	ctx := context.Background()
 	entry, version, err := getResourceEntry(ctx, kind, resource)
 	if err != nil {
+		debug.PrintStack()
 		return err
 	}
 	entry.removeGroupRights(group)
-	_, err = GetClient().Index().Index(kind).Id(resource).Version(version).BodyJson(entry).Do(ctx)
+	_, err = GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 	return
 }
 
@@ -89,7 +91,7 @@ func UpdateFeatures(kind string, msg []byte, command CommandWrapper) (err error)
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
 		}
-		_, err = GetClient().Index().Index(kind).Id(command.Id).Version(version).BodyJson(entry).Do(ctx)
+		_, err = GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 	} else {
 		entry := Entry{Resource: command.Id, Features: features, Creator: command.Owner}
 		entry.setDefaultPermissions(kind, command.Owner)
