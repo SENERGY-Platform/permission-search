@@ -92,12 +92,18 @@ func UpdateFeatures(kind string, msg []byte, command CommandWrapper) (err error)
 			entry.Creator = entry.AdminUsers[0]
 		}
 		_, err = GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		if err != nil {
+			return err
+		}
 	} else {
 		entry := Entry{Resource: command.Id, Features: features, Creator: command.Owner}
 		entry.setDefaultPermissions(kind, command.Owner)
 		_, err = GetClient().Index().Index(kind).Id(command.Id).BodyJson(entry).Do(ctx)
+		if err != nil {
+			return err
+		}
 	}
-	return
+	return nil
 
 }
 
