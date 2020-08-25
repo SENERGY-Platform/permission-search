@@ -54,9 +54,28 @@
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "description", "Path": "$.device_type.description+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
-                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"},
-                {"Name": "device_class", "Path": "$.device_type.device_class.name+"},
-                {"Name": "image", "Path": "$.device_type.image+"}
+                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
+        "device-classes":{
+            "Features":[
+                {"Name": "name", "Path": "$.device_class.name+"},
+                {"Name": "image", "Path": "$.device_class.image+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
+        "aspects":{
+            "Features":[
+                {"Name": "name", "Path": "$.aspect.name+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
+        "functions":{
+            "Features":[
+                {"Name": "name", "Path": "$.function.name+"},
+                {"Name": "rdf_type", "Path": "$.function.rdf_type+"},
+                {"Name": "concept_id", "Path": "$.function.concept_id+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         },
@@ -90,9 +109,19 @@
             "description":  {"type": "text", "copy_to": "feature_search"},
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "service":      {"type": "keyword"},
-            "protocols":    {"type": "keyword"},
-            "image":        {"type": "keyword"},
-            "device_class": {"type": "keyword"}
+            "protocols":    {"type": "keyword"}
+        },
+        "device-classes": {
+            "name":         {"type": "keyword", "copy_to": "feature_search"},
+            "image":        {"type": "keyword"}
+        },
+        "aspects": {
+            "name":         {"type": "keyword", "copy_to": "feature_search"}
+        },
+        "functions": {
+            "name":         {"type": "keyword", "copy_to": "feature_search"},
+            "rdf_type":     {"type": "keyword"},
+            "concept_id":   {"type": "keyword"}
         },
         "processmodel":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
