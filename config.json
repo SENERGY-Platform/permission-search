@@ -54,7 +54,8 @@
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "description", "Path": "$.device_type.description+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
-                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"}
+                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"},
+                {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         },
