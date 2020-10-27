@@ -3,6 +3,12 @@ Receives resources from amqp and saves it to elastic search.
 Resources will be enriched with permission information. 
 A HTTP-API provides endpoints to request for resources where the requesting user has selected permissions.
 
+## Modes 
+The Project can be started as:
+- Worker: only handle change commands received from Kafka-Events, without starting the HTTP-API. `./permission-search -mode=worker`
+- Query: only start the HTTP-API without starting a Kafka-Consumer. `./permission-search -mode=query` as 
+- Standalone: start HTTP-API and Kafka-Consumer. Default behavior with `./permission-search` or `./permission-search -mode=standalone`
+
 ## Events
 Data-input to the elasticsearch database id done by amqp events.
 
