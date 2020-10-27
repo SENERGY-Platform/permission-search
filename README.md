@@ -1,5 +1,5 @@
 Service to search for resources with added permissions. 
-Receives resources from amqp and saves it to elastic search. 
+Receives resources from kafka and saves it to elastic search. 
 Resources will be enriched with permission information. 
 A HTTP-API provides endpoints to request for resources where the requesting user has selected permissions.
 
@@ -10,7 +10,7 @@ The Project can be started as:
 - Standalone: start HTTP-API and Kafka-Consumer. Default behavior with `./permission-search` or `./permission-search -mode=standalone`
 
 ## Events
-Data-input to the elasticsearch database id done by amqp events.
+Data-input to the elasticsearch database id done by kafka events.
 
 ### Permission-Events
 The change of permissions is governed by the permissions service. This is done by event-messaging.
