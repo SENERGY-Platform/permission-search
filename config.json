@@ -14,8 +14,6 @@
     "ElasticUrl": "http://elastic:9200",
     "ElasticRetry": 3,
 
-    "ConsumptionPause": "false",
-
 	"Resources": {
         "concepts": {
             "Features":[

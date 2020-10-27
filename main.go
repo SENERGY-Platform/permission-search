@@ -17,31 +17,47 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"github.com/SENERGY-Platform/permission-search/lib"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
 	configLocation := flag.String("config", "config.json", "configuration file")
+	modeFlag := flag.String("mode", "standalone", "may be query, worker or standalone")
 	flag.Parse()
 
-	err := lib.LoadConfig(*configLocation)
+	mode, err := lib.GetMode(*modeFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if lib.Config.DbInitOnly == "true" {
-		lib.GetClient()
-	} else {
-		if lib.Config.InitialGroupRightsUpdate == "true" {
-			lib.UpdateInitialGroupRights()
-		}
-		if lib.Config.ConsumptionPause == "true" {
-			log.Println("pause event consumption")
-		} else {
-			lib.InitEventHandling()
-		}
-		lib.StartApi()
+	config, err := configuration.LoadConfig(*configLocation)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err = lib.Start(ctx, config, mode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		shutdown := make(chan os.Signal, 1)
+		signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+		sig := <-shutdown
+		log.Println("received shutdown signal", sig)
+		cancel()
+	}()
+
+	<-ctx.Done()                //waiting for context end; may happen by shutdown signal
+	time.Sleep(1 * time.Second) //give go routines time for cleanup and last messages
 }

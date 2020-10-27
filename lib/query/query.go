@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package lib
+package query
 
 import (
 	"context"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"strconv"
+	"time"
 
 	"encoding/json"
 
@@ -27,12 +30,25 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
-func ResourceExists(kind string, resource string) (exists bool, err error) {
-	return resourceExists(context.Background(), kind, resource)
+type Query struct {
+	config configuration.Config
+	client *elastic.Client
 }
 
-func resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
-	exists, err = elastic.NewExistsService(GetClient()).Index(kind).Id(resource).Do(context)
+func New(config configuration.Config) (result *Query, err error) {
+	client, err := CreateElasticClient(config)
+	return &Query{
+		config: config,
+		client: client,
+	}, err
+}
+
+func (this *Query) ResourceExists(kind string, resource string) (exists bool, err error) {
+	return this.resourceExists(context.Background(), kind, resource)
+}
+
+func (this *Query) resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
+	exists, err = elastic.NewExistsService(this.client).Index(kind).Id(resource).Do(context)
 	return
 }
 
@@ -87,15 +103,15 @@ func getRightsQuery(rights string, user string, groups []string) (result []elast
 	return
 }
 
-func GetRightsToAdministrate(kind string, user string, groups []string) (result []ResourceRights, err error) {
+func (this *Query) GetRightsToAdministrate(kind string, user string, groups []string) (result []model.ResourceRights, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -105,17 +121,17 @@ func GetRightsToAdministrate(kind string, user string, groups []string) (result 
 	return
 }
 
-func CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
+func (this *Query) CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
 }
 
-func CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error) {
+func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error) {
 	allowed = map[string]bool{}
 	ctx := context.Background()
 	terms := []interface{}{}
@@ -123,12 +139,12 @@ func CheckListUserOrGroup(kind string, ids []string, user string, groups []strin
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
 	if err != nil {
 		return allowed, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return allowed, err
@@ -138,19 +154,19 @@ func CheckListUserOrGroup(kind string, ids []string, user string, groups []strin
 	return allowed, nil
 }
 
-func GetListFromIds(kind string, ids []string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
+func (this *Query) GetListFromIds(kind string, ids []string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	terms := []interface{}{}
 	for _, id := range ids {
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -164,7 +180,7 @@ func GetListFromIds(kind string, ids []string, user string, groups []string, rig
 	return result, nil
 }
 
-func GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
+func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -179,12 +195,12 @@ func GetListFromIdsOrdered(kind string, ids []string, user string, groups []stri
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := GetClient().Search().Index(kind).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -198,12 +214,12 @@ func GetListFromIdsOrdered(kind string, ids []string, user string, groups []stri
 	return result, nil
 }
 
-func GetFullListForUserOrGroup(kind string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
+func (this *Query) GetFullListForUserOrGroup(kind string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
 	limit := 20
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
-		temp, err = getListForUserOrGroup(kind, user, groups, rights, limit, offset)
+		temp, err = this.getListForUserOrGroup(kind, user, groups, rights, limit, offset)
 		if err != nil {
 			return result, err
 		}
@@ -213,7 +229,7 @@ func GetFullListForUserOrGroup(kind string, user string, groups []string, rights
 	return
 }
 
-func GetListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
+func (this *Query) GetListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -222,18 +238,18 @@ func GetListForUserOrGroup(kind string, user string, groups []string, rights str
 	if err != nil {
 		return result, err
 	}
-	return getListForUserOrGroup(kind, user, groups, rights, limit, offset)
+	return this.getListForUserOrGroup(kind, user, groups, rights, limit, offset)
 }
 
-func getListForUserOrGroup(kind string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
+func (this *Query) getListForUserOrGroup(kind string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -247,7 +263,7 @@ func getListForUserOrGroup(kind string, user string, groups []string, rights str
 	return
 }
 
-func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
+func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -258,12 +274,12 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -277,15 +293,15 @@ func GetOrderedListForUserOrGroup(kind string, user string, groups []string, rig
 	return
 }
 
-func GetListForUser(kind string, user string, rights string) (result []string, err error) {
+func (this *Query) GetListForUser(kind string, user string, rights string) (result []string, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, []string{})...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -295,25 +311,25 @@ func GetListForUser(kind string, user string, rights string) (result []string, e
 	return
 }
 
-func CheckUser(kind string, resource string, user string, rights string) (err error) {
+func (this *Query) CheckUser(kind string, resource string, user string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, []string{}), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
 }
 
-func GetListForGroup(kind string, groups []string, rights string) (result []string, err error) {
+func (this *Query) GetListForGroup(kind string, groups []string, rights string) (result []string, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, "", groups)...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -323,26 +339,26 @@ func GetListForGroup(kind string, groups []string, rights string) (result []stri
 	return
 }
 
-func CheckGroups(kind string, resource string, groups []string, rights string) (err error) {
+func (this *Query) CheckGroups(kind string, resource string, groups []string, rights string) (err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, "", groups), elastic.NewTermQuery("resource", resource))...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
 }
 
-func GetResource(kind string, resource string) (result []ResourceRights, err error) {
-	entry, err := GetResourceEntry(kind, resource)
+func (this *Query) GetResource(kind string, resource string) (result []model.ResourceRights, err error) {
+	entry, _, err := this.GetResourceEntry(kind, resource)
 	if err != nil {
 		return result, err
 	}
-	result = []ResourceRights{entry.ToResourceRights()}
+	result = []model.ResourceRights{entry.ToResourceRights()}
 	return
 }
 
-func SearchRightsToAdministrate(kind string, user string, groups []string, query string, limitStr string, offsetStr string) (result []ResourceRights, err error) {
+func (this *Query) SearchRightsToAdministrate(kind string, user string, groups []string, query string, limitStr string, offsetStr string) (result []model.ResourceRights, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -353,12 +369,12 @@ func SearchRightsToAdministrate(kind string, user string, groups []string, query
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -368,12 +384,12 @@ func SearchRightsToAdministrate(kind string, user string, groups []string, query
 	return
 }
 
-func SearchListAll(kind string, query string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
+func (this *Query) SearchListAll(kind string, query string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
 	limit := 20
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
-		temp, err = searchList(kind, query, user, groups, rights, limit, offset)
+		temp, err = this.searchList(kind, query, user, groups, rights, limit, offset)
 		if err != nil {
 			return result, err
 		}
@@ -383,7 +399,7 @@ func SearchListAll(kind string, query string, user string, groups []string, righ
 	return
 }
 
-func SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
+func (this *Query) SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -394,12 +410,12 @@ func SelectByFieldOrdered(kind string, field string, value string, user string, 
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := GetClient().Search().Index(kind).Query(query).From(offset).Size(limit).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Query(query).From(offset).Size(limit).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -413,12 +429,12 @@ func SelectByFieldOrdered(kind string, field string, value string, user string, 
 	return
 }
 
-func SelectByFieldAll(kind string, field string, value string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
+func (this *Query) SelectByFieldAll(kind string, field string, value string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
 	limit := 20
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
-		temp, err = selectByField(kind, field, value, user, groups, rights, limit, offset)
+		temp, err = this.selectByField(kind, field, value, user, groups, rights, limit, offset)
 		if err != nil {
 			return result, err
 		}
@@ -428,15 +444,15 @@ func SelectByFieldAll(kind string, field string, value string, user string, grou
 	return
 }
 
-func selectByField(kind string, field string, value string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
+func (this *Query) selectByField(kind string, field string, value string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -450,7 +466,7 @@ func selectByField(kind string, field string, value string, user string, groups 
 	return
 }
 
-func SearchList(kind string, query string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
+func (this *Query) SearchList(kind string, query string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -459,18 +475,18 @@ func SearchList(kind string, query string, user string, groups []string, rights 
 	if err != nil {
 		return result, err
 	}
-	return searchList(kind, query, user, groups, rights, limit, offset)
+	return this.searchList(kind, query, user, groups, rights, limit, offset)
 }
 
-func searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
+func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -484,7 +500,7 @@ func searchList(kind string, query string, user string, groups []string, rights 
 	return
 }
 
-func SearchOrderedList(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
+func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -495,12 +511,12 @@ func SearchOrderedList(kind string, query string, user string, groups []string, 
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -514,18 +530,9 @@ func SearchOrderedList(kind string, query string, user string, groups []string, 
 	return
 }
 
-func GetResourceEntry(kind string, resource string) (result Entry, err error) {
-	result, _, err = getResourceEntry(context.Background(), kind, resource)
-	return
-}
-
-type resourceVersion struct {
-	SeqNo       int64
-	PrimaryTerm int64
-}
-
-func getResourceEntry(ctx context.Context, kind string, resource string) (result Entry, version resourceVersion, err error) {
-	resp, err := GetClient().Get().Index(kind).Id(resource).Do(ctx)
+func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
 	if err != nil {
 		return result, version, err
 	}
@@ -546,7 +553,7 @@ func anyMatch(aList []string, bList []string) bool {
 	return false
 }
 
-func getPermissions(entry Entry, user string, groups []string) (result map[string]bool) {
+func getPermissions(entry model.Entry, user string, groups []string) (result map[string]bool) {
 	result = map[string]bool{
 		"r": anyMatch(entry.ReadUsers, []string{user}) || anyMatch(entry.ReadGroups, groups),
 		"w": anyMatch(entry.WriteUsers, []string{user}) || anyMatch(entry.WriteGroups, groups),
@@ -556,7 +563,7 @@ func getPermissions(entry Entry, user string, groups []string) (result map[strin
 	return
 }
 
-func SearchOrderedListWithSelection(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string, selection elastic.Query) (result []map[string]interface{}, err error) {
+func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string, selection elastic.Query) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -567,12 +574,12 @@ func SearchOrderedListWithSelection(kind string, query string, user string, grou
 	}
 	ctx := context.Background()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -586,7 +593,7 @@ func SearchOrderedListWithSelection(kind string, query string, user string, grou
 	return
 }
 
-func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool, selection elastic.Query) (result []map[string]interface{}, err error) {
+func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool, selection elastic.Query) (result []map[string]interface{}, err error) {
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		return result, err
@@ -597,12 +604,12 @@ func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups 
 	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Filter(selection)
-	resp, err := GetClient().Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
 	for _, hit := range resp.Hits.Hits {
-		entry := Entry{}
+		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
@@ -616,7 +623,7 @@ func GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups 
 	return
 }
 
-func getSharedState(reqUser string, entry Entry) bool {
+func getSharedState(reqUser string, entry model.Entry) bool {
 	isShared := false
 	isAdmin := false
 	for _, user := range entry.AdminUsers {

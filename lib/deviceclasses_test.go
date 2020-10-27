@@ -4,22 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
 
-//dependencies created by TestMain()
-
 func TestReceiveDeviceClass(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	resource := "device-classes"
-	_, err := GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = client.Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
 	if err != nil {
 		t.Error(err)
 		return
@@ -32,7 +42,7 @@ func TestReceiveDeviceClass(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	err = UpdateFeatures(resource, deviceClassMsg, deviceClassCmd)
+	err = w.UpdateFeatures(resource, deviceClassMsg, deviceClassCmd)
 	if err != nil {
 		t.Error(err)
 		return
@@ -40,7 +50,7 @@ func TestReceiveDeviceClass(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	e, err := GetResourceEntry(resource, "deviceClass1")
+	e, _, err := q.GetResourceEntry(resource, "deviceClass1")
 	if err != nil {
 		t.Error(err)
 		return
@@ -50,7 +60,7 @@ func TestReceiveDeviceClass(t *testing.T) {
 		return
 	}
 
-	result, err := GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, "r", "3", "0", "name", true)
 	if err != nil {
 		t.Error(err)
 		return
@@ -69,7 +79,7 @@ func TestReceiveDeviceClass(t *testing.T) {
 	}
 }
 
-func getDeviceClassTestObj(id string, obj map[string]interface{}) (msg []byte, command CommandWrapper, err error) {
+func getDeviceClassTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
 	text := `{
 		"command": "PUT",
 		"id": "%s",

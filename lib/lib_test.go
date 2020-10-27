@@ -19,12 +19,15 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"github.com/ory/dockertest"
 	"log"
 	"net/http"
-	"os"
 	"runtime/debug"
-	"testing"
+	"sync"
 	"time"
 
 	"context"
@@ -35,7 +38,28 @@ import (
 )
 
 func Example() {
-	Config.ElasticRetry = 3
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	config.ElasticRetry = 3
+	example(w, q)
+
+	//Output:
+	//<nil> test
+	//<nil> foo1
+	//<nil> foo2
+	//<nil> zway
+	//elastic: Error 404 (Not Found)
+}
+
+func example(w *worker.Worker, q *query.Query) {
+
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
 		"description": "desc",
@@ -72,66 +96,59 @@ func Example() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", test, testCmd)
+	err = w.UpdateFeatures("device-types", test, testCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", foo1, foo1Cmd)
+	err = w.UpdateFeatures("device-types", foo1, foo1Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", foo2, foo2Cmd)
+	err = w.UpdateFeatures("device-types", foo2, foo2Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", bar, barCmd)
+	err = w.UpdateFeatures("device-types", bar, barCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", zway, zwayCmd)
+	err = w.UpdateFeatures("device-types", zway, zwayCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	e, err := GetResourceEntry("device-types", "test")
+	e, _, err := q.GetResourceEntry("device-types", "test")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("device-types", "foo1")
+	e, _, err = q.GetResourceEntry("device-types", "foo1")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("device-types", "foo2")
+	e, _, err = q.GetResourceEntry("device-types", "foo2")
 	fmt.Println(err, e.Resource)
-	e, err = GetResourceEntry("device-types", "zway")
+	e, _, err = q.GetResourceEntry("device-types", "zway")
 	fmt.Println(err, e.Resource)
-	_, err = GetResourceEntry("device-types", "bar")
+	_, _, err = q.GetResourceEntry("device-types", "bar")
 	fmt.Println(err)
-
-	//Output:
-	//<nil> test
-	//<nil> foo1
-	//<nil> foo2
-	//<nil> zway
-	//elastic: Error 404 (Not Found)
 }
 
-func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command CommandWrapper) {
+func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command model.CommandWrapper) {
 	text := `{
 		"command": "PUT",
 		"id": "%s",
@@ -153,9 +170,20 @@ func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command Com
 }
 
 func ExampleSearch() {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	config.ElasticRetry = 3
+
 	time.Sleep(1 * time.Second)
-	Example()
-	_, err := client.Flush().Index("device-types").Do(context.Background())
+	example(w, q)
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -166,13 +194,13 @@ func ExampleSearch() {
 		elastic.NewTermQuery("write_users", "testOwner"),
 		elastic.NewTermQuery("execute_users", "testOwner"))
 	time.Sleep(1 * time.Second)
-	result, err := GetClient().Search().Index("device-types").Query(query).Sort("resource", true).Do(context.Background())
+	result, err := q.GetClient().Search().Index("device-types").Query(query).Sort("resource", true).Do(context.Background())
 	fmt.Println(err)
 
-	var entity Entry
+	var entity model.Entry
 	if result != nil {
 		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(Entry); ok {
+			if t, ok := item.(model.Entry); ok {
 				fmt.Println(t.Resource)
 			}
 		}
@@ -193,7 +221,17 @@ func ExampleSearch() {
 }
 
 func ExampleDeleteUser() {
-	Config.ElasticRetry = 3
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	config.ElasticRetry = 3
 	msg, cmd := getDtTestObj("del", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
 		"description": "desc",
@@ -201,52 +239,52 @@ func ExampleDeleteUser() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		debug.PrintStack()
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		debug.PrintStack()
 		return
 	}
-	err = UpdateFeatures("device-types", msg, cmd)
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = DeleteUser("testOwner")
+	err = w.UpdateFeatures("device-types", msg, cmd)
 	if err != nil {
 		fmt.Println(err)
 		debug.PrintStack()
 		return
 	}
 	time.Sleep(1 * time.Second)
-	err = DeleteGroupRight("device-types", "del", "user")
+	err = w.DeleteUser("testOwner")
 	if err != nil {
 		fmt.Println(err)
 		debug.PrintStack()
 		return
 	}
 	time.Sleep(1 * time.Second)
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	err = w.DeleteGroupRight("device-types", "del", "user")
+	if err != nil {
+		fmt.Println(err)
+		debug.PrintStack()
+		return
+	}
+	time.Sleep(1 * time.Second)
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		debug.PrintStack()
 		return
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("device-types").Query(query).Do(context.Background())
+	result, err := q.GetClient().Search().Index("device-types").Query(query).Do(context.Background())
 	fmt.Println(err)
-	var entity Entry
+	var entity model.Entry
 	if result != nil {
 		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(Entry); ok {
+			if t, ok := item.(model.Entry); ok {
 				fmt.Println(t.Resource, t.ReadUsers, t.WriteUsers, t.ExecuteUsers, t.AdminUsers, t.ReadGroups, t.WriteGroups, t.ExecuteGroups, t.AdminGroups)
 			}
 		}
@@ -258,7 +296,17 @@ func ExampleDeleteUser() {
 }
 
 func ExampleDeleteFeatures() {
-	Config.ElasticRetry = 3
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	config.ElasticRetry = 3
 	msg, cmd := getDtTestObj("del1", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
 		"description": "desc",
@@ -266,7 +314,7 @@ func ExampleDeleteFeatures() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	err := UpdateFeatures("device-types", msg, cmd)
+	err = w.UpdateFeatures("device-types", msg, cmd)
 	msg, cmd = getDtTestObj("nodel", map[string]interface{}{
 		"name":        "ZWay-SwitchMultilevel",
 		"description": "desc",
@@ -274,41 +322,41 @@ func ExampleDeleteFeatures() {
 		"services":    []map[string]interface{}{},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err = GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = UpdateFeatures("device-types", msg, cmd)
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	time.Sleep(1 * time.Second)
-	err = DeleteFeatures("device-types", CommandWrapper{Id: "del1"})
+	err = w.UpdateFeatures("device-types", msg, cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	time.Sleep(1 * time.Second)
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	err = w.DeleteFeatures("device-types", model.CommandWrapper{Id: "del1"})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	query := elastic.NewMatchAllQuery()
-	result, err := GetClient().Search().Index("device-types").Query(query).Do(context.Background())
+	result, err := q.GetClient().Search().Index("device-types").Query(query).Do(context.Background())
 	fmt.Println(err)
-	var entity Entry
+	var entity model.Entry
 	if result != nil {
 		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(Entry); ok {
+			if t, ok := item.(model.Entry); ok {
 				fmt.Println(t.Resource)
 			}
 		}
@@ -320,27 +368,37 @@ func ExampleDeleteFeatures() {
 }
 
 func ExampleGetRightsToAdministrate() {
-	initDb()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	initDb(config, w)
+
 	time.Sleep(1 * time.Second)
-	rights, err := GetRightsToAdministrate("device-types", "nope", []string{})
+	rights, err := q.GetRightsToAdministrate("device-types", "nope", []string{})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{})
+	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"nope"})
+	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"nope"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"nope", "admin"})
+	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"nope", "admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "testOwner", []string{"admin"})
+	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "nope", []string{"nope", "admin"})
+	rights, err = q.GetRightsToAdministrate("device-types", "nope", []string{"nope", "admin"})
 	fmt.Println(len(rights), err)
 
-	rights, err = GetRightsToAdministrate("device-types", "nope", []string{"admin"})
+	rights, err = q.GetRightsToAdministrate("device-types", "nope", []string{"admin"})
 	fmt.Println(len(rights), err)
 
 	//Output:
@@ -354,7 +412,17 @@ func ExampleGetRightsToAdministrate() {
 }
 
 func ExampleCheckUserOrGroup() {
-	Config.ElasticRetry = 3
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("check3", map[string]interface{}{
 		"name":        "test",
 		"description": "desc",
@@ -362,39 +430,39 @@ func ExampleCheckUserOrGroup() {
 		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
-	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = UpdateFeatures("device-types", test, testCmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
-
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	time.Sleep(1 * time.Second)
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{}, "a"))
+	err = w.UpdateFeatures("device-types", test, testCmd)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
 
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "a"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(1 * time.Second)
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{}, "a"))
 
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "r"))
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "a"))
 
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "a"))
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "r"))
 
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "ra"))
-	fmt.Println(CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "ra"))
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "a"))
+
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "ra"))
+	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "ra"))
 
 	//Output:
 	//access denied
@@ -406,9 +474,19 @@ func ExampleCheckUserOrGroup() {
 }
 
 func ExampleGetFullListForUserOrGroup() {
-	initDb()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	initDb(config, w)
+
 	time.Sleep(1 * time.Second)
-	result, err := GetFullListForUserOrGroup("device-types", "testOwner", []string{}, "r")
+	result, err := q.GetFullListForUserOrGroup("device-types", "testOwner", []string{}, "r")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -422,19 +500,29 @@ func ExampleGetFullListForUserOrGroup() {
 }
 
 func ExampleGetListForUserOrGroup() {
-	initDb()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	initDb(config, w)
+
 	time.Sleep(1 * time.Second)
-	result, err := GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0")
+	result, err := q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0")
+	result, err = q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3")
+	result, err = q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -454,24 +542,34 @@ func ExampleGetListForUserOrGroup() {
 }
 
 func ExampleGetOrderedListForUserOrGroup() {
-	initDb()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	initDb(config, w)
+
 	time.Sleep(1 * time.Second)
-	result, err := GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", false)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", false)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3", "name", true)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3", "name", true)
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
@@ -496,30 +594,40 @@ func ExampleGetOrderedListForUserOrGroup() {
 }
 
 func ExampleSearchRightsToAdministrate() {
-	initDb()
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	initDb(config, w)
+
 	time.Sleep(1 * time.Second)
-	result, err := SearchRightsToAdministrate("device-types", "testOwner", []string{}, "z", "20", "0")
+	result, err := q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "z", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
 	}
-	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway", "20", "0")
+	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
 	}
-	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway switch", "20", "0")
+	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway switch", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
 	}
-	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "switch", "20", "0")
+	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "switch", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
 	}
 
-	result, err = SearchRightsToAdministrate("device-types", "testOwner", []string{}, "nope", "20", "0")
+	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "nope", "20", "0")
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println("found: ", r.ResourceId)
@@ -537,8 +645,8 @@ func ExampleSearchRightsToAdministrate() {
 	//<nil>
 }
 
-func initDb() {
-	Config.ElasticRetry = 3
+func initDb(config configuration.Config, worker *worker.Worker) {
+	config.ElasticRetry = 3
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
 		"description": "something",
@@ -576,106 +684,92 @@ func initDb() {
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
 
-	_, err := GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := worker.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	_, err = worker.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", test, testCmd)
+	err = worker.UpdateFeatures("device-types", test, testCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", foo1, foo1Cmd)
+	err = worker.UpdateFeatures("device-types", foo1, foo1Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", foo2, foo2Cmd)
+	err = worker.UpdateFeatures("device-types", foo2, foo2Cmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = UpdateFeatures("device-types", bar, barCmd)
+	err = worker.UpdateFeatures("device-types", bar, barCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = UpdateFeatures("device-types", zway, zwayCmd)
+	err = worker.UpdateFeatures("device-types", zway, zwayCmd)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = client.Flush().Index("device-types").Do(context.Background())
+	_, err = worker.GetClient().Flush().Index("device-types").Do(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 }
 
-func Elasticsearch(pool *dockertest.Pool) (closer func(), hostPort string, ipAddress string, err error) {
+func elasticsearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
 	log.Println("start elasticsearch")
-	repo, err := pool.Run("docker.elastic.co/elasticsearch/elasticsearch", "7.6.1", []string{"discovery.type=single-node"})
+	pool, err := dockertest.NewPool("")
 	if err != nil {
-		return func() {}, "", "", err
+		return "", "", err
 	}
-	hostPort = repo.GetPort("9200/tcp")
+	container, err := pool.Run("docker.elastic.co/elasticsearch/elasticsearch", "7.6.1", []string{"discovery.type=single-node"})
+	if err != nil {
+		return "", "", err
+	}
+	wg.Add(1)
+	go func() {
+		<-ctx.Done()
+		log.Println("DEBUG: remove container " + container.Container.Name)
+		container.Close()
+		wg.Done()
+	}()
+	hostPort = container.GetPort("9200/tcp")
 	err = pool.Retry(func() error {
 		log.Println("try elastic connection...")
-		_, err := http.Get("http://" + repo.Container.NetworkSettings.IPAddress + ":9200/_cluster/health")
+		_, err := http.Get("http://" + container.Container.NetworkSettings.IPAddress + ":9200/_cluster/health")
 		return err
 	})
 	if err != nil {
 		log.Println(err)
 	}
-	return func() { repo.Close() }, hostPort, repo.Container.NetworkSettings.IPAddress, err
+	return hostPort, container.Container.NetworkSettings.IPAddress, err
 }
 
-func TestMain(m *testing.M) {
-	var code int
-	func() {
-		pool, err := dockertest.NewPool("")
-		if err != nil {
-			fmt.Println(err)
-			code = 1
-			return
-		}
-		close, port, _, err := Elasticsearch(pool)
-		if err != nil {
-			fmt.Println(err)
-			code = 1
-			return
-		}
-		defer close()
-		err = LoadConfig("./../config.json")
-		if err != nil {
-			fmt.Println(err)
-			code = 1
-			return
-		}
-		Config.ElasticUrl = "http://localhost:" + port
-
-		ctx := context.Background()
-		client, err := elastic.NewClient(elastic.SetURL(Config.ElasticUrl), elastic.SetRetrier(newRetrier()))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		for kind := range Config.Resources {
-			err = createIndex(kind, client, ctx)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-		}
-		client.Stop()
-		code = m.Run()
-	}()
-	os.Exit(code)
+func getTestEnv(ctx context.Context, wg *sync.WaitGroup) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
+	config, err = configuration.LoadConfig("./../config.json")
+	if err != nil {
+		return config, q, w, err
+	}
+	port, _, err := elasticsearch(ctx, wg)
+	if err != nil {
+		return config, q, w, err
+	}
+	config.ElasticUrl = "http://localhost:" + port
+	q, err = query.New(config)
+	if err != nil {
+		return config, q, w, err
+	}
+	w = worker.New(config, q)
+	return
 }

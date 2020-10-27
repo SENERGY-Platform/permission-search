@@ -14,39 +14,29 @@
  * limitations under the License.
  */
 
-package lib
+package api
 
 import (
+	"encoding/json"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"log"
 	"net/http"
 
-	"encoding/json"
-
 	"github.com/SmartEnergyPlatform/jwt-http-router"
-	"github.com/SmartEnergyPlatform/util/http/cors"
-	"github.com/SmartEnergyPlatform/util/http/logger"
 	"github.com/SmartEnergyPlatform/util/http/response"
 )
 
-func StartApi() {
-	log.Println("start server on port: ", Config.ServerPort)
-	httpHandler := getRoutes()
-	corseHandler := cors.New(httpHandler)
-	logger := logger.New(corseHandler, Config.LogLevel)
-	log.Println(http.ListenAndServe(":"+Config.ServerPort, logger))
+func init() {
+	endpoints = append(endpoints, V1Endpoints)
 }
 
-func getRoutes() (router *jwt_http_router.Router) {
-	router = jwt_http_router.New(jwt_http_router.JwtConfig{
-		ForceUser: Config.ForceUser == "true",
-		ForceAuth: Config.ForceAuth == "true",
-		PubRsa:    Config.JwtPubRsa,
-	})
+func V1Endpoints(router *jwt_http_router.Router, config configuration.Config, q Query) {
 
 	router.GET("/administrate/exists/:resource_kind/:resource", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
 		kind := ps.ByName("resource_kind")
 		resource := ps.ByName("resource")
-		exists, err := ResourceExists(kind, resource)
+		exists, err := q.ResourceExists(kind, resource)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -56,7 +46,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 
 	router.GET("/administrate/rights/:resource_kind", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
 		kind := ps.ByName("resource_kind")
-		list, err := GetRightsToAdministrate(kind, jwt.UserId, jwt.RealmAccess.Roles)
+		list, err := q.GetRightsToAdministrate(kind, jwt.UserId, jwt.RealmAccess.Roles)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -67,12 +57,12 @@ func getRoutes() (router *jwt_http_router.Router) {
 	router.GET("/administrate/rights/:resource_kind/get/:resource", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
 		kind := ps.ByName("resource_kind")
 		resource := ps.ByName("resource")
-		if err := CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, "a"); err != nil {
+		if err := q.CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, "a"); err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied", http.StatusUnauthorized)
 			return
 		}
-		list, err := GetResource(kind, resource)
+		list, err := q.GetResource(kind, resource)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -89,7 +79,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		query := ps.ByName("query")
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
-		list, err := SearchRightsToAdministrate(kind, jwt.UserId, jwt.RealmAccess.Roles, query, limit, offset)
+		list, err := q.SearchRightsToAdministrate(kind, jwt.UserId, jwt.RealmAccess.Roles, query, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -101,7 +91,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
-		list, err := SearchListAll(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right)
+		list, err := q.SearchListAll(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -114,7 +104,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		right := ps.ByName("right")
 		field := ps.ByName("field")
 		value := ps.ByName("value")
-		list, err := SelectByFieldAll(kind, field, value, jwt.UserId, jwt.RealmAccess.Roles, right)
+		list, err := q.SelectByFieldAll(kind, field, value, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -132,7 +122,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		offset := ps.ByName("offset")
 		orderfeature := ps.ByName("orderfeature")
 		direction := ps.ByName("direction")
-		list, err := SelectByFieldOrdered(kind, field, value, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, direction == "asc")
+		list, err := q.SelectByFieldOrdered(kind, field, value, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, direction == "asc")
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -147,7 +137,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		query := ps.ByName("query")
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
-		list, err := SearchList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset)
+		list, err := q.SearchList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -162,7 +152,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		order := ps.ByName("orderfeature")
-		list, err := SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset)
+		list, err := q.SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -177,7 +167,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		order := ps.ByName("orderfeature")
-		list, err := SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset)
+		list, err := q.SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -192,7 +182,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		order := ps.ByName("orderfeature")
-		list, err := SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, false, limit, offset)
+		list, err := q.SearchOrderedList(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, false, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -204,7 +194,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 	router.GET("/jwt/list/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
-		list, err := GetFullListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right)
+		list, err := q.GetFullListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -217,7 +207,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
-		list, err := GetListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset)
+		list, err := q.GetListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -231,7 +221,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		orderfeature := ps.ByName("orderfeature")
-		list, err := GetOrderedListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, true)
+		list, err := q.GetOrderedListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, true)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -245,7 +235,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		orderfeature := ps.ByName("orderfeature")
-		list, err := GetOrderedListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, false)
+		list, err := q.GetOrderedListForUserOrGroup(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, false)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -257,7 +247,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		err := CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, right)
+		err := q.CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied: "+err.Error(), http.StatusUnauthorized)
@@ -271,7 +261,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		err := CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, right)
+		err := q.CheckUserOrGroup(kind, resource, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			response.To(res).Json(false)
 		} else {
@@ -289,7 +279,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		ok, err := CheckListUserOrGroup(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right)
+		ok, err := q.CheckListUserOrGroup(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -308,7 +298,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := GetListFromIds(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right)
+		result, err := q.GetListFromIds(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -331,7 +321,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := GetListFromIdsOrdered(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, direction == "asc")
+		result, err := q.GetListFromIdsOrdered(kind, ids, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, direction == "asc")
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -344,7 +334,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		user := ps.ByName("user")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
-		list, err := GetListForUser(kind, user, right)
+		list, err := q.GetListForUser(kind, user, right)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -357,7 +347,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		err := CheckUser(kind, resource, user, right)
+		err := q.CheckUser(kind, resource, user, right)
 		if err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied", http.StatusUnauthorized)
@@ -371,7 +361,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		group := ps.ByName("group")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
-		list, err := GetListForGroup(kind, []string{group}, right)
+		list, err := q.GetListForGroup(kind, []string{group}, right)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -384,7 +374,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		err := CheckGroups(kind, resource, []string{group}, right)
+		err := q.CheckGroups(kind, resource, []string{group}, right)
 		if err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied", http.StatusUnauthorized)
@@ -395,7 +385,7 @@ func getRoutes() (router *jwt_http_router.Router) {
 	})
 
 	router.GET("/export", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
-		exports, err := Export()
+		exports, err := q.Export()
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -404,13 +394,13 @@ func getRoutes() (router *jwt_http_router.Router) {
 	})
 
 	router.PUT("/import", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
-		imports := map[string][]ResourceRights{}
+		imports := map[string][]model.ResourceRights{}
 		err := json.NewDecoder(r.Body).Decode(&imports)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = Import(imports)
+		err = q.Import(imports)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -426,18 +416,18 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		order := ps.ByName("orderfeature")
-		selection := Selection{}
+		selection := model.Selection{}
 		err := json.NewDecoder(r.Body).Decode(&selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := selection.GetFilter(jwt)
+		selectionFilter, err := q.GetFilter(jwt, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := SearchOrderedListWithSelection(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset, selectionFilter)
+		list, err := q.SearchOrderedListWithSelection(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, true, limit, offset, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -452,18 +442,18 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		order := ps.ByName("orderfeature")
-		selection := Selection{}
+		selection := model.Selection{}
 		err := json.NewDecoder(r.Body).Decode(&selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := selection.GetFilter(jwt)
+		selectionFilter, err := q.GetFilter(jwt, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := SearchOrderedListWithSelection(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, false, limit, offset, selectionFilter)
+		list, err := q.SearchOrderedListWithSelection(kind, query, jwt.UserId, jwt.RealmAccess.Roles, right, order, false, limit, offset, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -477,18 +467,18 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		orderfeature := ps.ByName("orderfeature")
-		selection := Selection{}
+		selection := model.Selection{}
 		err := json.NewDecoder(r.Body).Decode(&selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := selection.GetFilter(jwt)
+		selectionFilter, err := q.GetFilter(jwt, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := GetOrderedListForUserOrGroupWithSelection(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, true, selectionFilter)
+		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, true, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -502,18 +492,18 @@ func getRoutes() (router *jwt_http_router.Router) {
 		limit := ps.ByName("limit")
 		offset := ps.ByName("offset")
 		orderfeature := ps.ByName("orderfeature")
-		selection := Selection{}
+		selection := model.Selection{}
 		err := json.NewDecoder(r.Body).Decode(&selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := selection.GetFilter(jwt)
+		selectionFilter, err := q.GetFilter(jwt, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := GetOrderedListForUserOrGroupWithSelection(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, false, selectionFilter)
+		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, jwt.UserId, jwt.RealmAccess.Roles, right, limit, offset, orderfeature, false, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

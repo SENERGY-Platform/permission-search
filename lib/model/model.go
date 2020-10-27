@@ -14,27 +14,28 @@
  * limitations under the License.
  */
 
-package lib
+package model
 
 import (
 	"encoding/json"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"log"
 )
 
-func (entry *Entry) setDefaultPermissions(kind string, owner string) {
+func (entry *Entry) SetDefaultPermissions(config configuration.Config, kind string, owner string) {
 	if owner != "" {
 		entry.AdminUsers = []string{owner}
 		entry.ReadUsers = []string{owner}
 		entry.WriteUsers = []string{owner}
 		entry.ExecuteUsers = []string{owner}
 	}
-	for group, rights := range Config.Resources[kind].InitialGroupRights {
-		entry.addGroupRights(group, rights)
+	for group, rights := range config.Resources[kind].InitialGroupRights {
+		entry.AddGroupRights(group, rights)
 	}
 	return
 }
 
-func (entry *Entry) addUserRights(user string, rights string) {
+func (entry *Entry) AddUserRights(user string, rights string) {
 	for _, right := range rights {
 		switch right {
 		case 'a':
@@ -49,14 +50,14 @@ func (entry *Entry) addUserRights(user string, rights string) {
 	}
 }
 
-func (entry *Entry) removeUserRights(user string) {
+func (entry *Entry) RemoveUserRights(user string) {
 	entry.AdminUsers = listRemove(entry.AdminUsers, user)
 	entry.ReadUsers = listRemove(entry.ReadUsers, user)
 	entry.WriteUsers = listRemove(entry.WriteUsers, user)
 	entry.ExecuteUsers = listRemove(entry.ExecuteUsers, user)
 }
 
-func (entry *Entry) addGroupRights(group string, rights string) {
+func (entry *Entry) AddGroupRights(group string, rights string) {
 	for _, right := range rights {
 		switch right {
 		case 'a':
@@ -71,7 +72,7 @@ func (entry *Entry) addGroupRights(group string, rights string) {
 	}
 }
 
-func (entry *Entry) removeGroupRights(group string) {
+func (entry *Entry) RemoveGroupRights(group string) {
 	entry.AdminGroups = listRemove(entry.AdminGroups, group)
 	entry.ReadGroups = listRemove(entry.ReadGroups, group)
 	entry.WriteGroups = listRemove(entry.WriteGroups, group)
@@ -255,14 +256,14 @@ const ElasticPermissionMapping = `{
 	"feature_search": {"type": "text", "analyzer": "autocomplete", "search_analyzer": "standard"}
 }`
 
-func createMapping(kind string) (result map[string]interface{}, err error) {
+func CreateMapping(config configuration.Config, kind string) (result map[string]interface{}, err error) {
 	mapping := map[string]interface{}{}
 	err = json.Unmarshal([]byte(ElasticPermissionMapping), &mapping)
 	if err != nil {
 		log.Println("ERROR while unmarshaling ElasticPermissionMapping", err)
 		return result, err
 	}
-	if featureMappings, ok := Config.ElasticMapping[kind]; ok {
+	if featureMappings, ok := config.ElasticMapping[kind]; ok {
 		mapping["features"] = map[string]interface{}{
 			"properties": featureMappings,
 		}
@@ -296,4 +297,9 @@ func createMapping(kind string) (result map[string]interface{}, err error) {
 	foo, err := json.Marshal(result)
 	log.Println("DEBUG:", string(foo))
 	return result, nil
+}
+
+type ResourceVersion struct {
+	SeqNo       int64
+	PrimaryTerm int64
 }

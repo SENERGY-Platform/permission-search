@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package lib
+package query
 
 import (
 	"context"
 	"errors"
-
-	"sync"
+	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 
 	"net/http"
 	"syscall"
@@ -33,37 +33,31 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
-var client *elastic.Client
-var once sync.Once
-
-func GetClient() *elastic.Client {
-	once.Do(func() {
-		client = createClient()
-	})
-	return client
+func (this *Query) GetClient() *elastic.Client {
+	return this.client
 }
 
-func createClient() (result *elastic.Client) {
+func CreateElasticClient(config configuration.Config) (result *elastic.Client, err error) {
 	ctx := context.Background()
-	result, err := elastic.NewClient(elastic.SetURL(Config.ElasticUrl), elastic.SetRetrier(newRetrier()))
+	result, err = elastic.NewClient(elastic.SetURL(config.ElasticUrl), elastic.SetRetrier(NewRetrier(config)))
 	if err != nil {
-		panic(err)
+		return
 	}
-	for kind := range Config.Resources {
-		err = createIndex(kind, result, ctx)
+	for kind := range config.Resources {
+		err = CreateIndex(kind, result, ctx, config)
 		if err != nil {
-			panic(err)
+			return
 		}
 	}
 	return
 }
 
-func createIndex(kind string, client *elastic.Client, ctx context.Context) (err error) {
+func CreateIndex(kind string, client *elastic.Client, ctx context.Context, config configuration.Config) (err error) {
 	exists, err := client.IndexExists(kind).Do(ctx)
 	if err != nil {
 		return err
 	}
-	mapping, err := createMapping(kind)
+	mapping, err := model.CreateMapping(config, kind)
 	if err != nil {
 		return err
 	}
@@ -83,12 +77,14 @@ func createIndex(kind string, client *elastic.Client, ctx context.Context) (err 
 }
 
 type MyRetrier struct {
-	backoff elastic.Backoff
+	backoff    elastic.Backoff
+	maxRetries int64
 }
 
-func newRetrier() *MyRetrier {
+func NewRetrier(config configuration.Config) *MyRetrier {
 	return &MyRetrier{
-		backoff: elastic.NewExponentialBackoff(10*time.Millisecond, 8*time.Second),
+		backoff:    elastic.NewExponentialBackoff(10*time.Millisecond, 8*time.Second),
+		maxRetries: config.ElasticRetry,
 	}
 }
 
@@ -99,7 +95,7 @@ func (r *MyRetrier) Retry(ctx context.Context, retry int, req *http.Request, res
 	}
 
 	// Stop after n retries
-	if int64(retry) >= Config.ElasticRetry {
+	if int64(retry) >= r.maxRetries {
 		return 0, false, nil
 	}
 

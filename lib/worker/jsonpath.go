@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package lib
+package worker
 
 import (
 	"encoding/json"
@@ -22,9 +22,9 @@ import (
 	"github.com/JumboInteractiveLimited/jsonpath"
 )
 
-func MsgToFeatures(kind string, msg []byte) (result map[string]interface{}, err error) {
+func (this *Worker) MsgToFeatures(kind string, msg []byte) (result map[string]interface{}, err error) {
 	result = map[string]interface{}{}
-	for _, feature := range Config.Resources[kind].Features {
+	for _, feature := range this.config.Resources[kind].Features {
 		result[feature.Name], err = UseJsonPath(msg, feature.Path)
 		if err != nil {
 			return

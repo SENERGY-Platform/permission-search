@@ -4,22 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
 
-//dependencies created by TestMain()
-
 func TestReceiveFunction(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, q, w, err := getTestEnv(ctx, wg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	resource := "functions"
-	_, err := GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = client.Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
 	if err != nil {
 		t.Error(err)
 		return
@@ -33,7 +43,7 @@ func TestReceiveFunction(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	err = UpdateFeatures(resource, functionMsg, functionCmd)
+	err = w.UpdateFeatures(resource, functionMsg, functionCmd)
 	if err != nil {
 		t.Error(err)
 		return
@@ -41,7 +51,7 @@ func TestReceiveFunction(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	e, err := GetResourceEntry(resource, "function1")
+	e, _, err := q.GetResourceEntry(resource, "function1")
 	if err != nil {
 		t.Error(err)
 		return
@@ -51,7 +61,7 @@ func TestReceiveFunction(t *testing.T) {
 		return
 	}
 
-	result, err := GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
 	if err != nil {
 		t.Error(err)
 		return
@@ -74,7 +84,7 @@ func TestReceiveFunction(t *testing.T) {
 	}
 }
 
-func getFunctionTestObj(id string, obj map[string]interface{}) (msg []byte, command CommandWrapper, err error) {
+func getFunctionTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
 	text := `{
 		"command": "PUT",
 		"id": "%s",
