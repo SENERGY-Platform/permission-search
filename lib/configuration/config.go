@@ -60,6 +60,7 @@ func LoadConfig(location string) (config Config, err error) {
 		return config, error
 	}
 	HandleEnvironmentVars(config)
+	config.ResourceList = getResourceList(config)
 	return config, nil
 }
 

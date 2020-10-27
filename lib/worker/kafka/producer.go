@@ -27,10 +27,12 @@ import (
 type Producer struct {
 	writer *kafka.Writer
 	ctx    context.Context
+	debug  bool
+	topic  string
 }
 
 func NewProducer(ctx context.Context, zkUrl string, topic string, debug bool) (*Producer, error) {
-	result := &Producer{ctx: ctx}
+	result := &Producer{ctx: ctx, debug: debug, topic: topic}
 	broker, err := GetBroker(zkUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
@@ -62,6 +64,9 @@ func NewProducer(ctx context.Context, zkUrl string, topic string, debug bool) (*
 }
 
 func (this *Producer) Produce(key string, message []byte) error {
+	if this.debug {
+		log.Println("produce:", this.topic, key, string(message))
+	}
 	return this.writer.WriteMessages(this.ctx, kafka.Message{
 		Key:   []byte(key),
 		Value: message,

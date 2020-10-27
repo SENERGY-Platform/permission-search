@@ -38,6 +38,7 @@ func EnsureWithBroker(broker string, topic string, config map[string]string) (er
 	err = set(admin, topic, temp)
 	if err != nil {
 		log.Println("WARNING: ", err)
+		log.Println("create topic: ", topic, config)
 		err = create(admin, topic, temp)
 	}
 

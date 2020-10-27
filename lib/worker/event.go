@@ -50,6 +50,7 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 
 	log.Println("init features handler", config.ResourceList)
 	for _, resource := range config.ResourceList {
+		log.Println("init handler for", resource)
 		f := worker.GetResourceCommandHandler(resource)
 		err = kafka.NewConsumer(ctx, config.ZookeeperUrl, config.GroupId, resource, func(msg []byte) error {
 			return f(msg)
