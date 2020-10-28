@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"io"
 	"io/ioutil"
@@ -114,6 +115,95 @@ func TestApiV2(t *testing.T) {
 
 	t.Run("access true", testRequest(config, "GET", "/v2/aspects/aspect5/access", nil, 200, true))
 	t.Run("access false", testRequest(config, "GET", "/v2/aspects/unknown/access", nil, 200, false))
+
+	t.Run("query search", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		Find: &model.QueryFind{
+			QueryListCommons: model.QueryListCommons{
+				Limit:    3,
+				Offset:   1,
+				SortBy:   "name",
+				SortDesc: true,
+			},
+			Search: "aspect",
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect4"),
+		getTestAspectResult("aspect3"),
+		getTestAspectResult("aspect2"),
+	}))
+
+	t.Run("query search filter", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		Find: &model.QueryFind{
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "features.name",
+					Operation: "==",
+					Value:     "aspect5_name",
+				},
+			},
+			Search: "aspect",
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect5"),
+	}))
+
+	t.Run("query filter", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		Find: &model.QueryFind{
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "features.name",
+					Operation: "==",
+					Value:     "aspect5_name",
+				},
+			},
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect5"),
+	}))
+
+	t.Run("query ids", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		ListIds: &model.QueryListIds{
+			QueryListCommons: model.QueryListCommons{
+				Limit:    3,
+				Offset:   1,
+				SortBy:   "name",
+				SortDesc: true,
+			},
+			Ids: []string{"aspect1", "aspect2", "aspect3", "aspect4", "aspect5"},
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect4"),
+		getTestAspectResult("aspect3"),
+		getTestAspectResult("aspect2"),
+	}))
+
+	t.Run("query ids", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		ListIds: &model.QueryListIds{
+			QueryListCommons: model.QueryListCommons{
+				SortBy:   "name",
+				SortDesc: true,
+			},
+			Ids: []string{"aspect2", "aspect3"},
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect3"),
+		getTestAspectResult("aspect2"),
+	}))
+
+	t.Run("query check ids", testRequest(config, "POST", "/v2/query", model.QueryMessage{
+		Resource: "aspects",
+		CheckIds: &model.QueryCheckIds{
+			Ids: []string{"aspect2", "aspect3", "unknown"},
+		},
+	}, 200, map[string]bool{
+		"aspect2": true,
+		"aspect3": true,
+	}))
 }
 
 func createTestAspects(ctx context.Context, config configuration.Config, ids ...string) func(t *testing.T) {

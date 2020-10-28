@@ -210,6 +210,15 @@ func V2Endpoints(router *jwt_http_router.Router, config configuration.Config, q 
 		}
 
 		if query.ListIds != nil {
+			if query.ListIds.Limit == 0 {
+				query.ListIds.Limit = 100
+			}
+			if query.ListIds.SortBy == "" {
+				query.ListIds.SortBy = "name"
+			}
+			if query.ListIds.Rights == "" {
+				query.ListIds.Rights = "r"
+			}
 			result, err = q.GetListFromIdsOrdered(
 				query.Resource,
 				query.ListIds.Ids,
