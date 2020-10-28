@@ -38,7 +38,7 @@ func V2Endpoints(router *jwt_http_router.Router, config configuration.Config, q 
 		asc := !strings.HasSuffix(sort, ".desc")
 
 		search := request.URL.Query().Get("search")
-		selection := request.URL.Query().Get("select")
+		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
 
 		mode := ""

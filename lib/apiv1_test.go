@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-func TestInterfaces(t *testing.T) {
+func TestApiV1(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
