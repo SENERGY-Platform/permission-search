@@ -42,7 +42,28 @@ The following fields are expected:
 
 other fields are allowed and will be evaluated according to the resource-config
 
-## HTTP
+## HTTP-API V2
+### GET /v2/:resource
+Lists resources with a similar response as `/jwt/search/:resource_kind/:query/:right`.
+Query-Parameter may be:
+- limit: `/v2/aspects?limit=20`
+- offset: `/v2/aspects?offset=40`
+- rights: `/v2/aspects?rights=rw`, default 'r', filters by needed rights
+- sort: `/v2/aspects?sort=name.desc`
+- search: `/v2/aspects?search=someText`, may not be used in combination with the 'filter' or 'ids' query-parameter 
+- filter: `/v2/aspects?filter=name:aspect4_name`, may not be used in combination with the 'search' or 'ids' query-parameter 
+- ids: `/v2/aspects?ids=aspect3,aspect2,aspect1`, may not be used in combination with the 'search' or 'filter' query-parameter 
+
+### HEAD /v2/:resource/:id
+similar to GET `/jwt/check/:resource_kind/:resource_id/:right`, where the right is passed as query-parameter 'rights'
+
+### GET /v2/:resource/:id/access
+similar to GET `/jwt/check/:resource_kind/:resource_id/:right/bool`, where the right is passed as query-parameter 'rights'
+
+### POST /v2/query
+reference apiv2_test.go fo details.
+
+## HTTP-API V1
 
 * GET `/administrate/exists/:resource_kind/:resource`: checks if resource exists. returns boolean json.
 * GET `/administrate/rights/:resource_kind`: returns a json with the resources the requesting user has admin rights for. With all user and group rights listed.
