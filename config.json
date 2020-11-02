@@ -64,6 +64,13 @@
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         },
+        "device-groups":{
+            "Features":[
+                {"Name": "name", "Path": "$.device_group.name+"},
+                {"Name": "image", "Path": "$.device_group.image+"}
+            ],
+            "InitialGroupRights":{}
+        },
         "aspects":{
             "Features":[
                 {"Name": "name", "Path": "$.aspect.name+"}
