@@ -35,10 +35,11 @@ func TestDeviceGroup(t *testing.T) {
 		return
 	}
 	msg, cmd, err := getDeviceGroupTestObj("g1", map[string]interface{}{
-		"name":  "g1_name",
-		"image": "g1_image",
-		"foo":   "bar",
-		"bar":   42,
+		"name":       "g1_name",
+		"image":      "g1_image",
+		"device_ids": []string{"d1", "d2"},
+		"foo":        "bar",
+		"bar":        42,
 	})
 	if err != nil {
 		t.Error(err)
@@ -76,6 +77,10 @@ func TestDeviceGroup(t *testing.T) {
 		return
 	}
 	if !reflect.DeepEqual(result[0]["image"], "g1_image") {
+		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[0]["device_ids"], []interface{}{"d1", "d2"}) {
 		t.Error(result)
 		return
 	}

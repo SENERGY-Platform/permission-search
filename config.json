@@ -67,7 +67,8 @@
         "device-groups":{
             "Features":[
                 {"Name": "name", "Path": "$.device_group.name+"},
-                {"Name": "image", "Path": "$.device_group.image+"}
+                {"Name": "image", "Path": "$.device_group.image+"},
+                {"Name": "device_ids", "Path": "$.device_group.device_ids+"}
             ],
             "InitialGroupRights":{}
         },
@@ -119,7 +120,8 @@
         },
         "device-groups": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "image":        {"type": "keyword"}
+            "image":        {"type": "keyword"},
+            "device_ids":   {"type": "keyword"}
         },
         "device-classes": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
