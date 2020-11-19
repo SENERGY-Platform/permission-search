@@ -64,6 +64,9 @@ func (this Query) GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) 
 }
 
 func (this Query) GetConditionFilter(jwt jwt_http_router.Jwt, condition model.ConditionConfig) (elastic.Query, error) {
+	if condition.Feature == "id" {
+		condition.Feature = "_id"
+	}
 	val := condition.Value
 	if val == nil || val == "" {
 		switch condition.Ref {

@@ -36,7 +36,7 @@ func TestQueryNot(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	filter, err := q.GetFilter(jwt_http_router.Jwt{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
-		Feature:   "_id",
+		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg2", "dg4", "dg5"},
 	}}})
@@ -84,7 +84,7 @@ func TestQueryNot(t *testing.T) {
 	})
 
 	filter, err = q.GetFilter(jwt_http_router.Jwt{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
-		Feature:   "_id",
+		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg1"},
 	}}})
