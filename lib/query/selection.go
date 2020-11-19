@@ -52,6 +52,14 @@ func (this Query) GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) 
 		result = elastic.NewBoolQuery().Should(or...)
 		return
 	}
+	if selection.Not != nil {
+		not, err := this.GetFilter(jwt, *selection.Not)
+		if err != nil {
+			return result, err
+		}
+		result = elastic.NewBoolQuery().MustNot(not)
+		return result, err
+	}
 	return this.GetConditionFilter(jwt, selection.Condition)
 }
 
