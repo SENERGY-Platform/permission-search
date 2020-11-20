@@ -81,6 +81,7 @@
         "functions":{
             "Features":[
                 {"Name": "name", "Path": "$.function.name+"},
+                {"Name": "description", "Path": "$.function.description+"},
                 {"Name": "rdf_type", "Path": "$.function.rdf_type+"},
                 {"Name": "concept_id", "Path": "$.function.concept_id+"}
             ],
@@ -132,6 +133,7 @@
         },
         "functions": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
+            "description":  {"type": "keyword"},
             "rdf_type":     {"type": "keyword"},
             "concept_id":   {"type": "keyword"}
         },
