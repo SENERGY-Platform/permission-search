@@ -68,7 +68,9 @@
             "Features":[
                 {"Name": "name", "Path": "$.device_group.name+"},
                 {"Name": "image", "Path": "$.device_group.image+"},
-                {"Name": "device_ids", "Path": "$.device_group.device_ids+"}
+                {"Name": "device_ids", "Path": "$.device_group.device_ids+"},
+                {"Name": "criteria", "Path": "$.device_group.criteria+"},
+                {"Name": "criteria_short", "Path": "$.device_group.criteria_short+"}
             ],
             "InitialGroupRights":{}
         },
@@ -122,7 +124,8 @@
         "device-groups": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "image":        {"type": "keyword"},
-            "device_ids":   {"type": "keyword"}
+            "device_ids":   {"type": "keyword"},
+            "criteria_short": {"type": "keyword"}
         },
         "device-classes": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
