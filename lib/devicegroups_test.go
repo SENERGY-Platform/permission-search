@@ -37,11 +37,12 @@ func TestDeviceGroup(t *testing.T) {
 	}
 
 	msg, cmd, err := getDeviceGroupTestObj("g1", map[string]interface{}{
-		"name":       "g1_name",
-		"image":      "g1_image",
-		"device_ids": []string{"d1", "d2"},
-		"foo":        "bar",
-		"bar":        42,
+		"name":                "g1_name",
+		"image":               "g1_image",
+		"device_ids":          []string{"d1", "d2"},
+		"foo":                 "bar",
+		"bar":                 42,
+		"blocked_interaction": "event",
 		"criteria": []interface{}{
 			map[string]interface{}{
 				"function_id":     "f1",
@@ -92,10 +93,11 @@ func TestDeviceGroup(t *testing.T) {
 	}
 
 	expected := []map[string]interface{}{{
-		"id":         "g1",
-		"name":       "g1_name",
-		"image":      "g1_image",
-		"device_ids": []interface{}{"d1", "d2"},
+		"id":                  "g1",
+		"name":                "g1_name",
+		"image":               "g1_image",
+		"device_ids":          []interface{}{"d1", "d2"},
+		"blocked_interaction": "event",
 		"criteria": []interface{}{
 			map[string]interface{}{
 				"function_id":     "f1",
