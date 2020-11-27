@@ -5,6 +5,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -128,6 +129,10 @@ func V2Endpoints(router *jwt_http_router.Router, config configuration.Config, q 
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if config.Debug {
+			temp, _ := json.Marshal(query)
+			log.Println("DEBUG:", string(temp))
+		}
 		var result interface{}
 		if query.Find != nil {
 			if query.Find.Limit == 0 {
@@ -235,6 +240,12 @@ func V2Endpoints(router *jwt_http_router.Router, config configuration.Config, q 
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		if config.Debug {
+			temp, _ := json.Marshal(result)
+			log.Println("DEBUG:", string(temp))
+		}
+
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})

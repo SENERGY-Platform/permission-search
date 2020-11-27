@@ -23,6 +23,8 @@ type ResourceConfig struct {
 }
 
 type ConfigStruct struct {
+	Debug bool
+
 	ServerPort string
 	LogLevel   string
 
