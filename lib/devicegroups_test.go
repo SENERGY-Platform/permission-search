@@ -37,26 +37,28 @@ func TestDeviceGroup(t *testing.T) {
 	}
 
 	msg, cmd, err := getDeviceGroupTestObj("g1", map[string]interface{}{
-		"name":                "g1_name",
-		"image":               "g1_image",
-		"device_ids":          []string{"d1", "d2"},
-		"foo":                 "bar",
-		"bar":                 42,
-		"blocked_interaction": "event",
+		"name":       "g1_name",
+		"image":      "g1_image",
+		"device_ids": []string{"d1", "d2"},
+		"foo":        "bar",
+		"bar":        42,
 		"criteria": []interface{}{
 			map[string]interface{}{
 				"function_id":     "f1",
 				"aspect_id":       "a1",
 				"device_class_id": "",
+				"interaction":     "request",
 			},
 			map[string]interface{}{
 				"function_id": "f1",
 				"aspect_id":   "a2",
+				"interaction": "event",
 			},
 			map[string]interface{}{
 				"function_id":     "f2",
 				"aspect_id":       "",
 				"device_class_id": "dc1",
+				"interaction":     "request",
 			},
 			map[string]interface{}{
 				"function_id":     "f3",
@@ -64,10 +66,10 @@ func TestDeviceGroup(t *testing.T) {
 			},
 		},
 		"criteria_short": []interface{}{
-			"f1_a1_",
-			"f1_a2_",
-			"f2__dc1",
-			"f3__dc1",
+			"f1_a1__request",
+			"f1_a2__event",
+			"f2__dc1_request",
+			"f3__dc1_",
 		},
 	})
 	if err != nil {
@@ -93,25 +95,27 @@ func TestDeviceGroup(t *testing.T) {
 	}
 
 	expected := []map[string]interface{}{{
-		"id":                  "g1",
-		"name":                "g1_name",
-		"image":               "g1_image",
-		"device_ids":          []interface{}{"d1", "d2"},
-		"blocked_interaction": "event",
+		"id":         "g1",
+		"name":       "g1_name",
+		"image":      "g1_image",
+		"device_ids": []interface{}{"d1", "d2"},
 		"criteria": []interface{}{
 			map[string]interface{}{
 				"function_id":     "f1",
 				"aspect_id":       "a1",
 				"device_class_id": "",
+				"interaction":     "request",
 			},
 			map[string]interface{}{
 				"function_id": "f1",
 				"aspect_id":   "a2",
+				"interaction": "event",
 			},
 			map[string]interface{}{
 				"function_id":     "f2",
 				"aspect_id":       "",
 				"device_class_id": "dc1",
+				"interaction":     "request",
 			},
 			map[string]interface{}{
 				"function_id":     "f3",
@@ -119,10 +123,10 @@ func TestDeviceGroup(t *testing.T) {
 			},
 		},
 		"criteria_short": []interface{}{
-			"f1_a1_",
-			"f1_a2_",
-			"f2__dc1",
-			"f3__dc1",
+			"f1_a1__request",
+			"f1_a2__event",
+			"f2__dc1_request",
+			"f3__dc1_",
 		},
 		"creator": "testOwner",
 		"permissions": map[string]bool{
@@ -155,14 +159,14 @@ func TestDeviceGroup(t *testing.T) {
 				Condition: model.ConditionConfig{
 					Feature:   "features.criteria_short",
 					Operation: model.QueryEqualOperation,
-					Value:     "f1_a1_",
+					Value:     "f1_a1__request",
 				},
 			},
 			{
 				Condition: model.ConditionConfig{
 					Feature:   "features.criteria_short",
 					Operation: model.QueryEqualOperation,
-					Value:     "f1_a2_",
+					Value:     "f1_a2__event",
 				},
 			},
 		},

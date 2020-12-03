@@ -68,7 +68,6 @@
             "Features":[
                 {"Name": "name", "Path": "$.device_group.name+"},
                 {"Name": "image", "Path": "$.device_group.image+"},
-                {"Name": "blocked_interaction", "Path": "$.device_group.blocked_interaction+"},
                 {"Name": "device_ids", "Path": "$.device_group.device_ids+"},
                 {"Name": "criteria", "Path": "$.device_group.criteria+"},
                 {"Name": "criteria_short", "Path": "$.device_group.criteria_short+"}
