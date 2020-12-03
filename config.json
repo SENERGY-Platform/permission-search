@@ -124,7 +124,6 @@
         "device-groups": {
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "image":        {"type": "keyword"},
-            "blocked_interaction": {"type": "keyword"},
             "device_ids":   {"type": "keyword"},
             "criteria_short": {"type": "keyword"}
         },
