@@ -103,6 +103,18 @@
                 {"Name": "segments", "Path": "$.protocol.protocol_segments[*].name+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+        },
+        "import-types": {
+            "Features":[
+              {"Name": "name", "Path": "$.import_type.name+"},
+              {"Name": "description", "Path": "$.import_type.description+"},
+              {"Name": "image", "Path": "$.import_type.image+"},
+              {"Name": "default_restart", "Path": "$.import_type.default_restart+"},
+              {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids[*]+"},
+              {"Name": "function_ids", "Path": "$.import_type.function_ids[*]+"},
+              {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions[*]+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa", "user": ""}
         }
 	},
     "InitialGroupRightsUpdate": "false",
@@ -160,6 +172,15 @@
         "hubs":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "device_local_ids":      {"type": "keyword"}
+        },
+        "import-types":{
+          "name":               {"type": "keyword", "copy_to": "feature_search"},
+          "description":        {"type": "keyword"},
+          "image":              {"type": "keyword"},
+          "default_restart":    {"type": "boolean"},
+          "aspect_ids":         {"type": "keyword"},
+          "function_ids":       {"type": "keyword"},
+          "aspect_functions":   {"type": "keyword"}
         }
     }
 }
