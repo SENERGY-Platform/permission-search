@@ -108,6 +108,9 @@ func (this *Worker) HandleUserCommand(msg []byte) (err error) {
 
 func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery []byte) error {
 	return func(msg []byte) (err error) {
+		if this.config.Debug {
+			log.Println("receive command", resourceName, string(msg))
+		}
 		command := model.CommandWrapper{}
 		err = json.Unmarshal(msg, &command)
 		if err != nil {

@@ -19,8 +19,11 @@ package query
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"strconv"
+	"strings"
 
 	"net/http"
 	"syscall"
@@ -64,6 +67,7 @@ func CreateIndex(kind string, client *elastic.Client, ctx context.Context, confi
 	mappingJson, _ := json.Marshal(mapping)
 	log.Println("expected index setting ", kind, string(mappingJson))
 	if !exists {
+		log.Println("create new index")
 		createIndex, err := client.CreateIndex(kind + "_v1").BodyJson(mapping).Do(ctx)
 		if err != nil {
 			return err
@@ -73,6 +77,96 @@ func CreateIndex(kind string, client *elastic.Client, ctx context.Context, confi
 		}
 		_, err = client.Alias().Add(kind+"_v1", kind).Do(ctx)
 	}
+	return
+}
+
+func UpdateIndexes(config configuration.Config, resourceNames ...string) error {
+	ctx := context.Background()
+	client, err := elastic.NewClient(elastic.SetURL(config.ElasticUrl), elastic.SetRetrier(NewRetrier(config)))
+	if err != nil {
+		return err
+	}
+	for _, resource := range resourceNames {
+		mapping, err := model.CreateMapping(config, resource)
+		if err != nil {
+			return err
+		}
+		err = UpdateIndexMapping(client, ctx, resource, mapping)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func UpdateIndexMapping(client *elastic.Client, ctx context.Context, kind string, mapping map[string]interface{}) error {
+	currentVersion, nextVersion, err := GetIndexVersionsOfAlias(client, ctx, kind)
+	if err != nil {
+		return err
+	}
+
+	createIndex, err := client.CreateIndex(nextVersion).BodyJson(mapping).Do(ctx)
+	if err != nil {
+		return err
+	}
+	if !createIndex.Acknowledged {
+		return errors.New("index not acknowledged")
+	}
+
+	log.Println("new index destination for alias", kind, ":", currentVersion, "-->", nextVersion)
+
+	reindexResult, err := client.Reindex().SourceIndex(currentVersion).DestinationIndex(nextVersion).Do(ctx)
+	if err != nil {
+		return err
+	}
+	if len(reindexResult.Failures) > 0 {
+		temp, _ := json.Marshal(reindexResult.Failures)
+		log.Println("ERROR: reindex failures", string(temp))
+		return errors.New("reindex failures")
+	}
+
+	log.Println("moved", reindexResult.Total, "entries from", currentVersion, "to", nextVersion)
+
+	//update alias
+	aliasResult, err := client.Alias().Action(
+		elastic.NewAliasRemoveAction(kind).Index(currentVersion),
+		elastic.NewAliasAddAction(kind).Index(nextVersion)).
+		Do(ctx)
+	if err != nil {
+		return err
+	}
+	if !aliasResult.Acknowledged {
+		return errors.New("alias update not acknowledged")
+	}
+
+	//remove old index
+	deleteResult, err := client.DeleteIndex(currentVersion).Do(ctx)
+	if err != nil {
+		return err
+	}
+	if !deleteResult.Acknowledged {
+		return errors.New("index delete not acknowledged")
+	}
+	return nil
+}
+
+func GetIndexVersionsOfAlias(client *elastic.Client, ctx context.Context, kind string) (current string, next string, err error) {
+	result, err := client.Aliases().Alias(kind).Do(ctx)
+	if err != nil {
+		return current, next, err
+	}
+	indexes := result.IndicesByAlias(kind)
+	if len(indexes) != 1 {
+		err = errors.New(fmt.Sprint("unexpected alias result", kind, indexes))
+		return current, next, err
+	}
+	current = indexes[0]
+	version, err := strconv.Atoi(strings.ReplaceAll(current, kind+"_v", ""))
+	if err != nil {
+		return current, next, err
+	}
+	version = version + 1
+	next = kind + "_v" + strconv.Itoa(version)
 	return
 }
 
