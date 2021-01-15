@@ -84,6 +84,7 @@ func UpdateIndexes(config configuration.Config, resourceNames ...string) error {
 	ctx := context.Background()
 	client, err := elastic.NewClient(elastic.SetURL(config.ElasticUrl), elastic.SetRetrier(NewRetrier(config)))
 	if err != nil {
+		log.Println("ERROR: unable to connect to elasticsearch", err)
 		return err
 	}
 	for _, resource := range resourceNames {
@@ -93,6 +94,7 @@ func UpdateIndexes(config configuration.Config, resourceNames ...string) error {
 		}
 		err = UpdateIndexMapping(client, ctx, resource, mapping)
 		if err != nil {
+			log.Println("ERROR: unable to update index of", resource, err)
 			return err
 		}
 	}

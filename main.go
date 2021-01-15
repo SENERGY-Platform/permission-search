@@ -18,9 +18,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"github.com/SENERGY-Platform/permission-search/lib"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"log"
 	"os"
 	"os/signal"
@@ -43,6 +45,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	args := flag.Args()
+	if len(args) > 0 {
+		log.Println("handle cli args", args)
+		err := HandleCli(config, args)
+		if err != nil {
+			log.Fatal("FATAL:", err)
+		}
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err = lib.Start(ctx, config, mode)
@@ -60,4 +72,20 @@ func main() {
 
 	<-ctx.Done()                //waiting for context end; may happen by shutdown signal
 	time.Sleep(1 * time.Second) //give go routines time for cleanup and last messages
+}
+
+func HandleCli(config configuration.Config, args []string) error {
+	if len(args) == 0 {
+		return errors.New("no command in args")
+	}
+	switch args[0] {
+	case "update-indexes":
+		resources := args[1:]
+		if len(resources) == 0 {
+			resources = config.ResourceList
+		}
+		return query.UpdateIndexes(config, resources...)
+	default:
+		return errors.New("unknown command: " + args[0])
+	}
 }
