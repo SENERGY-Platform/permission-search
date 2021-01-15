@@ -245,7 +245,24 @@ If you need more control over a ES-Cluster please read the chapter Mapping-Updat
   }
 ```
 
-## Mapping-Update-On-ES
+## Mapping-Update
+
+**With Compiled Executable:**
+```
+./permission-search update-indexes
+```
+
+**Update Selected Indexes:**
+```
+./permission-search update-indexes device-types devices characteristics
+```
+
+**In Docker Container:**
+```
+./app update-indexes
+```
+
+## Mapping-Update Manually
 ### Add-Field
 ```
 PUT https://api.sepl.infai.org/permission/search-db/processmodel/_mapping/resource
