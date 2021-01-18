@@ -115,8 +115,16 @@
               {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions[*]+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": ""}
+        },
+        "locations":{
+            "Features":[
+                {"Name": "name", "Path": "$.location.name+"},
+                {"Name": "description", "Path": "$.location.description+"},
+                {"Name": "image", "Path": "$.location.image+"}
+            ],
+            "InitialGroupRights":{"admin": "rwxa"}
         }
-	},
+    },
     "InitialGroupRightsUpdate": "false",
 
     "ElasticMapping": {
@@ -181,6 +189,11 @@
           "aspect_ids":         {"type": "keyword"},
           "function_ids":       {"type": "keyword"},
           "aspect_functions":   {"type": "keyword"}
+        },
+        "locations":{
+            "name":         {"type": "keyword", "copy_to": "feature_search"},
+            "description":  {"type": "text",    "copy_to": "feature_search"},
+            "image":  {"type": "keyword"}
         }
     }
 }
