@@ -35,8 +35,10 @@ func TestReceiveLocation(t *testing.T) {
 		return
 	}
 	locationMsg, locationCmd, err := getLocationTestObj("location1", map[string]interface{}{
-		"name":  "location_name",
-		"image": "image1",
+		"name":             "location_name",
+		"image":            "image1",
+		"device_group_ids": []interface{}{"urn:ses:dg1"},
+		"device_ids":       []interface{}{"urn:ses:d1"},
 	})
 	if err != nil {
 		t.Error(err)
@@ -75,6 +77,16 @@ func TestReceiveLocation(t *testing.T) {
 	}
 	if !reflect.DeepEqual(result[0]["image"], "image1") {
 		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[0]["device_group_ids"], []interface{}{"urn:ses:dg1"}) {
+		temp, _ := json.Marshal(result[0])
+		t.Error(result, "\n", string(temp))
+		return
+	}
+	if !reflect.DeepEqual(result[0]["device_ids"], []interface{}{"urn:ses:d1"}) {
+		temp, _ := json.Marshal(result[0])
+		t.Error(result, "\n", string(temp))
 		return
 	}
 }

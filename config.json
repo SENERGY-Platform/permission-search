@@ -120,7 +120,9 @@
             "Features":[
                 {"Name": "name", "Path": "$.location.name+"},
                 {"Name": "description", "Path": "$.location.description+"},
-                {"Name": "image", "Path": "$.location.image+"}
+                {"Name": "image", "Path": "$.location.image+"},
+                {"Name": "device_ids", "Path": "$.location.device_ids+"},
+                {"Name": "device_group_ids", "Path": "$.location.device_group_ids+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         }
@@ -193,7 +195,9 @@
         "locations":{
             "name":         {"type": "keyword", "copy_to": "feature_search"},
             "description":  {"type": "text",    "copy_to": "feature_search"},
-            "image":  {"type": "keyword"}
+            "image":        {"type": "keyword"},
+            "device_ids":   {"type": "keyword"},
+            "device_group_ids":  {"type": "keyword"}
         }
     }
 }
