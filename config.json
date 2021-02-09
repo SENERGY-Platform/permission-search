@@ -72,7 +72,7 @@
                 {"Name": "criteria", "Path": "$.device_group.criteria+"},
                 {"Name": "criteria_short", "Path": "$.device_group.criteria_short+"}
             ],
-            "InitialGroupRights":{}
+            "InitialGroupRights":{ "system": "rwxa" }
         },
         "aspects":{
             "Features":[
