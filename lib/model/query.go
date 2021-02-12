@@ -1,10 +1,11 @@
 package model
 
 type QueryMessage struct {
-	Resource string         `json:"resource"`
-	Find     *QueryFind     `json:"find"`
-	ListIds  *QueryListIds  `json:"list_ids"`
-	CheckIds *QueryCheckIds `json:"check_ids"`
+	Resource      string         `json:"resource"`
+	Find          *QueryFind     `json:"find"`
+	ListIds       *QueryListIds  `json:"list_ids"`
+	CheckIds      *QueryCheckIds `json:"check_ids"`
+	TermAggregate *string        `json:"term_aggregate"`
 }
 type QueryFind struct {
 	QueryListCommons

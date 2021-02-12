@@ -236,6 +236,10 @@ func V2Endpoints(router *jwt_http_router.Router, config configuration.Config, q 
 				!query.ListIds.SortDesc)
 		}
 
+		if query.TermAggregate != nil {
+			result, err = q.GetTermAggregation(query.Resource, jwt.UserId, jwt.RealmAccess.Roles, "r", *query.TermAggregate)
+		}
+
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
