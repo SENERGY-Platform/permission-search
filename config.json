@@ -110,9 +110,9 @@
               {"Name": "description", "Path": "$.import_type.description+"},
               {"Name": "image", "Path": "$.import_type.image+"},
               {"Name": "default_restart", "Path": "$.import_type.default_restart+"},
-              {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids[*]+"},
-              {"Name": "function_ids", "Path": "$.import_type.function_ids[*]+"},
-              {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions[*]+"}
+              {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids+"},
+              {"Name": "function_ids", "Path": "$.import_type.function_ids+"},
+              {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": ""}
         },
