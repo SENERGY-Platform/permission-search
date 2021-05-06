@@ -5,6 +5,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
+	"github.com/SmartEnergyPlatform/util/http/response"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,6 +17,26 @@ func init() {
 }
 
 func V3Endpoints(router *jwt_http_router.Router, config configuration.Config, q Query) {
+
+	router.GET("/v3/administrate/rights/:resource/:id", func(res http.ResponseWriter, r *http.Request, ps jwt_http_router.Params, jwt jwt_http_router.Jwt) {
+		resource := ps.ByName("resource")
+		id := ps.ByName("id")
+		if err := q.CheckUserOrGroup(resource, id, jwt.UserId, jwt.RealmAccess.Roles, "a"); err != nil {
+			log.Println("access denied", err)
+			http.Error(res, "access denied", http.StatusUnauthorized)
+			return
+		}
+		list, err := q.GetResource(resource, id)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(list) == 0 {
+			http.Error(res, "404", http.StatusNotFound)
+			return
+		}
+		response.To(res).Json(list[0])
+	})
 
 	router.GET("/v3/resources/:resource", func(writer http.ResponseWriter, request *http.Request, params jwt_http_router.Params, jwt jwt_http_router.Jwt) {
 		resource := params.ByName("resource")
