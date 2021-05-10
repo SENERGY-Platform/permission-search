@@ -49,13 +49,12 @@ func NewProducer(ctx context.Context, bootstrapUrl string, topic string, debug b
 		logger = log.New(os.Stdout, "KAFKA", 0)
 	}
 
-	result.writer = kafka.NewWriter(kafka.WriterConfig{
-		Brokers:     broker,
+	result.writer = &kafka.Writer{
+		Addr:        kafka.TCP(broker...),
 		Topic:       topic,
-		Async:       false,
+		MaxAttempts: 10,
 		Logger:      logger,
-		ErrorLogger: log.New(os.Stderr, "KAFKA", 0),
-	})
+	}
 	go func() {
 		<-ctx.Done()
 		result.writer.Close()
