@@ -17,45 +17,27 @@
 package kafka
 
 import (
-	"github.com/wvanbergen/kazoo-go"
-	"io/ioutil"
-	"log"
+	"github.com/segmentio/kafka-go"
+	"net"
+	"strconv"
 )
 
-func GetBroker(zk string) (brokers []string, err error) {
-	return getBroker(zk)
+func GetBroker(bootstrapUrl string) (brokers []string, err error) {
+	return getBroker(bootstrapUrl)
 }
 
-func getBroker(zkUrl string) (brokers []string, err error) {
-	zookeeper := kazoo.NewConfig()
-	zookeeper.Logger = log.New(ioutil.Discard, "", 0)
-	zk, chroot := kazoo.ParseConnectionString(zkUrl)
-	zookeeper.Chroot = chroot
-	if kz, err := kazoo.NewKazoo(zk, zookeeper); err != nil {
-		return brokers, err
-	} else {
-		defer kz.Close()
-		return kz.BrokerList()
-	}
-}
-
-func GetKafkaController(zkUrl string) (controller string, err error) {
-	zookeeper := kazoo.NewConfig()
-	zookeeper.Logger = log.New(ioutil.Discard, "", 0)
-	zk, chroot := kazoo.ParseConnectionString(zkUrl)
-	zookeeper.Chroot = chroot
-	kz, err := kazoo.NewKazoo(zk, zookeeper)
+func getBroker(bootstrapUrl string) (result []string, err error) {
+	conn, err := kafka.Dial("tcp", bootstrapUrl)
 	if err != nil {
-		return controller, err
+		return result, err
 	}
-	controllerId, err := kz.Controller()
+	defer conn.Close()
+	brokers, err := conn.Brokers()
 	if err != nil {
-		return controller, err
+		return result, err
 	}
-	brokers, err := kz.Brokers()
-	kz.Close()
-	if err != nil {
-		return controller, err
+	for _, broker := range brokers {
+		result = append(result, net.JoinHostPort(broker.Host, strconv.Itoa(broker.Port)))
 	}
-	return brokers[controllerId], err
+	return result, nil
 }

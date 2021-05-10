@@ -47,10 +47,10 @@ func TestApiV1(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		config.ZookeeperUrl = zkIp + ":2181"
+		zkUrl := zkIp + ":2181"
 
 		//kafka
-		err = Kafka(ctx, wg, config.ZookeeperUrl)
+		config.KafkaUrl, err = Kafka(ctx, wg, zkUrl)
 		if err != nil {
 			t.Error(err)
 			return
@@ -80,7 +80,7 @@ func TestApiV1(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		p, err := k.NewProducer(ctx, config.ZookeeperUrl, "aspects", true)
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "aspects", true)
 		if err != nil {
 			t.Error(err)
 			return
@@ -137,14 +137,14 @@ func TestApiV1(t *testing.T) {
 
 const testtoken = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOGM0N2E4OC0yYzc5LTQyMGYtODEwNC02NWJkOWViYmU0MWUiLCJleHAiOjE1NDY1MDcyMzMsIm5iZiI6MCwiaWF0IjoxNTQ2NTA3MTczLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDEvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiZnJvbnRlbmQiLCJzdWIiOiJ0ZXN0T3duZXIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJmcm9udGVuZCIsIm5vbmNlIjoiOTJjNDNjOTUtNzViMC00NmNmLTgwYWUtNDVkZDk3M2I0YjdmIiwiYXV0aF90aW1lIjoxNTQ2NTA3MDA5LCJzZXNzaW9uX3N0YXRlIjoiNWRmOTI4ZjQtMDhmMC00ZWI5LTliNjAtM2EwYWUyMmVmYzczIiwiYWNyIjoiMCIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJ1c2VyIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsibWFzdGVyLXJlYWxtIjp7InJvbGVzIjpbInZpZXctcmVhbG0iLCJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJyb2xlcyI6WyJ1c2VyIl19.ykpuOmlpzj75ecSI6cHbCATIeY4qpyut2hMc1a67Ycg`
 
-func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (err error) {
+func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaUrl string, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		return err
+		return kafkaUrl, err
 	}
 	kafkaport, err := GetFreePort()
 	if err != nil {
-		return err
+		return kafkaUrl, err
 	}
 	networks, _ := pool.Client.ListNetworks()
 	hostIp := ""
@@ -153,7 +153,9 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (err er
 			hostIp = network.IPAM.Config[0].Gateway
 		}
 	}
+	kafkaUrl = hostIp + ":" + strconv.Itoa(kafkaport)
 	log.Println("host ip: ", hostIp)
+	log.Println("kafka url: ", kafkaUrl)
 	env := []string{
 		"ALLOW_PLAINTEXT_LISTENER=yes",
 		"KAFKA_LISTENERS=OUTSIDE://:9092",
@@ -167,7 +169,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (err er
 		"9092/tcp": {{HostIP: "", HostPort: strconv.Itoa(kafkaport)}},
 	}})
 	if err != nil {
-		return err
+		return kafkaUrl, err
 	}
 	wg.Add(1)
 	go func() {
@@ -178,7 +180,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (err er
 	}()
 	err = pool.Retry(func() error {
 		log.Println("try kafka connection...")
-		conn, err := kafka.Dial("tcp", hostIp+":"+strconv.Itoa(kafkaport))
+		conn, err := kafka.Dial("tcp", kafkaUrl)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -187,7 +189,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (err er
 		return nil
 	})
 	time.Sleep(5 * time.Second)
-	return err
+	return kafkaUrl, err
 }
 
 func Zookeeper(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {

@@ -3,13 +3,14 @@ package topicconfig
 import (
 	"errors"
 	"github.com/Shopify/sarama"
-	"github.com/wvanbergen/kazoo-go"
-	"io/ioutil"
+	"github.com/segmentio/kafka-go"
 	"log"
+	"net"
+	"strconv"
 )
 
-func EnsureWithZk(zkUrl string, topic string, config map[string]string) (err error) {
-	controller, err := getKafkaController(zkUrl)
+func Ensure(bootstrapUrl string, topic string, config map[string]string) (err error) {
+	controller, err := getKafkaController(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to find controller", err)
 		return err
@@ -57,23 +58,16 @@ func create(admin sarama.ClusterAdmin, topic string, config map[string]*string) 
 	}, false)
 }
 
-func getKafkaController(zkUrl string) (controller string, err error) {
-	zookeeper := kazoo.NewConfig()
-	zookeeper.Logger = log.New(ioutil.Discard, "", 0)
-	zk, chroot := kazoo.ParseConnectionString(zkUrl)
-	zookeeper.Chroot = chroot
-	kz, err := kazoo.NewKazoo(zk, zookeeper)
+func getKafkaController(bootstrapUrl string) (result string, err error) {
+	conn, err := kafka.Dial("tcp", bootstrapUrl)
 	if err != nil {
-		return controller, err
+		return result, err
 	}
-	controllerId, err := kz.Controller()
+	defer conn.Close()
+
+	controller, err := conn.Controller()
 	if err != nil {
-		return controller, err
+		return result, err
 	}
-	brokers, err := kz.Brokers()
-	kz.Close()
-	if err != nil {
-		return controller, err
-	}
-	return brokers[controllerId], err
+	return net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)), nil
 }

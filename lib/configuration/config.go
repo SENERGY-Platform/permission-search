@@ -28,7 +28,7 @@ type ConfigStruct struct {
 	ServerPort string
 	LogLevel   string
 
-	ZookeeperUrl string
+	KafkaUrl string
 
 	PermTopic string
 	UserTopic string

@@ -5,7 +5,7 @@
 	"PermTopic": "permissions",
 	"UserTopic": "user",
 
-    "ZookeeperUrl": "zk:2181",
+    "KafkaUrl": "kafka:9092",
     "GroupId": "permsearch",
 
 	"ForceUser": "true",

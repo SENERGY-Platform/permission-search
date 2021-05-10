@@ -42,10 +42,10 @@ func TestApiV2(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		config.ZookeeperUrl = zkIp + ":2181"
+		config.KafkaUrl = zkIp + ":2181"
 
 		//kafka
-		err = Kafka(ctx, wg, config.ZookeeperUrl)
+		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
 		if err != nil {
 			t.Error(err)
 			return
@@ -208,7 +208,7 @@ func TestApiV2(t *testing.T) {
 
 func createTestAspects(ctx context.Context, config configuration.Config, ids ...string) func(t *testing.T) {
 	return func(t *testing.T) {
-		p, err := k.NewProducer(ctx, config.ZookeeperUrl, "aspects", true)
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "aspects", true)
 		if err != nil {
 			t.Error(err)
 			return

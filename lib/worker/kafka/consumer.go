@@ -25,14 +25,14 @@ import (
 	"time"
 )
 
-func NewConsumer(ctx context.Context, zkUrl string, groupId string, topic string, listener func(delivery []byte) error) error {
-	broker, err := GetBroker(zkUrl)
+func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic string, listener func(delivery []byte) error) error {
+	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
 		return err
 	}
 
-	err = InitTopic(zkUrl, topic)
+	err = InitTopic(bootstrapUrl, topic)
 	if err != nil {
 		log.Println("ERROR: unable to create topic", err)
 		return err

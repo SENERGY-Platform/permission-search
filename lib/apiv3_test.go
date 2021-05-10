@@ -35,10 +35,10 @@ func TestApiV3(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		config.ZookeeperUrl = zkIp + ":2181"
+		config.KafkaUrl = zkIp + ":2181"
 
 		//kafka
-		err = Kafka(ctx, wg, config.ZookeeperUrl)
+		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
 		if err != nil {
 			t.Error(err)
 			return

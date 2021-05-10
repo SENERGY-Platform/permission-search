@@ -20,9 +20,9 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka/topicconfig"
 )
 
-func InitTopic(zkUrl string, topics ...string) (err error) {
+func InitTopic(bootstrapUrl string, topics ...string) (err error) {
 	for _, topic := range topics {
-		err = topicconfig.EnsureWithZk(zkUrl, topic, map[string]string{
+		err = topicconfig.Ensure(bootstrapUrl, topic, map[string]string{
 			"retention.ms":              "-1",
 			"retention.bytes":           "-1",
 			"cleanup.policy":            "compact",

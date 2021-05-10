@@ -31,14 +31,14 @@ type Producer struct {
 	topic  string
 }
 
-func NewProducer(ctx context.Context, zkUrl string, topic string, debug bool) (*Producer, error) {
+func NewProducer(ctx context.Context, bootstrapUrl string, topic string, debug bool) (*Producer, error) {
 	result := &Producer{ctx: ctx, debug: debug, topic: topic}
-	broker, err := GetBroker(zkUrl)
+	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
 		return nil, err
 	}
-	err = InitTopic(zkUrl, topic)
+	err = InitTopic(bootstrapUrl, topic)
 	if err != nil {
 		log.Println("ERROR: unable to create topic", err)
 		return nil, err

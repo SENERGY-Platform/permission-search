@@ -43,10 +43,10 @@ func TestMappingUpdate(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		config.ZookeeperUrl = zkIp + ":2181"
+		config.KafkaUrl = zkIp + ":2181"
 
 		//kafka
-		err = Kafka(ctx, wg, config.ZookeeperUrl)
+		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
 		if err != nil {
 			t.Error(err)
 			return
@@ -99,7 +99,7 @@ func testMappingAddElements(config configuration.Config) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		p, err := k.NewProducer(ctx, config.ZookeeperUrl, "device-types", true)
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "device-types", true)
 		if err != nil {
 			t.Error(err)
 			return
