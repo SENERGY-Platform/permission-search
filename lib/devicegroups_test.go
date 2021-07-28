@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
 	"github.com/olivere/elastic/v7"
 	"reflect"
 	"sync"
@@ -153,7 +153,7 @@ func TestDeviceGroup(t *testing.T) {
 		return
 	}
 
-	filter, err := q.GetFilter(jwt_http_router.Jwt{}, model.Selection{
+	filter, err := q.GetFilter(auth.Token{}, model.Selection{
 		And: []model.Selection{
 			{
 				Condition: model.ConditionConfig{

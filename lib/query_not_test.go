@@ -3,9 +3,9 @@ package lib
 import (
 	"context"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
-	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
 	"reflect"
 	"sync"
 	"testing"
@@ -35,7 +35,7 @@ func TestQueryNot(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	filter, err := q.GetFilter(jwt_http_router.Jwt{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
+	filter, err := q.GetFilter(auth.Token{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
 		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg2", "dg4", "dg5"},
@@ -83,7 +83,7 @@ func TestQueryNot(t *testing.T) {
 		}
 	})
 
-	filter, err = q.GetFilter(jwt_http_router.Jwt{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
+	filter, err = q.GetFilter(auth.Token{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
 		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg1"},

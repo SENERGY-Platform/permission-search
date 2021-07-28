@@ -23,7 +23,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
-	"github.com/ory/dockertest"
+	"github.com/ory/dockertest/v3"
 	"log"
 	"net/http"
 	"runtime/debug"

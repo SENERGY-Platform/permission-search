@@ -18,20 +18,20 @@ package query
 
 import (
 	"errors"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 
 	"reflect"
 	"strings"
 
-	"github.com/SmartEnergyPlatform/jwt-http-router"
 	elastic "github.com/olivere/elastic/v7"
 )
 
-func (this Query) GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) (result elastic.Query, err error) {
+func (this Query) GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error) {
 	if len(selection.And) > 0 {
 		and := []elastic.Query{}
 		for _, sub := range selection.And {
-			andElement, err := this.GetFilter(jwt, sub)
+			andElement, err := this.GetFilter(token, sub)
 			if err != nil {
 				return result, err
 			}
@@ -43,7 +43,7 @@ func (this Query) GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) 
 	if len(selection.Or) > 0 {
 		or := []elastic.Query{}
 		for _, sub := range selection.Or {
-			orElement, err := this.GetFilter(jwt, sub)
+			orElement, err := this.GetFilter(token, sub)
 			if err != nil {
 				return result, err
 			}
@@ -53,17 +53,17 @@ func (this Query) GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) 
 		return
 	}
 	if selection.Not != nil {
-		not, err := this.GetFilter(jwt, *selection.Not)
+		not, err := this.GetFilter(token, *selection.Not)
 		if err != nil {
 			return result, err
 		}
 		result = elastic.NewBoolQuery().MustNot(not)
 		return result, err
 	}
-	return this.GetConditionFilter(jwt, selection.Condition)
+	return this.GetConditionFilter(token, selection.Condition)
 }
 
-func (this Query) GetConditionFilter(jwt jwt_http_router.Jwt, condition model.ConditionConfig) (elastic.Query, error) {
+func (this Query) GetConditionFilter(token auth.Token, condition model.ConditionConfig) (elastic.Query, error) {
 	if condition.Feature == "id" {
 		condition.Feature = "_id"
 	}
@@ -71,9 +71,9 @@ func (this Query) GetConditionFilter(jwt jwt_http_router.Jwt, condition model.Co
 	if val == nil || val == "" {
 		switch condition.Ref {
 		case "jwt.user":
-			val = jwt.UserId
+			val = token.GetUserId()
 		case "jwt.groups":
-			val = jwt.RealmAccess.Roles
+			val = token.GetRoles()
 		}
 	}
 	switch condition.Operation {

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api/util"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
-	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
+	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 	"log"
 	"net/http"
@@ -31,7 +31,7 @@ import (
 	"time"
 )
 
-var endpoints = []func(router *jwt_http_router.Router, config configuration.Config, query Query){}
+var endpoints = []func(router *httprouter.Router, config configuration.Config, query Query){}
 
 func Start(ctx context.Context, config configuration.Config, query Query) (err error) {
 	defer func() {
@@ -56,12 +56,12 @@ func Start(ctx context.Context, config configuration.Config, query Query) (err e
 }
 
 func GetRouter(config configuration.Config, query Query) http.Handler {
-	jwt := jwt_http_router.New(jwt_http_router.JwtConfig{ForceAuth: true, ForceUser: true})
+	router := httprouter.New()
 	for _, e := range endpoints {
 		log.Println("add endpoint: " + runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
-		e(jwt, config, query)
+		e(router, config, query)
 	}
-	handler := util.NewCors(jwt)
+	handler := util.NewCors(router)
 	handler = util.NewLogger(handler)
 	return handler
 }

@@ -1,8 +1,8 @@
 package api
 
 import (
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	jwt_http_router "github.com/SmartEnergyPlatform/jwt-http-router"
 	"github.com/olivere/elastic/v7"
 )
 
@@ -32,7 +32,7 @@ type Query interface {
 	GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool, selection elastic.Query) (result []map[string]interface{}, err error)
 
 	//selection
-	GetFilter(jwt jwt_http_router.Jwt, selection model.Selection) (result elastic.Query, err error)
+	GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error)
 
 	//migration
 	Import(imports map[string][]model.ResourceRights) (err error)
