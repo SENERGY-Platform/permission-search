@@ -43,7 +43,8 @@
             "Features":[
                 {"Name": "name", "Path": "$.device.name+"},
                 {"Name": "device_type_id", "Path": "$.device.device_type_id+"},
-                {"Name": "local_id", "Path": "$.device.local_id+"}
+                {"Name": "local_id", "Path": "$.device.local_id+"},
+                {"Name": "attributes", "Path": "$.device.attributes+"}
             ],
             "InitialGroupRights":{"admin": "rwxa"}
         },
@@ -53,7 +54,8 @@
                 {"Name": "description", "Path": "$.device_type.description+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
                 {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"},
-                {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"}
+                {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"},
+                {"Name": "attributes", "Path": "$.device_type.attributes+"}
             ],
             "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
         },
