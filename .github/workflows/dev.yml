@@ -34,3 +34,11 @@ jobs:
           tags: |
             smartenergyplatform/permission-search:dev
             ghcr.io/senergy-platform/permission-search:dev
+      - name: Deploy Worker
+        uses: wei/curl@v1
+        with:
+          args: -X POST -u ${{ secrets.RANCHER_TOKEN }} ${{ secrets.RANCHER_URL }}${{ secrets.RANCHER_SERVICE_WORKER }}?action=redeploy
+      - name: Deploy Query
+        uses: wei/curl@v1
+        with:
+          args: -X POST -u ${{ secrets.RANCHER_TOKEN }} ${{ secrets.RANCHER_URL }}${{ secrets.RANCHER_SERVICE_QUERY }}?action=redeploy
