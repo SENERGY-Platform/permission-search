@@ -616,6 +616,9 @@ func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user s
 		}
 		entry.Features["id"] = entry.Resource
 		entry.Features["creator"] = entry.Creator
+		if len(entry.Annotations) > 0 {
+			entry.Features["annotations"] = entry.Annotations
+		}
 		entry.Features["permissions"] = getPermissions(entry, user, groups)
 		entry.Features["shared"] = getSharedState(user, entry)
 		result = append(result, entry.Features)

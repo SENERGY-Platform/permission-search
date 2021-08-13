@@ -17,34 +17,35 @@ type Feature struct {
 }
 
 type ResourceConfig struct {
-	Features              []Feature
-	InitialGroupRights    map[string]string
-	SearchFallbackFeature string
+	Features           []Feature            `json:"features"`
+	Annotations        map[string][]Feature `json:"annotations"`
+	InitialGroupRights map[string]string    `json:"initial_group_rights"`
 }
 
 type ConfigStruct struct {
-	Debug bool
+	Debug bool `json:"debug"`
 
-	ServerPort string
-	LogLevel   string
+	ServerPort string `json:"server_port"`
+	LogLevel   string `json:"log_level"`
 
-	KafkaUrl string
+	KafkaUrl string `json:"kafka_url"`
 
-	PermTopic string
-	UserTopic string
+	PermTopic string `json:"perm_topic"`
+	UserTopic string `json:"user_topic"`
 
-	ElasticUrl     string
-	ElasticRetry   int64
-	ElasticMapping map[string]map[string]interface{}
+	ElasticUrl     string                                       `json:"elastic_url"`
+	ElasticRetry   int64                                        `json:"elastic_retry"`
+	ElasticMapping map[string]map[string]map[string]interface{} `json:"elastic_mapping"`
 
-	JwtPubRsa string
-	ForceUser string
-	ForceAuth string
+	JwtPubRsa string `json:"jwt_pub_rsa"`
+	ForceUser string `json:"force_user"`
+	ForceAuth string `json:"force_auth"`
 
-	Resources    map[string]ResourceConfig
-	ResourceList []string `json:"-"`
+	Resources               map[string]ResourceConfig `json:"resources"`
+	ResourceList            []string                  `json:"-"`
+	AnnotationResourceIndex map[string][]string       `json:"-"`
 
-	GroupId string
+	GroupId string `json:"group_id"`
 }
 
 type Config = *ConfigStruct
@@ -63,6 +64,7 @@ func LoadConfig(location string) (config Config, err error) {
 	}
 	HandleEnvironmentVars(config)
 	config.ResourceList = getResourceList(config)
+	config.AnnotationResourceIndex = getAnnotationResourceIndex(config)
 	return config, nil
 }
 

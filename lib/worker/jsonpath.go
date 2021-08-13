@@ -33,6 +33,17 @@ func (this *Worker) MsgToFeatures(kind string, msg []byte) (result map[string]in
 	return
 }
 
+func (this *Worker) MsgToAnnotations(kind string, annotationTopic string, msg []byte) (result map[string]interface{}, err error) {
+	result = map[string]interface{}{}
+	for _, feature := range this.config.Resources[kind].Annotations[annotationTopic] {
+		result[feature.Name], err = UseJsonPath(msg, feature.Path)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
 func UseJsonPath(msg []byte, path string) (interface{}, error) {
 	temp := []interface{}{}
 	paths, err := jsonpath.ParsePaths(path)

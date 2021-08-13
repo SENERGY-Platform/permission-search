@@ -126,6 +126,7 @@ type Right struct {
 type Entry struct {
 	Resource      string                 `json:"resource"`
 	Features      map[string]interface{} `json:"features"`
+	Annotations   map[string]interface{} `json:"annotations"`
 	AdminUsers    []string               `json:"admin_users"`
 	AdminGroups   []string               `json:"admin_groups"`
 	ReadUsers     []string               `json:"read_users"`
@@ -263,9 +264,16 @@ func CreateMapping(config configuration.Config, kind string) (result map[string]
 		log.Println("ERROR while unmarshaling ElasticPermissionMapping", err)
 		return result, err
 	}
-	if featureMappings, ok := config.ElasticMapping[kind]; ok {
-		mapping["features"] = map[string]interface{}{
-			"properties": featureMappings,
+	if entityMappings, ok := config.ElasticMapping[kind]; ok {
+		if featureMappings, ok := entityMappings["features"]; ok {
+			mapping["features"] = map[string]interface{}{
+				"properties": featureMappings,
+			}
+		}
+		if annotationMappings, ok := entityMappings["annotations"]; ok {
+			mapping["annotations"] = map[string]interface{}{
+				"properties": annotationMappings,
+			}
 		}
 	}
 	result = map[string]interface{}{

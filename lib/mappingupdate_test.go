@@ -277,36 +277,40 @@ func testUpdateIndex(config configuration.Config, mapping string) func(t *testin
 }
 
 const confV1 = `{
-	"Resources": {
+	"resources": {
 		"device-types":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         }
 	},
-    "ElasticMapping": {
+    "elastic_mapping": {
         "device-types": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"}
-        }
+			"features": {
+            	"name":         {"type": "keyword", "copy_to": "feature_search"}
+        	}
+		}
     }
 }`
 
 const confV2 = `{
-	"Resources": {
+	"resources": {
 		"device-types":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         }
 	},
-    "ElasticMapping": {
+    "elastic_mapping": {
         "device-types": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-			"device_class_id":  {"type": "keyword", "copy_to": "feature_search"}
+			"features": {
+            	"name":         {"type": "keyword", "copy_to": "feature_search"},
+				"device_class_id":  {"type": "keyword", "copy_to": "feature_search"}
+			}
         }
     }
 }`

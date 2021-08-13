@@ -24,6 +24,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"log"
+	"time"
 )
 
 func InitEventHandling(ctx context.Context, config configuration.Config, worker *Worker) (err error) {
@@ -48,7 +49,7 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		return err
 	}
 
-	log.Println("init features handler", config.ResourceList)
+	log.Println("init features handlers", config.ResourceList)
 	for _, resource := range config.ResourceList {
 		log.Println("init handler for", resource)
 		f := worker.GetResourceCommandHandler(resource)
@@ -60,6 +61,17 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		}
 	}
 
+	log.Println("init annotation handlers", config.AnnotationResourceIndex)
+	for topic, resources := range config.AnnotationResourceIndex {
+		log.Println("init annotation handler for", topic)
+		f := worker.GetAnnotationHandler(topic, resources)
+		err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId+"_annotation", topic, func(msg []byte) error {
+			return f(msg)
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return
 }
 
@@ -124,4 +136,61 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 		}
 		return errors.New("unable to handle command: " + resourceName + " " + string(msg))
 	}
+}
+
+func (this *Worker) GetAnnotationHandler(annotationTopic string, resources []string) func(delivery []byte) error {
+	return func(msg []byte) error {
+		if this.config.Debug {
+			log.Println("receive annotation", annotationTopic, string(msg))
+		}
+		for _, resource := range resources {
+			err := this.HandleAnnotationMsg(annotationTopic, resource, msg)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string, msg []byte) error {
+	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+	fields, err := this.MsgToAnnotations(resource, annotationTopic, msg)
+	if err != nil {
+		return err
+	}
+	id, ok := fields["_id"]
+	if !ok {
+		log.Println("WARNING: missing _id field in annotation --> ignore", resource, annotationTopic)
+		return nil
+	}
+	idStr, ok := id.(string)
+	if !ok {
+		log.Println("WARNING: _id field in annotation is not string --> ignore ", resource, annotationTopic)
+		return nil
+	}
+	exists, err := this.query.ResourceExists(resource, idStr)
+	if err != nil {
+		return err
+	}
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(resource, idStr)
+		if err != nil {
+			return err
+		}
+		if entry.Annotations == nil {
+			entry.Annotations = map[string]interface{}{}
+		}
+		for fieldName, fieldValue := range fields {
+			if fieldName != "_id" {
+				entry.Annotations[fieldName] = fieldValue
+			}
+		}
+
+		_, err = this.query.GetClient().Index().Index(resource).Id(idStr).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

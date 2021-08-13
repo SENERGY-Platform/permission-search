@@ -287,7 +287,9 @@ func testRequest(config configuration.Config, method string, path string, body i
 		}
 
 		if !reflect.DeepEqual(actual, normalizedExpected) {
-			t.Error(actual, normalizedExpected)
+			a, _ := json.Marshal(actual)
+			e, _ := json.Marshal(normalizedExpected)
+			t.Error(string(a), string(e))
 			return
 		}
 	}

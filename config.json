@@ -1,35 +1,35 @@
 {
-	"ServerPort":		          "8080",
-	"LogLevel":		              "CALL",
+	"server_port":		          "8080",
+	"log_level":		              "CALL",
 
-	"PermTopic": "permissions",
-	"UserTopic": "user",
+	"perm_topic": "permissions",
+	"user_topic": "user",
 
-    "KafkaUrl": "kafka:9092",
-    "GroupId": "permsearch",
+    "kafka_url": "kafka:9092",
+    "group_id": "permsearch",
 
-	"ForceUser": "true",
-	"ForceAuth": "true",
+	"force_user": "true",
+	"force_auth": "true",
 
-    "ElasticUrl": "http://elastic:9200",
-    "ElasticRetry": 3,
+    "elastic_url": "http://elastic:9200",
+    "elastic_retry": 3,
 
-	"Resources": {
+	"resources": {
         "concepts": {
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.concept.name+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "characteristics": {
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.characteristic.name+"},
                 {"Name": "concept_id", "Path": "$.concept_id+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
 		"processmodel":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.processmodel.name+"},
                 {"Name": "date", "Path": "$.processmodel.date+"},
                 {"Name": "svgXML", "Path": "$.processmodel.svgXML+"},
@@ -37,19 +37,25 @@
                 {"Name": "parent_id", "Path": "$.processmodel.parent_id+"},
                 {"Name": "description", "Path": "$.processmodel.description+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa"}
+            "initial_group_rights":{"admin": "rwxa"}
         },
 		"devices":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device.name+"},
                 {"Name": "device_type_id", "Path": "$.device.device_type_id+"},
                 {"Name": "local_id", "Path": "$.device.local_id+"},
                 {"Name": "attributes", "Path": "$.device.attributes+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa"}
+            "annotations": {
+                "device_log": [
+                    {"Name": "_id", "Path": "$.id+"},
+                    {"Name": "connected", "Path": "$.connected+"}
+                ]
+            },
+            "initial_group_rights":{"admin": "rwxa"}
         },
 		"device-types":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device_type.name+"},
                 {"Name": "description", "Path": "$.device_type.description+"},
                 {"Name": "service", "Path": "$.device_type.services[*].id+"},
@@ -57,161 +63,190 @@
                 {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"},
                 {"Name": "attributes", "Path": "$.device_type.attributes+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "device-classes":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device_class.name+"},
                 {"Name": "image", "Path": "$.device_class.image+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "device-groups":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.device_group.name+"},
                 {"Name": "image", "Path": "$.device_group.image+"},
                 {"Name": "device_ids", "Path": "$.device_group.device_ids+"},
                 {"Name": "criteria", "Path": "$.device_group.criteria+"},
                 {"Name": "criteria_short", "Path": "$.device_group.criteria_short+"}
             ],
-            "InitialGroupRights":{ "system": "rwxa" }
+            "initial_group_rights":{ "system": "rwxa" }
         },
         "aspects":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.aspect.name+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "functions":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.function.name+"},
                 {"Name": "description", "Path": "$.function.description+"},
                 {"Name": "rdf_type", "Path": "$.function.rdf_type+"},
                 {"Name": "concept_id", "Path": "$.function.concept_id+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "hubs": {
-            "Features": [
+            "features": [
                 {"Name": "name", "Path": "$.hub.name+"},
                 {"Name": "device_local_ids", "Path": "$.hub.device_local_ids+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa"}
+            "initial_group_rights":{"admin": "rwxa"}
         },
         "protocols": {
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.protocol.name+"},
                 {"Name": "handler", "Path": "$.protocol.handler+"},
                 {"Name": "segments", "Path": "$.protocol.protocol_segments[*].name+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": "rx"}
+            "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "import-types": {
-            "Features":[
-              {"Name": "name", "Path": "$.import_type.name+"},
-              {"Name": "description", "Path": "$.import_type.description+"},
-              {"Name": "image", "Path": "$.import_type.image+"},
-              {"Name": "default_restart", "Path": "$.import_type.default_restart+"},
-              {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids+"},
-              {"Name": "function_ids", "Path": "$.import_type.function_ids+"},
-              {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions+"}
+            "features":[
+                {"Name": "name", "Path": "$.import_type.name+"},
+                {"Name": "description", "Path": "$.import_type.description+"},
+                {"Name": "image", "Path": "$.import_type.image+"},
+                {"Name": "default_restart", "Path": "$.import_type.default_restart+"},
+                {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids+"},
+                {"Name": "function_ids", "Path": "$.import_type.function_ids+"},
+                {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa", "user": ""}
+            "initial_group_rights":{"admin": "rwxa", "user": ""}
         },
         "locations":{
-            "Features":[
+            "features":[
                 {"Name": "name", "Path": "$.location.name+"},
                 {"Name": "description", "Path": "$.location.description+"},
                 {"Name": "image", "Path": "$.location.image+"},
                 {"Name": "device_ids", "Path": "$.location.device_ids+"},
                 {"Name": "device_group_ids", "Path": "$.location.device_group_ids+"}
             ],
-            "InitialGroupRights":{"admin": "rwxa"}
+            "initial_group_rights":{"admin": "rwxa"}
         }
     },
-    "InitialGroupRightsUpdate": "false",
+    "initial_group_rightsUpdate": "false",
 
-    "ElasticMapping": {
+    "elastic_mapping": {
         "concepts": {
-            "name":   {"type": "keyword", "copy_to": "feature_search"}
+            "features": {
+                "name":   {"type": "keyword", "copy_to": "feature_search"}
+            }
         },
         "characteristics": {
-            "name":                 {"type": "keyword", "copy_to": "feature_search"},
-            "concept_id":           {"type": "keyword"}
+            "features": {
+                "name":                 {"type": "keyword", "copy_to": "feature_search"},
+                "concept_id":           {"type": "keyword"}
+            }
         },
         "device-types": {
-            "description":  {"type": "text", "copy_to": "feature_search"},
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "service":      {"type": "keyword"},
-            "protocols":    {"type": "keyword"},
-            "attributes":{
-                "properties":{
-                    "key":{"type":"keyword"},
-                    "value":{"type":"keyword"}
+            "features": {
+                "description":  {"type": "text", "copy_to": "feature_search"},
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "service":      {"type": "keyword"},
+                "protocols":    {"type": "keyword"},
+                "attributes":{
+                    "properties":{
+                        "key":{"type":"keyword"},
+                        "value":{"type":"keyword"}
+                    }
                 }
             }
         },
         "device-groups": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "image":        {"type": "keyword"},
-            "device_ids":   {"type": "keyword"},
-            "criteria_short": {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "image":        {"type": "keyword"},
+                "device_ids":   {"type": "keyword"},
+                "criteria_short": {"type": "keyword"}
+            }
         },
         "device-classes": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "image":        {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "image":        {"type": "keyword"}
+            }
         },
         "aspects": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"}
+            }
         },
         "functions": {
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "description":  {"type": "keyword"},
-            "rdf_type":     {"type": "keyword"},
-            "concept_id":   {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "description":  {"type": "keyword"},
+                "rdf_type":     {"type": "keyword"},
+                "concept_id":   {"type": "keyword"}
+            }
         },
         "processmodel":{
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "date":         {"type": "date"},
-            "publish":      {"type": "boolean"},
-            "parent_id":    {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "date":         {"type": "date"},
+                "publish":      {"type": "boolean"},
+                "parent_id":    {"type": "keyword"}
+            }
         },
         "devices":{
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "description":  {"type": "text",    "copy_to": "feature_search"},
-            "device_type_id":  {"type": "keyword"},
-            "local_id":     {"type": "keyword"},
-            "attributes":{
-                "properties":{
-                    "key":{"type":"keyword"},
-                    "value":{"type":"keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "description":  {"type": "text",    "copy_to": "feature_search"},
+                "device_type_id":  {"type": "keyword"},
+                "local_id":     {"type": "keyword"},
+                "attributes":{
+                    "properties":{
+                        "key":{"type":"keyword"},
+                        "value":{"type":"keyword"}
+                    }
                 }
+            },
+            "annotations": {
+                "connected": {"type":"boolean"}
             }
         },
         "protocols":{
-            "name":     {"type": "keyword", "copy_to": "feature_search"},
-            "handler":  {"type": "keyword"},
-            "segments":  {"type": "keyword"}
+            "features": {
+                "name":     {"type": "keyword", "copy_to": "feature_search"},
+                "handler":  {"type": "keyword"},
+                "segments":  {"type": "keyword"}
+            }
         },
         "hubs":{
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "device_local_ids":      {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "device_local_ids":      {"type": "keyword"}
+            }
         },
         "import-types":{
-          "name":               {"type": "keyword", "copy_to": "feature_search"},
-          "description":        {"type": "keyword"},
-          "image":              {"type": "keyword"},
-          "default_restart":    {"type": "boolean"},
-          "aspect_ids":         {"type": "keyword"},
-          "function_ids":       {"type": "keyword"},
-          "aspect_functions":   {"type": "keyword"}
+            "features": {
+                "name":               {"type": "keyword", "copy_to": "feature_search"},
+                "description":        {"type": "keyword"},
+                "image":              {"type": "keyword"},
+                "default_restart":    {"type": "boolean"},
+                "aspect_ids":         {"type": "keyword"},
+                "function_ids":       {"type": "keyword"},
+                "aspect_functions":   {"type": "keyword"}
+            }
         },
         "locations":{
-            "name":         {"type": "keyword", "copy_to": "feature_search"},
-            "description":  {"type": "text",    "copy_to": "feature_search"},
-            "image":        {"type": "keyword"},
-            "device_ids":   {"type": "keyword"},
-            "device_group_ids":  {"type": "keyword"}
+            "features": {
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "description":  {"type": "text",    "copy_to": "feature_search"},
+                "image":        {"type": "keyword"},
+                "device_ids":   {"type": "keyword"},
+                "device_group_ids":  {"type": "keyword"}
+            }
         }
     }
 }

@@ -99,5 +99,5 @@ func (this Query) GetConditionFilter(token auth.Token, condition model.Condition
 		}
 		return elastic.NewTermsQuery(condition.Feature, arr...), nil
 	}
-	return nil, errors.New("unknown query opperation type " + string(condition.Operation))
+	return nil, errors.New("unknown query operation type " + string(condition.Operation))
 }
