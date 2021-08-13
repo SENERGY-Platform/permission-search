@@ -171,11 +171,7 @@ func (this *Query) GetListFromIds(kind string, ids []string, user string, groups
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return result, nil
 }
@@ -205,11 +201,7 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return result, nil
 }
@@ -254,11 +246,7 @@ func (this *Query) getListForUserOrGroup(kind string, user string, groups []stri
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -284,11 +272,7 @@ func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -420,11 +404,7 @@ func (this *Query) SelectByFieldOrdered(kind string, field string, value string,
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -457,11 +437,7 @@ func (this *Query) selectByField(kind string, field string, value string, user s
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -491,11 +467,7 @@ func (this *Query) searchList(kind string, query string, user string, groups []s
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -521,11 +493,7 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -584,11 +552,7 @@ func (this *Query) SearchOrderedListWithSelection(kind string, query string, use
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -614,14 +578,7 @@ func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user s
 		if err != nil {
 			return result, err
 		}
-		entry.Features["id"] = entry.Resource
-		entry.Features["creator"] = entry.Creator
-		if len(entry.Annotations) > 0 {
-			entry.Features["annotations"] = entry.Annotations
-		}
-		entry.Features["permissions"] = getPermissions(entry, user, groups)
-		entry.Features["shared"] = getSharedState(user, entry)
-		result = append(result, entry.Features)
+		result = append(result, getEntryResult(entry, user, groups))
 	}
 	return
 }
@@ -667,4 +624,19 @@ func getSharedState(reqUser string, entry model.Entry) bool {
 		}
 	}
 	return false
+}
+
+func getEntryResult(entry model.Entry, user string, groups []string) map[string]interface{} {
+	result := map[string]interface{}{}
+	for key, value := range entry.Features {
+		result[key] = value
+	}
+	result["id"] = entry.Resource
+	result["creator"] = entry.Creator
+	if len(entry.Annotations) > 0 {
+		result["annotations"] = entry.Annotations
+	}
+	result["permissions"] = getPermissions(entry, user, groups)
+	result["shared"] = getSharedState(user, entry)
+	return result
 }
