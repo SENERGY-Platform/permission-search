@@ -173,6 +173,9 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 	if err != nil {
 		return err
 	}
+	if this.config.Debug && !exists {
+		log.Println("WARNING: _id is unknown in", resource, idStr)
+	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(resource, idStr)
 		if err != nil {
