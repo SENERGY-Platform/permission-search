@@ -102,6 +102,12 @@
                 {"Name": "name", "Path": "$.hub.name+"},
                 {"Name": "device_local_ids", "Path": "$.hub.device_local_ids+"}
             ],
+            "annotations": {
+                "gateway_log": [
+                    {"Name": "_id", "Path": "$.id+"},
+                    {"Name": "connected", "Path": "$.connected+"}
+                ]
+            },
             "initial_group_rights":{"admin": "rwxa"}
         },
         "protocols": {
@@ -226,6 +232,9 @@
             "features": {
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
                 "device_local_ids":      {"type": "keyword"}
+            },
+            "annotations": {
+                "connected": {"type":"boolean"}
             }
         },
         "import-types":{
