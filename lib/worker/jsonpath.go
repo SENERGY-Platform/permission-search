@@ -18,8 +18,8 @@ package worker
 
 import (
 	"encoding/json"
-
-	"github.com/JumboInteractiveLimited/jsonpath"
+	"github.com/PaesslerAG/jsonpath"
+	"strings"
 )
 
 func (this *Worker) MsgToFeatures(kind string, msg []byte) (result map[string]interface{}, err error) {
@@ -45,32 +45,25 @@ func (this *Worker) MsgToAnnotations(kind string, annotationTopic string, msg []
 }
 
 func UseJsonPath(msg []byte, path string) (interface{}, error) {
-	temp := []interface{}{}
-	paths, err := jsonpath.ParsePaths(path)
+	if strings.HasSuffix(path, "+") {
+		path = path[:len(path)-1]
+	}
+	v := interface{}(nil)
+	err := json.Unmarshal(msg, &v)
 	if err != nil {
 		return nil, err
 	}
-	eval, err := jsonpath.EvalPathsInBytes(msg, paths)
+	temp, err := jsonpath.Get(path, v)
 	if err != nil {
-		return nil, err
-	}
-	for {
-		if element, ok := eval.Next(); ok {
-			var val interface{}
-			err = json.Unmarshal(element.Value, &val)
-			if err != nil {
-				return nil, err
-			}
-			temp = append(temp, val)
-		} else {
-			break
+		if strings.HasPrefix(err.Error(), "unknown key") {
+			err = nil
 		}
+		return nil, err
 	}
-	if len(temp) > 1 {
-		return temp, nil
-	}
-	if len(temp) == 1 {
-		return temp[0], nil
-	}
-	return nil, nil
+	/*
+		if list, ok := temp.([]interface{}); ok && len(list) == 1 {
+			return list[0], nil
+		}
+	*/
+	return temp, nil
 }

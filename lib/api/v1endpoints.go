@@ -24,8 +24,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
-
-	"github.com/SmartEnergyPlatform/util/http/response"
 )
 
 func init() {
@@ -42,7 +40,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(exists)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(exists)
 	})
 
 	router.GET("/administrate/rights/:resource_kind", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -57,7 +56,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/administrate/rights/:resource_kind/get/:resource", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -82,7 +82,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, "404", http.StatusNotFound)
 			return
 		}
-		response.To(res).Json(list[0])
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list[0])
 	})
 
 	router.GET("/administrate/rights/:resource_kind/query/:query/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -100,7 +101,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -117,7 +119,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/select/:resource_kind/:field/:value/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -136,7 +139,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/select/:resource_kind/:field/:value/:right/:limit/:offset/:orderfeature/:direction", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -166,7 +170,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -185,7 +190,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -212,7 +218,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -239,7 +246,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -266,7 +274,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	//TODO: add limit/offset variant
@@ -283,7 +292,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -301,7 +311,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -327,7 +338,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -353,7 +365,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/jwt/check/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -372,7 +385,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		ok := map[string]string{"status": "ok"}
-		response.To(res).Json(ok)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(ok)
 	})
 
 	router.GET("/jwt/check/:resource_kind/:resource_id/:right/bool", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -386,9 +400,11 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 		err = q.CheckUserOrGroup(kind, resource, token.GetUserId(), token.GetRoles(), right)
 		if err != nil {
-			response.To(res).Json(false)
+			res.Header().Set("Content-Type", "application/json; charset=utf-8")
+			json.NewEncoder(res).Encode(false)
 		} else {
-			response.To(res).Json(true)
+			res.Header().Set("Content-Type", "application/json; charset=utf-8")
+			json.NewEncoder(res).Encode(true)
 		}
 	})
 
@@ -413,7 +429,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(ok)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(ok)
 	})
 
 	router.POST("/ids/select/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -437,7 +454,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(result)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(result)
 	})
 
 	router.POST("/ids/select/:resource_kind/:right/:limit/:offset/:orderfeature/:direction", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -472,7 +490,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(result)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(result)
 	})
 
 	router.GET("/user/list/:user/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -484,7 +503,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/user/check/:user/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -499,7 +519,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		ok := map[string]string{"status": "ok"}
-		response.To(res).Json(ok)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(ok)
 	})
 
 	router.GET("/group/list/:group/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -511,7 +532,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.GET("/group/check/:group/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -526,7 +548,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		ok := map[string]string{"status": "ok"}
-		response.To(res).Json(ok)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(ok)
 	})
 
 	router.GET("/export", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -535,7 +558,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(exports)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(exports)
 	})
 
 	router.PUT("/import", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -551,7 +575,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		ok := map[string]string{"status": "ok"}
-		response.To(res).Json(ok)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(ok)
 	})
 
 	router.POST("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -589,7 +614,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.POST("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -627,7 +653,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.POST("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -664,7 +691,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	router.POST("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -701,7 +729,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.To(res).Json(list)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list)
 	})
 
 	return

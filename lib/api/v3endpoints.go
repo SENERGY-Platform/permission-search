@@ -5,7 +5,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SmartEnergyPlatform/util/http/response"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -40,7 +39,8 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, "404", http.StatusNotFound)
 			return
 		}
-		response.To(res).Json(list[0])
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(list[0])
 	})
 
 	router.GET("/v3/resources/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {

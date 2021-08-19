@@ -18,11 +18,11 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api/util"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/julienschmidt/httprouter"
-	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"reflect"
