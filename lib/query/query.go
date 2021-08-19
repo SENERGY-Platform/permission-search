@@ -176,22 +176,14 @@ func (this *Query) GetListFromIds(kind string, ids []string, user string, groups
 	return result, nil
 }
 
-func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
 	terms := []interface{}{}
 	for _, id := range ids {
 		terms = append(terms, id)
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := this.client.Search().Index(kind).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
+	resp, err := this.client.Search().Index(kind).Query(query).Size(queryCommons.Limit).From(queryCommons.Offset).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -251,18 +243,10 @@ func (this *Query) getListForUserOrGroup(kind string, user string, groups []stri
 	return
 }
 
-func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(queryCommons.Limit).From(queryCommons.Offset).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -383,18 +367,10 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 	return
 }
 
-func (this *Query) SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := this.client.Search().Index(kind).Query(query).From(offset).Size(limit).Sort("features."+orderfeature, asc).Do(ctx)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
+	resp, err := this.client.Search().Index(kind).Query(query).From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -472,18 +448,10 @@ func (this *Query) searchList(kind string, query string, user string, groups []s
 	return
 }
 
-func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
-	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -531,18 +499,10 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 	return
 }
 
-func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, rights string, orderFeature string, asc bool, limitStr string, offsetStr string, selection elastic.Query) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Sort("features."+orderFeature, asc).Do(ctx)
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -557,18 +517,10 @@ func (this *Query) SearchOrderedListWithSelection(kind string, query string, use
 	return
 }
 
-func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, rights string, limitStr string, offsetStr string, orderfeature string, asc bool, selection elastic.Query) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		return result, err
-	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
-	}
+func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Filter(selection)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Sort("features."+orderfeature, asc).Do(ctx)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Filter(selection)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(queryCommons.Limit).From(queryCommons.Offset).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Do(ctx)
 	if err != nil {
 		return result, err
 	}

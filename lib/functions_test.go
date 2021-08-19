@@ -61,7 +61,13 @@ func TestReceiveFunction(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	if err != nil {
 		t.Error(err)
 		return

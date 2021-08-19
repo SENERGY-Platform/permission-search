@@ -554,22 +554,46 @@ func ExampleGetOrderedListForUserOrGroup() {
 	initDb(config, w)
 
 	time.Sleep(1 * time.Second)
-	result, err := q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+		Limit:    20,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0", "name", false)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+		Limit:    20,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: true,
+	})
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3", "name", true)
+	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   3,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	fmt.Println(err)
 	for _, r := range result {
 		fmt.Println(r["name"])

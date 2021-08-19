@@ -60,7 +60,13 @@ func TestReceiveDeviceClass(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	if err != nil {
 		t.Error(err)
 		return

@@ -8,7 +8,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -20,28 +19,16 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 	router.GET("/v2/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		resource := params.ByName("resource")
-		limit := request.URL.Query().Get("limit")
-		if limit == "" {
-			limit = "100"
-		}
-		offset := request.URL.Query().Get("offset")
-		if offset == "" {
-			offset = "0"
-		}
-		right := request.URL.Query().Get("rights")
-		if right == "" {
-			right = "r"
-		}
-		sort := request.URL.Query().Get("sort")
-		if sort == "" {
-			sort = "name"
-		}
-		orderby := strings.Split(sort, ".")[0]
-		asc := !strings.HasSuffix(sort, ".desc")
 
 		search := request.URL.Query().Get("search")
 		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
+
+		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
 
 		mode := ""
 		if search != "" {
@@ -72,7 +59,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 		switch mode {
 		case "search":
-			result, err = q.SearchOrderedList(resource, search, token.GetUserId(), token.GetRoles(), right, orderby, asc, limit, offset)
+			result, err = q.SearchOrderedList(resource, search, token.GetUserId(), token.GetRoles(), queryListCommons)
 		case "selection":
 			selectionParts := strings.Split(selection, ":")
 			if len(selectionParts) < 2 {
@@ -81,12 +68,12 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			field := selectionParts[0]
 			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByFieldOrdered(resource, field, value, token.GetUserId(), token.GetRoles(), right, limit, offset, orderby, asc)
+			result, err = q.SelectByFieldOrdered(resource, field, value, token.GetUserId(), token.GetRoles(), queryListCommons)
 		case "ids":
 			// not more than 10 ids should be send
-			result, err = q.GetListFromIdsOrdered(resource, strings.Split(ids, ","), token.GetUserId(), token.GetRoles(), right, limit, offset, orderby, asc)
+			result, err = q.GetListFromIdsOrdered(resource, strings.Split(ids, ","), token.GetUserId(), token.GetRoles(), queryListCommons)
 		default:
-			result, err = q.GetOrderedListForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), right, limit, offset, orderby, asc)
+			result, err = q.GetOrderedListForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), queryListCommons)
 		}
 
 		if err != nil {
@@ -171,11 +158,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 						query.Resource,
 						token.GetUserId(),
 						token.GetRoles(),
-						query.Find.Rights,
-						strconv.Itoa(query.Find.Limit),
-						strconv.Itoa(query.Find.Offset),
-						query.Find.SortBy,
-						!query.Find.SortDesc)
+						query.Find.QueryListCommons)
 				} else {
 					filter, err := q.GetFilter(token, *query.Find.Filter)
 					if err != nil {
@@ -186,11 +169,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 						query.Resource,
 						token.GetUserId(),
 						token.GetRoles(),
-						query.Find.Rights,
-						strconv.Itoa(query.Find.Limit),
-						strconv.Itoa(query.Find.Offset),
-						query.Find.SortBy,
-						!query.Find.SortDesc,
+						query.Find.QueryListCommons,
 						filter)
 				}
 			} else {
@@ -200,11 +179,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 						query.Find.Search,
 						token.GetUserId(),
 						token.GetRoles(),
-						query.Find.Rights,
-						query.Find.SortBy,
-						!query.Find.SortDesc,
-						strconv.Itoa(query.Find.Limit),
-						strconv.Itoa(query.Find.Offset))
+						query.Find.QueryListCommons)
 				} else {
 					filter, err := q.GetFilter(token, *query.Find.Filter)
 					if err != nil {
@@ -216,11 +191,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 						query.Find.Search,
 						token.GetUserId(),
 						token.GetRoles(),
-						query.Find.Rights,
-						query.Find.SortBy,
-						!query.Find.SortDesc,
-						strconv.Itoa(query.Find.Limit),
-						strconv.Itoa(query.Find.Offset),
+						query.Find.QueryListCommons,
 						filter)
 				}
 			}
@@ -250,11 +221,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 				query.ListIds.Ids,
 				token.GetUserId(),
 				token.GetRoles(),
-				query.ListIds.Rights,
-				strconv.Itoa(query.ListIds.Limit),
-				strconv.Itoa(query.ListIds.Offset),
-				query.ListIds.SortBy,
-				!query.ListIds.SortDesc)
+				query.ListIds.QueryListCommons)
 		}
 
 		if query.TermAggregate != nil {

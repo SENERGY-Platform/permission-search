@@ -134,7 +134,13 @@ func TestImportTypes(t *testing.T) {
 		"shared": false,
 	}}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -155,11 +161,13 @@ func TestImportTypes(t *testing.T) {
 		"a1_f1",
 		"testOwner",
 		[]string{"user"},
-		"r",
-		"3",
-		"0",
-		"name",
-		true)
+		model.QueryListCommons{
+			Limit:    3,
+			Offset:   0,
+			Rights:   "r",
+			SortBy:   "name",
+			SortDesc: false,
+		})
 
 	if err != nil {
 		t.Error(err)

@@ -82,7 +82,13 @@ func TestReceiveDevice(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -187,11 +193,13 @@ func TestDeviceWithSpecialCharacterAttribute(t *testing.T) {
 		"devices",
 		"testOwner",
 		[]string{},
-		"r",
-		"10",
-		"0",
-		"name",
-		true,
+		model.QueryListCommons{
+			Limit:    10,
+			Offset:   0,
+			Rights:   "r",
+			SortBy:   "name",
+			SortDesc: false,
+		},
 		filter)
 
 	if len(result) != 1 {

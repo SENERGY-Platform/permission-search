@@ -138,7 +138,13 @@ func TestDeviceGroup(t *testing.T) {
 		"shared": false,
 	}}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
+	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+		Limit:    3,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "name",
+		SortDesc: false,
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -179,11 +185,13 @@ func TestDeviceGroup(t *testing.T) {
 		resource,
 		"testOwner",
 		[]string{"user"},
-		"r",
-		"3",
-		"0",
-		"name",
-		true,
+		model.QueryListCommons{
+			Limit:    3,
+			Offset:   0,
+			Rights:   "r",
+			SortBy:   "name",
+			SortDesc: false,
+		},
 		filter)
 
 	if err != nil {

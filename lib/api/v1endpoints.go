@@ -153,7 +153,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SelectByFieldOrdered(kind, field, value, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, direction == "asc")
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, direction, right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SelectByFieldOrdered(kind, field, value, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -193,7 +200,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), right, order, true, limit, offset)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "asc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -213,7 +227,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), right, order, true, limit, offset)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "asc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -233,7 +254,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), right, order, false, limit, offset)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "desc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -287,7 +315,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, true)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "asc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -306,7 +341,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, false)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "desc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -417,7 +459,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := q.GetListFromIdsOrdered(kind, ids, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, direction == "asc")
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, direction, right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		result, err := q.GetListFromIdsOrdered(kind, ids, token.GetUserId(), token.GetRoles(), queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -528,7 +577,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), right, order, true, limit, offset, selectionFilter)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "asc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -559,7 +615,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), right, order, false, limit, offset, selectionFilter)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "desc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -589,7 +652,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, true, selectionFilter)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "asc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -619,7 +689,14 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), right, limit, offset, orderfeature, false, selectionFilter)
+
+		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "desc", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

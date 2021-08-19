@@ -49,11 +49,13 @@ func TestQueryNot(t *testing.T) {
 		resource,
 		"testOwner",
 		[]string{"user"},
-		"r",
-		"100",
-		"0",
-		"name",
-		true,
+		model.QueryListCommons{
+			Limit:    100,
+			Offset:   0,
+			Rights:   "r",
+			SortBy:   "name",
+			SortDesc: false,
+		},
 		filter)
 	if err != nil {
 		t.Error(err)
@@ -98,11 +100,13 @@ func TestQueryNot(t *testing.T) {
 		"find",
 		"testOwner",
 		[]string{"user"},
-		"r",
-		"name",
-		true,
-		"100",
-		"0",
+		model.QueryListCommons{
+			Limit:    100,
+			Offset:   0,
+			Rights:   "r",
+			SortBy:   "name",
+			SortDesc: false,
+		},
 		filter)
 
 	if err != nil {
