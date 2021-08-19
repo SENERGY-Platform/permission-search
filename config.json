@@ -17,126 +17,126 @@
 	"resources": {
         "concepts": {
             "features":[
-                {"Name": "name", "Path": "$.concept.name+"}
+                {"Name": "name", "Path": "$.concept.name"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "characteristics": {
             "features":[
-                {"Name": "name", "Path": "$.characteristic.name+"},
-                {"Name": "concept_id", "Path": "$.concept_id+"}
+                {"Name": "name", "Path": "$.characteristic.name"},
+                {"Name": "concept_id", "Path": "$.concept_id"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
 		"processmodel":{
             "features":[
-                {"Name": "name", "Path": "$.processmodel.name+"},
-                {"Name": "date", "Path": "$.processmodel.date+"},
-                {"Name": "svgXML", "Path": "$.processmodel.svgXML+"},
-                {"Name": "publish", "Path": "$.processmodel.publish+"},
-                {"Name": "parent_id", "Path": "$.processmodel.parent_id+"},
-                {"Name": "description", "Path": "$.processmodel.description+"}
+                {"Name": "name", "Path": "$.processmodel.name"},
+                {"Name": "date", "Path": "$.processmodel.date"},
+                {"Name": "svgXML", "Path": "$.processmodel.svgXML"},
+                {"Name": "publish", "Path": "$.processmodel.publish"},
+                {"Name": "parent_id", "Path": "$.processmodel.parent_id"},
+                {"Name": "description", "Path": "$.processmodel.description"}
             ],
             "initial_group_rights":{"admin": "rwxa"}
         },
 		"devices":{
             "features":[
-                {"Name": "name", "Path": "$.device.name+"},
-                {"Name": "device_type_id", "Path": "$.device.device_type_id+"},
-                {"Name": "local_id", "Path": "$.device.local_id+"},
-                {"Name": "attributes", "Path": "$.device.attributes+"}
+                {"Name": "name", "Path": "$.device.name"},
+                {"Name": "device_type_id", "Path": "$.device.device_type_id"},
+                {"Name": "local_id", "Path": "$.device.local_id"},
+                {"Name": "attributes", "Path": "$.device.attributes"}
             ],
             "annotations": {
                 "device_log": [
-                    {"Name": "_id", "Path": "$.id+"},
-                    {"Name": "connected", "Path": "$.connected+"}
+                    {"Name": "_id", "Path": "$.id"},
+                    {"Name": "connected", "Path": "$.connected"}
                 ]
             },
             "initial_group_rights":{"admin": "rwxa"}
         },
 		"device-types":{
             "features":[
-                {"Name": "name", "Path": "$.device_type.name+"},
-                {"Name": "description", "Path": "$.device_type.description+"},
-                {"Name": "service", "Path": "$.device_type.services[*].id+"},
-                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id+"},
-                {"Name": "device_class_id", "Path": "$.device_type.device_class_id+"},
-                {"Name": "attributes", "Path": "$.device_type.attributes+"}
+                {"Name": "name", "Path": "$.device_type.name"},
+                {"Name": "description", "Path": "$.device_type.description"},
+                {"Name": "service", "Path": "$.device_type.services[*].id"},
+                {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id"},
+                {"Name": "device_class_id", "Path": "$.device_type.device_class_id"},
+                {"Name": "attributes", "Path": "$.device_type.attributes"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "device-classes":{
             "features":[
-                {"Name": "name", "Path": "$.device_class.name+"},
-                {"Name": "image", "Path": "$.device_class.image+"}
+                {"Name": "name", "Path": "$.device_class.name"},
+                {"Name": "image", "Path": "$.device_class.image"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "device-groups":{
             "features":[
-                {"Name": "name", "Path": "$.device_group.name+"},
-                {"Name": "image", "Path": "$.device_group.image+"},
-                {"Name": "device_ids", "Path": "$.device_group.device_ids+"},
-                {"Name": "criteria", "Path": "$.device_group.criteria+"},
-                {"Name": "criteria_short", "Path": "$.device_group.criteria_short+"}
+                {"Name": "name", "Path": "$.device_group.name"},
+                {"Name": "image", "Path": "$.device_group.image"},
+                {"Name": "device_ids", "Path": "$.device_group.device_ids"},
+                {"Name": "criteria", "Path": "$.device_group.criteria"},
+                {"Name": "criteria_short", "Path": "$.device_group.criteria_short"}
             ],
             "initial_group_rights":{ "system": "rwxa" }
         },
         "aspects":{
             "features":[
-                {"Name": "name", "Path": "$.aspect.name+"}
+                {"Name": "name", "Path": "$.aspect.name"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "functions":{
             "features":[
-                {"Name": "name", "Path": "$.function.name+"},
-                {"Name": "description", "Path": "$.function.description+"},
-                {"Name": "rdf_type", "Path": "$.function.rdf_type+"},
-                {"Name": "concept_id", "Path": "$.function.concept_id+"}
+                {"Name": "name", "Path": "$.function.name"},
+                {"Name": "description", "Path": "$.function.description"},
+                {"Name": "rdf_type", "Path": "$.function.rdf_type"},
+                {"Name": "concept_id", "Path": "$.function.concept_id"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "hubs": {
             "features": [
-                {"Name": "name", "Path": "$.hub.name+"},
-                {"Name": "device_local_ids", "Path": "$.hub.device_local_ids+"}
+                {"Name": "name", "Path": "$.hub.name"},
+                {"Name": "device_local_ids", "Path": "$.hub.device_local_ids"}
             ],
             "annotations": {
                 "gateway_log": [
-                    {"Name": "_id", "Path": "$.id+"},
-                    {"Name": "connected", "Path": "$.connected+"}
+                    {"Name": "_id", "Path": "$.id"},
+                    {"Name": "connected", "Path": "$.connected"}
                 ]
             },
             "initial_group_rights":{"admin": "rwxa"}
         },
         "protocols": {
             "features":[
-                {"Name": "name", "Path": "$.protocol.name+"},
-                {"Name": "handler", "Path": "$.protocol.handler+"},
-                {"Name": "segments", "Path": "$.protocol.protocol_segments[*].name+"}
+                {"Name": "name", "Path": "$.protocol.name"},
+                {"Name": "handler", "Path": "$.protocol.handler"},
+                {"Name": "segments", "Path": "$.protocol.protocol_segments[*].name"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
         "import-types": {
             "features":[
-                {"Name": "name", "Path": "$.import_type.name+"},
-                {"Name": "description", "Path": "$.import_type.description+"},
-                {"Name": "image", "Path": "$.import_type.image+"},
-                {"Name": "default_restart", "Path": "$.import_type.default_restart+"},
-                {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids+"},
-                {"Name": "function_ids", "Path": "$.import_type.function_ids+"},
-                {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions+"}
+                {"Name": "name", "Path": "$.import_type.name"},
+                {"Name": "description", "Path": "$.import_type.description"},
+                {"Name": "image", "Path": "$.import_type.image"},
+                {"Name": "default_restart", "Path": "$.import_type.default_restart"},
+                {"Name": "aspect_ids", "Path": "$.import_type.aspect_ids"},
+                {"Name": "function_ids", "Path": "$.import_type.function_ids"},
+                {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": ""}
         },
         "locations":{
             "features":[
-                {"Name": "name", "Path": "$.location.name+"},
-                {"Name": "description", "Path": "$.location.description+"},
-                {"Name": "image", "Path": "$.location.image+"},
-                {"Name": "device_ids", "Path": "$.location.device_ids+"},
-                {"Name": "device_group_ids", "Path": "$.location.device_group_ids+"}
+                {"Name": "name", "Path": "$.location.name"},
+                {"Name": "description", "Path": "$.location.description"},
+                {"Name": "image", "Path": "$.location.image"},
+                {"Name": "device_ids", "Path": "$.location.device_ids"},
+                {"Name": "device_group_ids", "Path": "$.location.device_group_ids"}
             ],
             "initial_group_rights":{"admin": "rwxa"}
         }

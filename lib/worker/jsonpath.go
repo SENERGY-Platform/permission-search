@@ -60,10 +60,5 @@ func UseJsonPath(msg []byte, path string) (interface{}, error) {
 		}
 		return nil, err
 	}
-	/*
-		if list, ok := temp.([]interface{}); ok && len(list) == 1 {
-			return list[0], nil
-		}
-	*/
 	return temp, nil
 }
