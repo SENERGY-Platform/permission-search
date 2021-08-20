@@ -31,29 +31,34 @@ func GetMode(s string) (mode Mode, err error) {
 }
 
 func Start(parentctx context.Context, config configuration.Config, mode Mode) (err error) {
+	_, _, err = StartGetComponents(parentctx, config, mode)
+	return
+}
+
+func StartGetComponents(parentctx context.Context, config configuration.Config, mode Mode) (q *query.Query, w *worker.Worker, err error) {
 	ctx, cancel := context.WithCancel(parentctx)
 	defer func() {
 		if err != nil {
 			cancel()
 		}
 	}()
-	q, err := query.New(config)
+	q, err = query.New(config)
 	if err != nil {
-		return err
+		return q, w, err
 	}
 	if mode == Query || mode == Standalone {
 		err = api.Start(ctx, config, q)
 		if err != nil {
-			return err
+			return q, w, err
 		}
 	}
 
 	if mode == Worker || mode == Standalone {
-		w := worker.New(config, q)
+		w = worker.New(config, q)
 		err = worker.InitEventHandling(ctx, config, w)
 		if err != nil {
-			return err
+			return q, w, err
 		}
 	}
-	return nil
+	return q, w, nil
 }

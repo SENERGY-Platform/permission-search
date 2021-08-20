@@ -267,30 +267,32 @@ func testRequest(config configuration.Config, method string, path string, body i
 			return
 		}
 
-		temp, err := json.Marshal(expected)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		var normalizedExpected interface{}
-		err = json.Unmarshal(temp, &normalizedExpected)
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		if expected != nil {
+			temp, err := json.Marshal(expected)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			var normalizedExpected interface{}
+			err = json.Unmarshal(temp, &normalizedExpected)
+			if err != nil {
+				t.Error(err)
+				return
+			}
 
-		var actual interface{}
-		err = json.NewDecoder(resp.Body).Decode(&actual)
-		if err != nil {
-			t.Error(err)
-			return
-		}
+			var actual interface{}
+			err = json.NewDecoder(resp.Body).Decode(&actual)
+			if err != nil {
+				t.Error(err)
+				return
+			}
 
-		if !reflect.DeepEqual(actual, normalizedExpected) {
-			a, _ := json.Marshal(actual)
-			e, _ := json.Marshal(normalizedExpected)
-			t.Error(string(a), string(e))
-			return
+			if !reflect.DeepEqual(actual, normalizedExpected) {
+				a, _ := json.Marshal(actual)
+				e, _ := json.Marshal(normalizedExpected)
+				t.Error(string(a), string(e))
+				return
+			}
 		}
 	}
 }

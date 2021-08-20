@@ -27,7 +27,7 @@ import (
 
 	"errors"
 
-	elastic "github.com/olivere/elastic/v7"
+	"github.com/olivere/elastic/v7"
 )
 
 type Query struct {
@@ -594,5 +594,9 @@ func getEntryResult(entry model.Entry, user string, groups []string) map[string]
 }
 
 func setPaginationAndSort(query *elastic.SearchService, queryCommons model.QueryListCommons) *elastic.SearchService {
-	return query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc)
+	if queryCommons.After == nil {
+		return query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Sort("resource", !queryCommons.SortDesc)
+	} else {
+		return query.SearchAfter(queryCommons.After.SortFieldValue, queryCommons.After.Id).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Sort("resource", !queryCommons.SortDesc)
+	}
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
@@ -31,19 +32,39 @@ type QueryCheckIds struct {
 }
 
 type QueryListCommons struct {
-	Limit    int    `json:"limit"`
-	Offset   int    `json:"offset"`
-	Rights   string `json:"rights"`
-	SortBy   string `json:"sort_by"`
-	SortDesc bool   `json:"sort_desc"`
+	Limit    int        `json:"limit"`
+	Offset   int        `json:"offset"`
+	After    *ListAfter `json:"after"`
+	Rights   string     `json:"rights"`
+	SortBy   string     `json:"sort_by"`
+	SortDesc bool       `json:"sort_desc"`
+}
+
+type ListAfter struct {
+	SortFieldValue interface{} `json:"sort_field_value"`
+	Id             string      `json:"id"`
 }
 
 func (this QueryListCommons) Validate() error {
 	if this.Offset < 0 {
-		return errors.New("offset should be at leas 0")
+		return errors.New("offset should be at least 0")
 	}
 	if this.Limit < 0 {
-		return errors.New("limit should be at leas 0")
+		return errors.New("limit should be at least 0")
+	}
+	if this.Limit+this.Offset > 10000 {
+		return errors.New("limit + offset may not be bigger than 10000. pleas use after.id and after.sort_field_value")
+	}
+	if this.After != nil {
+		if this.Offset != 0 {
+			return errors.New("'offset' should be 0 if 'after' is used")
+		}
+		if this.After.SortFieldValue == nil {
+			return errors.New("'after' needs sort_field_value")
+		}
+		if this.After.Id == "" {
+			return errors.New("'after' needs id value")
+		}
 	}
 	return nil
 }
@@ -65,6 +86,20 @@ func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCo
 	right := queryParams.Get("rights")
 	if right == "" {
 		right = "r"
+	}
+
+	after := ListAfter{
+		Id: queryParams.Get("after.id"),
+	}
+	afterSortStr := queryParams.Get("after.sort_field_value")
+	if afterSortStr != "" {
+		err = json.Unmarshal([]byte(afterSortStr), &after.SortFieldValue)
+		if err != nil {
+			return
+		}
+	}
+	if after.SortFieldValue != nil || after.Id != "" {
+		result.After = &after
 	}
 
 	result.Rights = right

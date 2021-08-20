@@ -24,6 +24,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -757,7 +758,23 @@ func elasticsearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ip
 	if err != nil {
 		return "", "", err
 	}
-	container, err := pool.Run("docker.elastic.co/elasticsearch/elasticsearch", "7.6.1", []string{"discovery.type=single-node"})
+
+	container, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
+		Tag:        "7.6.1",
+		Env: []string{
+			"discovery.type=single-node",
+			"path.data=/opt/elasticsearch/volatile/data",
+			"path.logs=/opt/elasticsearch/volatile/logs",
+		},
+	}, func(config *docker.HostConfig) {
+		config.Tmpfs = map[string]string{
+			"/opt/elasticsearch/volatile/data": "rw",
+			"/opt/elasticsearch/volatile/logs": "rw",
+			"/tmp":                             "rw",
+		}
+	})
+
 	if err != nil {
 		return "", "", err
 	}
