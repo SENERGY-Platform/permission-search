@@ -51,13 +51,20 @@ func (this *Worker) SetGroupRight(kind string, resource string, group string, ri
 
 func (this *Worker) DeleteUserRight(kind string, resource string, user string) (err error) {
 	ctx := context.Background()
-	entry, version, err := this.query.GetResourceEntry(kind, resource)
+	exists, err := this.query.ResourceExists(kind, resource)
 	if err != nil {
 		return err
 	}
-	entry.RemoveUserRights(user)
-	_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-	return
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(kind, resource)
+		if err != nil {
+			return err
+		}
+		entry.RemoveUserRights(user)
+		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		return err
+	}
+	return nil
 }
 
 func (this *Worker) DeleteGroupRight(kind string, resource string, group string) (err error) {
