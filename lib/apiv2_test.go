@@ -309,6 +309,12 @@ func getTestAspectResult(id string) map[string]interface{} {
 			"w": true,
 			"x": true,
 		},
+		"permission_holders": map[string][]string{
+			"admin_users":   {"testOwner"},
+			"execute_users": {"testOwner"},
+			"read_users":    {"testOwner"},
+			"write_users":   {"testOwner"},
+		},
 		"shared": false,
 	}
 }

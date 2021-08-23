@@ -179,6 +179,12 @@ func getTestDeviceResult(id string, connected *bool) (result map[string]interfac
 			"w": true,
 			"x": true,
 		},
+		"permission_holders": map[string][]string{
+			"admin_users":   {"testOwner"},
+			"execute_users": {"testOwner"},
+			"read_users":    {"testOwner"},
+			"write_users":   {"testOwner"},
+		},
 		"shared": false,
 	}
 	if connected != nil {

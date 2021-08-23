@@ -590,6 +590,16 @@ func getEntryResult(entry model.Entry, user string, groups []string) map[string]
 	}
 	result["permissions"] = getPermissions(entry, user, groups)
 	result["shared"] = getSharedState(user, entry)
+	if contains(entry.AdminUsers, user) {
+		permissionHolders := map[string][]string{
+			"admin_users":   entry.AdminUsers,
+			"read_users":    entry.ReadUsers,
+			"write_users":   entry.WriteUsers,
+			"execute_users": entry.ExecuteUsers,
+		}
+		result["permission_holders"] = permissionHolders
+	}
+
 	return result
 }
 
@@ -599,4 +609,13 @@ func setPaginationAndSort(query *elastic.SearchService, queryCommons model.Query
 	} else {
 		return query.SearchAfter(queryCommons.After.SortFieldValue, queryCommons.After.Id).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Sort("resource", !queryCommons.SortDesc)
 	}
+}
+
+func contains(list []string, value string) bool {
+	for _, element := range list {
+		if element == value {
+			return true
+		}
+	}
+	return false
 }

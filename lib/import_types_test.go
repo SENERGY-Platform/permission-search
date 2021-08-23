@@ -127,6 +127,12 @@ func TestImportTypes(t *testing.T) {
 			"w": true,
 			"x": true,
 		},
+		"permission_holders": map[string][]string{
+			"admin_users":   {"testOwner"},
+			"execute_users": {"testOwner"},
+			"read_users":    {"testOwner"},
+			"write_users":   {"testOwner"},
+		},
 		"aspect_ids": []interface{}{
 			"a1",
 			"a2",
