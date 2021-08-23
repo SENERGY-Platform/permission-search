@@ -31,7 +31,6 @@ type ConfigStruct struct {
 	KafkaUrl string `json:"kafka_url"`
 
 	PermTopic string `json:"perm_topic"`
-	UserTopic string `json:"user_topic"`
 
 	ElasticUrl     string                                       `json:"elastic_url"`
 	ElasticRetry   int64                                        `json:"elastic_retry"`

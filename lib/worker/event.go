@@ -35,20 +35,6 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		return err
 	}
 
-	err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId, config.UserTopic, func(msg []byte) error {
-		return worker.HandleUserCommand(msg)
-	})
-	if err != nil {
-		return err
-	}
-
-	err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId, config.UserTopic, func(msg []byte) error {
-		return worker.HandleUserCommand(msg)
-	})
-	if err != nil {
-		return err
-	}
-
 	log.Println("init features handlers", config.ResourceList)
 	for _, resource := range config.ResourceList {
 		log.Println("init handler for", resource)
@@ -99,23 +85,6 @@ func (this *Worker) HandlePermissionCommand(msg []byte) (err error) {
 		}
 	}
 	return errors.New("unable to handle permission command: " + string(msg))
-}
-
-func (this *Worker) HandleUserCommand(msg []byte) (err error) {
-	log.Println(this.config.UserTopic, string(msg))
-	command := model.UserCommandMsg{}
-	err = json.Unmarshal(msg, &command)
-	if err != nil {
-		return
-	}
-	switch command.Command {
-	case "DELETE":
-		if command.Id != "" {
-			return this.DeleteUser(command.Id)
-		}
-	}
-	log.Println("WARNING: unable to handle user command: " + string(msg))
-	return nil
 }
 
 func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery []byte) error {

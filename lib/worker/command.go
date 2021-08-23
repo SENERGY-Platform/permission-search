@@ -19,7 +19,6 @@ package worker
 import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
 	"runtime/debug"
 
 	"log"
@@ -123,37 +122,6 @@ func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (e
 	}
 	if exists {
 		_, err = this.query.GetClient().Delete().Index(kind).Id(command.Id).Do(ctx)
-	}
-	return
-}
-
-func (this *Worker) DeleteUser(user string) (err error) {
-	for kind := range this.config.Resources {
-		err = this.DeleteUserFromResourceKind(kind, user)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-func (this *Worker) DeleteUserFromResourceKind(kind string, user string) (err error) {
-	ctx := context.Background()
-	query := elastic.NewBoolQuery().Should(
-		elastic.NewTermQuery("admin_users", user),
-		elastic.NewTermQuery("read_users", user),
-		elastic.NewTermQuery("write_users", user),
-		elastic.NewTermQuery("execute_users", user))
-	result, err := this.query.GetClient().Search().Index(kind).Version(true).Query(query).Do(ctx)
-	if err != nil {
-		return err
-	}
-	for _, hit := range result.Hits.Hits {
-		err = this.DeleteUserRight(kind, hit.Id, user)
-		if err != nil {
-			return err
-		}
-		//TODO: delete resource if last admin??
 	}
 	return
 }

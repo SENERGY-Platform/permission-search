@@ -27,7 +27,6 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 	"log"
 	"net/http"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -219,81 +218,6 @@ func ExampleSearch() {
 	//test
 	//zway
 
-}
-
-func ExampleDeleteUser() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	config.ElasticRetry = 3
-	msg, cmd := getDtTestObj("del", map[string]interface{}{
-		"name":        "ZWay-SwitchMultilevel",
-		"description": "desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	err = w.UpdateFeatures("device-types", msg, cmd)
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = w.DeleteUser("testOwner")
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = w.DeleteGroupRight("device-types", "del", "user")
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	time.Sleep(1 * time.Second)
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		debug.PrintStack()
-		return
-	}
-	query := elastic.NewMatchAllQuery()
-	result, err := q.GetClient().Search().Index("device-types").Query(query).Do(context.Background())
-	fmt.Println(err)
-	var entity model.Entry
-	if result != nil {
-		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(model.Entry); ok {
-				fmt.Println(t.Resource, t.ReadUsers, t.WriteUsers, t.ExecuteUsers, t.AdminUsers, t.ReadGroups, t.WriteGroups, t.ExecuteGroups, t.AdminGroups)
-			}
-		}
-	}
-
-	//Output:
-	//<nil>
-	//del [] [] [] [] [admin] [admin] [admin] [admin]
 }
 
 func ExampleDeleteFeatures() {

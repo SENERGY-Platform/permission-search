@@ -3,7 +3,6 @@
 	"log_level":		              "CALL",
 
 	"perm_topic": "permissions",
-	"user_topic": "user",
 
     "kafka_url": "kafka:9092",
     "group_id": "permsearch",
