@@ -254,7 +254,7 @@ const ElasticPermissionMapping = `{
 	"write_groups":   {"type": "keyword"},
 	"write_users":    {"type": "keyword"},
 	"creator":    	  {"type": "keyword"},
-	"feature_search": {"type": "text", "analyzer": "autocomplete", "search_analyzer": "standard"}
+	"feature_search": {"type": "text", "analyzer": "custom_analyzer", "search_analyzer": "custom_search_analyzer"}
 }`
 
 func CreateMapping(config configuration.Config, kind string) (result map[string]interface{}, err error) {
@@ -288,14 +288,28 @@ func CreateMapping(config configuration.Config, kind string) (result map[string]
 						"min_gram": 1,
 						"max_gram": 20,
 					},
+					"custom_word_delimiter_filter": map[string]interface{}{
+						"type":              "word_delimiter",
+						"preserve_original": true,
+					},
 				},
 				"analyzer": map[string]interface{}{
-					"autocomplete": map[string]interface{}{
+					"custom_analyzer": map[string]interface{}{
 						"type":      "custom",
-						"tokenizer": "standard",
+						"tokenizer": "whitespace",
 						"filter": []string{
+							"custom_word_delimiter_filter",
 							"lowercase",
+							"unique",
 							"autocomplete_filter",
+						},
+					},
+					"custom_search_analyzer": map[string]interface{}{
+						"type":      "custom",
+						"tokenizer": "whitespace",
+						"filter": []string{
+							"word_delimiter",
+							"lowercase",
 						},
 					},
 				},

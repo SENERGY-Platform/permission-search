@@ -7,6 +7,7 @@ require (
 	github.com/Shopify/sarama v1.29.1
 	github.com/containerd/continuity v0.0.0-20200228182428-0f16d7a0959c // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/google/uuid v1.1.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.8.0 // indirect
 	github.com/olivere/elastic/v7 v7.0.27

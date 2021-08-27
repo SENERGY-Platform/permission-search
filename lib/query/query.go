@@ -336,7 +336,7 @@ func (this *Query) SearchRightsToAdministrate(kind string, user string, groups [
 		return result, err
 	}
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
 		return result, err
@@ -432,7 +432,7 @@ func (this *Query) SearchList(kind string, query string, user string, groups []s
 
 func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
 		return result, err
@@ -450,7 +450,7 @@ func (this *Query) searchList(kind string, query string, user string, groups []s
 
 func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query))
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -501,7 +501,8 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 
 func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
+	//elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND")).Filter(selection)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
