@@ -199,7 +199,7 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 }
 
 func (this *Query) GetFullListForUserOrGroup(kind string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
-	limit := 20
+	limit := 1000
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
@@ -353,7 +353,7 @@ func (this *Query) SearchRightsToAdministrate(kind string, user string, groups [
 }
 
 func (this *Query) SearchListAll(kind string, query string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
-	limit := 20
+	limit := 1000
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
@@ -386,7 +386,7 @@ func (this *Query) SelectByFieldOrdered(kind string, field string, value string,
 }
 
 func (this *Query) SelectByFieldAll(kind string, field string, value string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
-	limit := 20
+	limit := 1000
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
