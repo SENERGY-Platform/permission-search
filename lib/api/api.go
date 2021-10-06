@@ -39,8 +39,21 @@ func Start(ctx context.Context, config configuration.Config, query Query) (err e
 			err = errors.New(fmt.Sprint(r))
 		}
 	}()
+
+	timeout, err := time.ParseDuration(config.HttpServerTimeout)
+	if err != nil {
+		log.Println("WARNING: invalid http server timeout --> no timeouts\n", err)
+		err = nil
+	}
+
+	readtimeout, err := time.ParseDuration(config.HttpServerReadTimeout)
+	if err != nil {
+		log.Println("WARNING: invalid http server read timeout --> no timeouts\n", err)
+		err = nil
+	}
+
 	router := GetRouter(config, query)
-	server := &http.Server{Addr: ":" + config.ServerPort, Handler: router, WriteTimeout: 10 * time.Second, ReadTimeout: 2 * time.Second, ReadHeaderTimeout: 2 * time.Second}
+	server := &http.Server{Addr: ":" + config.ServerPort, Handler: router, WriteTimeout: timeout, ReadTimeout: readtimeout}
 	go func() {
 		log.Println("listening on ", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

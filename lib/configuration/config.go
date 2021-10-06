@@ -45,6 +45,9 @@ type ConfigStruct struct {
 	AnnotationResourceIndex map[string][]string       `json:"-"`
 
 	GroupId string `json:"group_id"`
+
+	HttpServerTimeout     string `json:"http_server_timeout"`
+	HttpServerReadTimeout string `json:"http_server_read_timeout"`
 }
 
 type Config = *ConfigStruct
