@@ -436,3 +436,19 @@ POST /_aliases
     ]
 }
 ```
+
+# Replay Permissions
+
+```
+# dry-run for everything
+./permission-search replay-permissions
+
+# run for everything
+./permission-search replay-permissions do
+
+# dry-run for devices
+./permission-search replay-permissions devices
+
+# run for devices and device-groups
+./permission-search replay-permissions do devices device-groups
+```

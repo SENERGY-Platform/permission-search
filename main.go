@@ -23,6 +23,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/replay"
 	"log"
 	"os"
 	"os/signal"
@@ -79,6 +80,9 @@ func HandleCli(config configuration.Config, args []string) error {
 		return errors.New("no command in args")
 	}
 	switch args[0] {
+	case "replay-permissions":
+		replay.ReplayPermissions(config, args[1:])
+		return nil
 	case "update-indexes":
 		resources := args[1:]
 		if len(resources) == 0 {
