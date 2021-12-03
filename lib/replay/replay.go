@@ -16,12 +16,10 @@ const DefaultBatchSize = 1000
 
 func ReplayPermissions(config configuration.Config, args []string) {
 	dryrun := false
-	if len(args) == 0 {
+	if len(args) == 0 || args[0] != "do" {
 		fmt.Println("Dry-Run; to execute use 'do' as the first argument (./permission-search replay-permissions do)")
 		dryrun = true
-	} else if args[0] != "do" {
-		fmt.Println("Dry-Run; to execute use 'do' as the first argument (./permission-search replay-permissions do)")
-		dryrun = true
+	} else {
 		args = args[1:]
 	}
 	topics := config.ResourceList
@@ -38,7 +36,7 @@ func ReplayPermissions(config configuration.Config, args []string) {
 	defer cancel()
 	var producer *kafka.Producer
 	if !dryrun {
-		producer, err = kafka.NewProducer(ctx, config.KafkaUrl, config.PermTopic, false)
+		producer, err = kafka.NewProducer(ctx, config.KafkaUrl, config.PermTopic, true)
 	}
 	if err != nil {
 		fmt.Println("ERROR:", err)
@@ -60,7 +58,7 @@ func ReplayPermissionsOfResourceKind(producer *kafka.Producer, client *elastic.C
 		}
 		fmt.Println(string(msg))
 		if producer != nil {
-			err = producer.Produce(command.Resource, msg)
+			err = producer.Produce(command.Resource+"_"+command.User+"_"+command.Group, msg)
 			if err != nil {
 				fmt.Println("ERROR:", err)
 				debug.PrintStack()
@@ -132,17 +130,14 @@ func GetEntries(client *elastic.Client, kind string, batchSize int) (entries cha
 	go func() {
 		defer close(entries)
 		for {
-			query := client.Search().Size(batchSize).Sort("resource", true)
+			query := client.Search().Index(kind).Version(true).Size(batchSize)
 			if lastId != "" {
 				query = query.SearchAfter(lastId)
 			}
-			resp, err := client.Search().Index(kind).Do(context.Background())
+			resp, err := query.Do(context.Background())
 			if err != nil {
 				fmt.Println("ERROR:", err)
 				debug.PrintStack()
-				return
-			}
-			if len(resp.Hits.Hits) == 0 {
 				return
 			}
 			for _, hit := range resp.Hits.Hits {
@@ -155,6 +150,9 @@ func GetEntries(client *elastic.Client, kind string, batchSize int) (entries cha
 				}
 				entries <- entry
 				lastId = entry.Resource
+			}
+			if len(resp.Hits.Hits) < batchSize {
+				return
 			}
 		}
 	}()
