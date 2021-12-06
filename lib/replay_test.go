@@ -18,6 +18,12 @@ func TestReplay(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	var initial = replay.DefaultBatchSize
+	replay.DefaultBatchSize = 3
+	defer func() {
+		replay.DefaultBatchSize = initial
+	}()
+
 	config, err := configuration.LoadConfig("./../config.json")
 	if err != nil {
 		t.Error(err)
@@ -50,7 +56,24 @@ func TestReplay(t *testing.T) {
 
 	t.Run("start server", startTestServer(config, confV1, ctx))
 
-	t.Run("add elements", testMappingAddElements(config))
+	t.Run("add elements", func(t *testing.T) {
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "device-types", true)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		t.Run("create dt1", createTestDeviceType(p, "dt1", "n1", "dc1"))
+		t.Run("create dt2", createTestDeviceType(p, "dt2", "n2", "dc2"))
+		t.Run("create dt3", createTestDeviceType(p, "dt3", "n3", "dc2"))
+		t.Run("create dt4", createTestDeviceType(p, "dt4", "n4", "dc2"))
+		t.Run("create dt5", createTestDeviceType(p, "dt5", "n5", "dc2"))
+		t.Run("create dt6", createTestDeviceType(p, "dt6", "n6", "dc2"))
+		t.Run("create dt7", createTestDeviceType(p, "dt7", "n7", "dc2"))
+		t.Run("create dt8", createTestDeviceType(p, "dt8", "n8", "dc2"))
+		t.Run("create dt9", createTestDeviceType(p, "dt9", "n9", "dc2"))
+		t.Run("create dt10", createTestDeviceType(p, "dt10", "n10", "dc2"))
+		t.Run("create dt11", createTestDeviceType(p, "dt11", "n11", "dc2"))
+	})
 
 	time.Sleep(5 * time.Second)
 

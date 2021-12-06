@@ -12,7 +12,7 @@ import (
 	"runtime/debug"
 )
 
-const DefaultBatchSize = 1000
+var DefaultBatchSize = 1000
 
 func ReplayPermissions(config configuration.Config, args []string) {
 	dryrun := false
@@ -130,7 +130,7 @@ func GetEntries(client *elastic.Client, kind string, batchSize int) (entries cha
 	go func() {
 		defer close(entries)
 		for {
-			query := client.Search().Index(kind).Version(true).Size(batchSize)
+			query := client.Search().Index(kind).Version(true).Size(batchSize).Sort("resource", true)
 			if lastId != "" {
 				query = query.SearchAfter(lastId)
 			}
