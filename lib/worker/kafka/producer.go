@@ -54,6 +54,7 @@ func NewProducer(ctx context.Context, bootstrapUrl string, topic string, debug b
 		Topic:       topic,
 		MaxAttempts: 10,
 		Logger:      logger,
+		BatchSize:   1,
 	}
 	go func() {
 		<-ctx.Done()

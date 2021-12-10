@@ -126,7 +126,7 @@ func GetCommands(client *elastic.Client, kind string, batchSize int) (commands c
 
 func GetEntries(client *elastic.Client, kind string, batchSize int) (entries chan model.Entry) {
 	lastId := ""
-	entries = make(chan model.Entry)
+	entries = make(chan model.Entry, batchSize)
 	go func() {
 		defer close(entries)
 		for {
