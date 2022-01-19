@@ -27,9 +27,17 @@ import (
 	"time"
 )
 
+const permissionsCommandErrorMsg = `ERROR: unable to handle permissions command
+	--> ignore message and commit to kafka to ensure continuing consumption
+	`
+
 func InitEventHandling(ctx context.Context, config configuration.Config, worker *Worker) (err error) {
 	err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId, config.PermTopic, func(msg []byte) error {
-		return worker.HandlePermissionCommand(msg)
+		err := worker.HandlePermissionCommand(msg)
+		if err != nil {
+			log.Println(permissionsCommandErrorMsg, err)
+		}
+		return nil
 	})
 	if err != nil {
 		return err
