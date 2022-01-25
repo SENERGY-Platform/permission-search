@@ -8,10 +8,13 @@ import (
 )
 
 func (this *Query) GetTermAggregation(kind string, user string, groups []string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+	if limit == 0 {
+		limit = 100
+	}
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	aggregate := elastic.NewTermsAggregation().Field(field)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Aggregation(field, aggregate).Size(limit).Do(ctx)
+	aggregate := elastic.NewTermsAggregation().Field(field).Size(limit)
+	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Aggregation(field, aggregate).Do(ctx)
 	if err != nil {
 		return result, err
 	}
