@@ -9,11 +9,12 @@ import (
 )
 
 type QueryMessage struct {
-	Resource      string         `json:"resource"`
-	Find          *QueryFind     `json:"find"`
-	ListIds       *QueryListIds  `json:"list_ids"`
-	CheckIds      *QueryCheckIds `json:"check_ids"`
-	TermAggregate *string        `json:"term_aggregate"`
+	Resource           string         `json:"resource"`
+	Find               *QueryFind     `json:"find"`
+	ListIds            *QueryListIds  `json:"list_ids"`
+	CheckIds           *QueryCheckIds `json:"check_ids"`
+	TermAggregate      *string        `json:"term_aggregate"`
+	TermAggregateLimit int            `json:"term_aggregate_limit"`
 }
 type QueryFind struct {
 	QueryListCommons

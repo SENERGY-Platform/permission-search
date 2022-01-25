@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -154,12 +155,16 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	router.GET("/v3/aggregates/term/:resource/:term", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		resource := params.ByName("resource")
 		term := params.ByName("term")
+		limit, err := strconv.Atoi(request.URL.Query().Get("limit"))
+		if err != nil {
+			limit = 100
+		}
 		token, err := auth.GetParsedToken(request)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := q.GetTermAggregation(resource, token.GetUserId(), token.GetRoles(), "r", term)
+		result, err := q.GetTermAggregation(resource, token.GetUserId(), token.GetRoles(), "r", term, limit)
 
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -270,7 +275,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 
 		if query.TermAggregate != nil {
-			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate)
+			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate, query.TermAggregateLimit)
 		}
 
 		if err != nil {

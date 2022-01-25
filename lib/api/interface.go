@@ -40,5 +40,5 @@ type Query interface {
 	Import(imports map[string][]model.ResourceRights) (err error)
 	Export() (exports map[string][]model.ResourceRights, err error)
 
-	GetTermAggregation(kind string, user string, groups []string, rights string, field string) (result []model.TermAggregationResultElement, err error)
+	GetTermAggregation(kind string, user string, groups []string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
 }

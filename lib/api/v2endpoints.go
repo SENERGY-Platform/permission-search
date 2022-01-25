@@ -225,7 +225,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 
 		if query.TermAggregate != nil {
-			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate)
+			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate, query.TermAggregateLimit)
 		}
 
 		if err != nil {

@@ -38,7 +38,7 @@ func TestTermAggregation(t *testing.T) {
 		groups := []string{"user"}
 		rights := "r"
 		field := "features.device_type_id"
-		result, err := q.GetTermAggregation(resource, user, groups, rights, field)
+		result, err := q.GetTermAggregation(resource, user, groups, rights, field, 1000)
 		if err != nil {
 			t.Error(err)
 			return
