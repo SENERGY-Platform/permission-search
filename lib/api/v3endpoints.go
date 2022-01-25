@@ -111,6 +111,61 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		json.NewEncoder(writer).Encode(result)
 	})
 
+	router.GET("/v3/total/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		resource := params.ByName("resource")
+
+		search := request.URL.Query().Get("search")
+		selection := request.URL.Query().Get("filter")
+
+		right := request.URL.Query().Get("rights")
+		if right == "" {
+			right = "r"
+		}
+
+		mode := ""
+		if search != "" {
+			mode = "search"
+		}
+		if selection != "" {
+			if mode != "" {
+				http.Error(writer, "the query parameters "+mode+" and 'select' may not be combined", http.StatusBadRequest)
+				return
+			}
+			mode = "selection"
+		}
+
+		token, err := auth.GetParsedToken(request)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var result interface{}
+
+		switch mode {
+		case "search":
+			result, err = q.SearchListTotal(resource, search, token.GetUserId(), token.GetRoles(), right)
+		case "selection":
+			selectionParts := strings.Split(selection, ":")
+			if len(selectionParts) < 2 {
+				http.Error(writer, "the query parameter 'select' expects a value like 'field_name:field_value'", http.StatusBadRequest)
+				return
+			}
+			field := selectionParts[0]
+			value := strings.Join(selectionParts[1:], ":")
+			result, err = q.SelectByFieldTotal(resource, field, value, token.GetUserId(), token.GetRoles(), right)
+		default:
+			result, err = q.GetListTotalForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), right)
+		}
+
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(writer).Encode(result)
+	})
+
 	router.HEAD("/v3/resources/:resource/:id", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		resource := params.ByName("resource")
 		id := params.ByName("id")

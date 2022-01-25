@@ -19,6 +19,7 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/api"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
@@ -27,6 +28,8 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 	"log"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"sync"
 	"time"
 
@@ -736,5 +739,25 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup) (config configuration.C
 		return config, q, w, err
 	}
 	w = worker.New(config, q)
+	return
+}
+
+func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
+	config, q, w, err = getTestEnv(ctx, wg)
+	if err != nil {
+		return config, q, w, err
+	}
+	server := httptest.NewServer(api.GetRouter(config, q))
+	serverUrl, err := url.Parse(server.URL)
+	if err != nil {
+		return config, q, w, err
+	}
+	wg.Add(1)
+	go func() {
+		<-ctx.Done()
+		server.Close()
+		wg.Done()
+	}()
+	config.ServerPort = serverUrl.Port()
 	return
 }

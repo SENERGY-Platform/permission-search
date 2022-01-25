@@ -61,7 +61,7 @@ func TestAnnotations(t *testing.T) {
 	})
 
 	t.Run("create devices", createTestDevices(ctx, config, "device1", "device2", "device3", "device4", "device5"))
-
+	time.Sleep(5 * time.Second)
 	t.Run("send connection state for device2 = connected", sendTestConnectionState(ctx, config, "device2", true))
 	t.Run("send connection state for device3 = connected", sendTestConnectionState(ctx, config, "device3", true))
 	t.Run("send connection state for device4 = disconnected", sendTestConnectionState(ctx, config, "device4", false))

@@ -41,4 +41,8 @@ type Query interface {
 	Export() (exports map[string][]model.ResourceRights, err error)
 
 	GetTermAggregation(kind string, user string, groups []string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+
+	SearchListTotal(resource string, search string, id string, roles []string, right string) (int64, error)
+	SelectByFieldTotal(resource string, field string, value string, id string, roles []string, right string) (int64, error)
+	GetListTotalForUserOrGroup(resource string, id string, roles []string, right string) (int64, error)
 }

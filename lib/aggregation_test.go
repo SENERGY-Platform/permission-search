@@ -79,7 +79,7 @@ func TestTermAggregationLimit(t *testing.T) {
 		for i := 0; i < 200; i++ {
 			dtId := "dt" + strconv.Itoa(i)
 			dId := "d" + strconv.Itoa(i)
-			t.Run("create device with"+dId, saveTestDevice(w, resource, dId, map[string]interface{}{"name": "find_d1_name", "device_type_id": dtId}))
+			t.Run("create device "+dId, saveTestDevice(w, resource, dId, map[string]interface{}{"name": "find_d1_name", "device_type_id": dtId}))
 		}
 	})
 
