@@ -19,7 +19,8 @@
 	"resources": {
         "concepts": {
             "features":[
-                {"Name": "name", "Path": "$.concept.name"}
+                {"Name": "name", "Path": "$.concept.name"},
+                {"Name": "base_characteristic_id", "Path": "$.concept.base_characteristic_id"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
@@ -150,12 +151,14 @@
     "elastic_mapping": {
         "concepts": {
             "features": {
-                "name":   {"type": "keyword", "copy_to": "feature_search"}
+                "name":   {"type": "keyword", "copy_to": "feature_search"},
+                "base_characteristic_id":   {"type": "keyword"}
             }
         },
         "characteristics": {
             "features": {
                 "name":                 {"type": "keyword", "copy_to": "feature_search"},
+                "display_unit":         {"type": "keyword"},
                 "concept_id":           {"type": "keyword"}
             }
         },
@@ -195,6 +198,7 @@
         "functions": {
             "features": {
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "display_unit": {"type": "keyword"},
                 "description":  {"type": "keyword"},
                 "rdf_type":     {"type": "keyword"},
                 "concept_id":   {"type": "keyword"}
