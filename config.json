@@ -26,6 +26,7 @@
         "characteristics": {
             "features":[
                 {"Name": "name", "Path": "$.characteristic.name"},
+                {"Name": "display_unit", "Path": "$.characteristic.display_unit"},
                 {"Name": "concept_id", "Path": "$.concept_id"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
@@ -93,6 +94,7 @@
         "functions":{
             "features":[
                 {"Name": "name", "Path": "$.function.name"},
+                {"Name": "display_name", "Path": "$.function.display_name"},
                 {"Name": "description", "Path": "$.function.description"},
                 {"Name": "rdf_type", "Path": "$.function.rdf_type"},
                 {"Name": "concept_id", "Path": "$.function.concept_id"}

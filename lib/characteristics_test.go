@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestReceiveFunction(t *testing.T) {
+func TestReceiveCharacteristic(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -23,7 +23,7 @@ func TestReceiveFunction(t *testing.T) {
 		return
 	}
 
-	resource := "functions"
+	resource := "characteristics"
 	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
 	if err != nil {
 		t.Error(err)
@@ -34,17 +34,15 @@ func TestReceiveFunction(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	functionMsg, functionCmd, err := getFunctionTestObj("function1", map[string]interface{}{
-		"name":         "function_name",
-		"display_name": "display",
-		"rdf_type":     "function_type",
-		"concept_id":   "concept_id_1",
+	characteristicMsg, characteristicCmd, err := getcharacteristicTestObj("characteristic1", map[string]interface{}{
+		"name":         "characteristic_name",
+		"display_unit": "display",
 	})
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = w.UpdateFeatures(resource, functionMsg, functionCmd)
+	err = w.UpdateFeatures(resource, characteristicMsg, characteristicCmd)
 	if err != nil {
 		t.Error(err)
 		return
@@ -52,16 +50,16 @@ func TestReceiveFunction(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	e, _, err := q.GetResourceEntry(resource, "function1")
+	e, _, err := q.GetResourceEntry(resource, "characteristic1")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if !reflect.DeepEqual(e.Features["name"], "function_name") {
+	if !reflect.DeepEqual(e.Features["name"], "characteristic_name") {
 		t.Error(e)
 		return
 	}
-	if !reflect.DeepEqual(e.Features["display_name"], "display") {
+	if !reflect.DeepEqual(e.Features["display_unit"], "display") {
 		t.Error(e)
 		return
 	}
@@ -81,30 +79,22 @@ func TestReceiveFunction(t *testing.T) {
 		t.Error(result)
 		return
 	}
-	if !reflect.DeepEqual(result[0]["name"], "function_name") {
+	if !reflect.DeepEqual(result[0]["name"], "characteristic_name") {
 		t.Error(result)
 		return
 	}
-	if !reflect.DeepEqual(result[0]["display_name"], "display") {
-		t.Error(result)
-		return
-	}
-	if !reflect.DeepEqual(result[0]["rdf_type"], "function_type") {
-		t.Error(result)
-		return
-	}
-	if !reflect.DeepEqual(result[0]["concept_id"], "concept_id_1") {
+	if !reflect.DeepEqual(result[0]["display_unit"], "display") {
 		t.Error(result)
 		return
 	}
 }
 
-func getFunctionTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
+func getcharacteristicTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
 	text := `{
 		"command": "PUT",
 		"id": "%s",
 		"owner": "testOwner",
-		"function": %s
+		"characteristic": %s
 	}`
 	dtStr, err := json.Marshal(obj)
 	if err != nil {
