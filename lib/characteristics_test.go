@@ -19,7 +19,7 @@ func TestReceiveCharacteristic(t *testing.T) {
 	defer cancel()
 	_, q, w, err := getTestEnv(ctx, wg)
 	if err != nil {
-		fmt.Println(err)
+		t.Error(err)
 		return
 	}
 
@@ -34,9 +34,44 @@ func TestReceiveCharacteristic(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	characteristicMsg, characteristicCmd, err := getcharacteristicTestObj("characteristic1", map[string]interface{}{
-		"name":         "characteristic_name",
-		"display_unit": "display",
+
+	characteristicMsg, characteristicCmd, err := getCharacteristicTestObj("characteristic0", map[string]interface{}{
+		"name":         "characteristic_name_0",
+		"display_unit": "display 0",
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, characteristicMsg, characteristicCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	characteristicMsg, characteristicCmd, err = getCharacteristicTestObj("characteristic1", map[string]interface{}{
+		"name":         "characteristic_name_1",
+		"display_unit": "display 1",
+		"min_value":    0,
+		"max_value":    100,
+		"value":        42,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, characteristicMsg, characteristicCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	characteristicMsg, characteristicCmd, err = getCharacteristicTestObj("characteristic2", map[string]interface{}{
+		"name":         "characteristic_name_2",
+		"display_unit": "display 2",
+		"min_value":    "a",
+		"max_value":    "x",
+		"value":        "foo",
 	})
 	if err != nil {
 		t.Error(err)
@@ -55,17 +90,29 @@ func TestReceiveCharacteristic(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if !reflect.DeepEqual(e.Features["name"], "characteristic_name") {
+	if !reflect.DeepEqual(e.Features["name"], "characteristic_name_1") {
 		t.Error(e)
 		return
 	}
-	if !reflect.DeepEqual(e.Features["display_unit"], "display") {
+	if !reflect.DeepEqual(e.Features["display_unit"], "display 1") {
 		t.Error(e)
 		return
 	}
 
+	if !reflect.DeepEqual(e.Features["raw"], map[string]interface{}{
+		"name":         "characteristic_name_1",
+		"display_unit": "display 1",
+		"min_value":    float64(0),
+		"max_value":    float64(100),
+		"value":        float64(42),
+	}) {
+		temp, _ := json.Marshal(e.Features["raw"])
+		t.Error(string(temp), "\n", e.Features["raw"])
+		return
+	}
+
 	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
-		Limit:    3,
+		Limit:    5,
 		Offset:   0,
 		Rights:   "r",
 		SortBy:   "name",
@@ -75,21 +122,68 @@ func TestReceiveCharacteristic(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if len(result) != 1 {
+	if len(result) != 3 {
 		t.Error(result)
 		return
 	}
-	if !reflect.DeepEqual(result[0]["name"], "characteristic_name") {
+
+	if !reflect.DeepEqual(result[0]["name"], "characteristic_name_0") {
 		t.Error(result)
 		return
 	}
-	if !reflect.DeepEqual(result[0]["display_unit"], "display") {
+	if !reflect.DeepEqual(result[0]["display_unit"], "display 0") {
 		t.Error(result)
+		return
+	}
+
+	if !reflect.DeepEqual(result[0]["raw"], map[string]interface{}{
+		"name":         "characteristic_name_0",
+		"display_unit": "display 0",
+	}) {
+		t.Error(result[0]["raw"])
+		return
+	}
+
+	if !reflect.DeepEqual(result[1]["name"], "characteristic_name_1") {
+		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[1]["display_unit"], "display 1") {
+		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[1]["raw"], map[string]interface{}{
+		"name":         "characteristic_name_1",
+		"display_unit": "display 1",
+		"min_value":    float64(0),
+		"max_value":    float64(100),
+		"value":        float64(42),
+	}) {
+		t.Error(result[1]["raw"])
+		return
+	}
+
+	if !reflect.DeepEqual(result[2]["name"], "characteristic_name_2") {
+		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[2]["display_unit"], "display 2") {
+		t.Error(result)
+		return
+	}
+	if !reflect.DeepEqual(result[2]["raw"], map[string]interface{}{
+		"name":         "characteristic_name_2",
+		"display_unit": "display 2",
+		"min_value":    "a",
+		"max_value":    "x",
+		"value":        "foo",
+	}) {
+		t.Error(result[2]["raw"])
 		return
 	}
 }
 
-func getcharacteristicTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
+func getCharacteristicTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
 	text := `{
 		"command": "PUT",
 		"id": "%s",
