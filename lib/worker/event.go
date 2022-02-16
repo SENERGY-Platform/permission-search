@@ -38,6 +38,8 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 			log.Println(permissionsCommandErrorMsg, err)
 		}
 		return nil
+	}, func(err error) {
+		config.HandleFatalError(err)
 	})
 	if err != nil {
 		return err
@@ -49,6 +51,8 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		f := worker.GetResourceCommandHandler(resource)
 		err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId, resource, func(msg []byte) error {
 			return f(msg)
+		}, func(err error) {
+			config.HandleFatalError(err)
 		})
 		if err != nil {
 			return err
@@ -61,6 +65,8 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		f := worker.GetAnnotationHandler(topic, resources)
 		err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId+"_annotation", topic, func(msg []byte) error {
 			return f(msg)
+		}, func(err error) {
+			config.HandleFatalError(err)
 		})
 		if err != nil {
 			return err

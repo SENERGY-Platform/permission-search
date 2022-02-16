@@ -17,7 +17,7 @@ func TestReceiveAspect(t *testing.T) {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, q, w, err := getTestEnv(ctx, wg)
+	_, q, w, err := getTestEnv(ctx, wg, t)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -35,8 +35,13 @@ func TestReceiveAspect(t *testing.T) {
 		return
 	}
 	aspectMsg, aspectCmd, err := getAspectTestObj("aspect1", map[string]interface{}{
-		"name":     "aspect_name",
-		"rdf_type": "aspect_type",
+		"name": "aspect_name",
+		"sub_aspects": []interface{}{
+			map[string]interface{}{
+				"name":        "sub",
+				"sub_aspects": []interface{}{},
+			},
+		},
 	})
 	if err != nil {
 		t.Error(err)

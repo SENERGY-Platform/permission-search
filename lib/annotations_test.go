@@ -22,6 +22,7 @@ func TestAnnotations(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.FatalErrHandler = t.Fatal
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)

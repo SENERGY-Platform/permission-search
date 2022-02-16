@@ -28,6 +28,7 @@ func TestApiV2(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.FatalErrHandler = t.Fatal
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)
@@ -308,6 +309,10 @@ func getTestAspectResult(id string) map[string]interface{} {
 			"r": true,
 			"w": true,
 			"x": true,
+		},
+		"raw": map[string]interface{}{
+			"name":     id + "_name",
+			"rdf_type": "aspect_type",
 		},
 		"permission_holders": map[string][]string{
 			"admin_users":   {"testOwner"},

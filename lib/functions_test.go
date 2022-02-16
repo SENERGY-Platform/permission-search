@@ -17,7 +17,7 @@ func TestReceiveFunction(t *testing.T) {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, q, w, err := getTestEnv(ctx, wg)
+	_, q, w, err := getTestEnv(ctx, wg, t)
 	if err != nil {
 		fmt.Println(err)
 		return

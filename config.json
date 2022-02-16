@@ -20,7 +20,8 @@
         "concepts": {
             "features":[
                 {"Name": "name", "Path": "$.concept.name"},
-                {"Name": "base_characteristic_id", "Path": "$.concept.base_characteristic_id"}
+                {"Name": "base_characteristic_id", "Path": "$.concept.base_characteristic_id"},
+                {"Name": "characteristic_ids", "Path": "$.concept.characteristic_ids"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
@@ -28,7 +29,6 @@
             "features":[
                 {"Name": "name", "Path": "$.characteristic.name"},
                 {"Name": "display_unit", "Path": "$.characteristic.display_unit"},
-                {"Name": "concept_id", "Path": "$.concept_id"},
                 {"Name": "raw", "Path": "$.characteristic"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
@@ -89,7 +89,8 @@
         },
         "aspects":{
             "features":[
-                {"Name": "name", "Path": "$.aspect.name"}
+                {"Name": "name", "Path": "$.aspect.name"},
+                {"Name": "raw", "Path": "$.aspect"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
@@ -153,14 +154,14 @@
         "concepts": {
             "features": {
                 "name":   {"type": "keyword", "copy_to": "feature_search"},
-                "base_characteristic_id":   {"type": "keyword"}
+                "base_characteristic_id":   {"type": "keyword"},
+                "characteristic_ids":   {"type": "keyword"}
             }
         },
         "characteristics": {
             "features": {
                 "name":                 {"type": "keyword", "copy_to": "feature_search"},
                 "display_unit":         {"type": "keyword"},
-                "concept_id":           {"type": "keyword"},
                 "raw": {
                     "type": "object",
                     "enabled": false
@@ -197,7 +198,11 @@
         },
         "aspects": {
             "features": {
-                "name":         {"type": "keyword", "copy_to": "feature_search"}
+                "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "raw": {
+                    "type": "object",
+                    "enabled": false
+                }
             }
         },
         "functions": {

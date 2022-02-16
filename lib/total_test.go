@@ -33,7 +33,7 @@ func TestTotal(t *testing.T) {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, _, w, err := getTestEnvWithApi(ctx, wg)
+	config, _, w, err := getTestEnvWithApi(ctx, wg, t)
 	if err != nil {
 		fmt.Println(err)
 		return

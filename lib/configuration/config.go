@@ -48,6 +48,16 @@ type ConfigStruct struct {
 
 	HttpServerTimeout     string `json:"http_server_timeout"`
 	HttpServerReadTimeout string `json:"http_server_read_timeout"`
+
+	FatalErrHandler func(v ...interface{}) `json:"-"`
+}
+
+func (this *ConfigStruct) HandleFatalError(v ...interface{}) {
+	if this.FatalErrHandler != nil {
+		this.FatalErrHandler(v...)
+	} else {
+		log.Fatal(v...)
+	}
 }
 
 type Config = *ConfigStruct

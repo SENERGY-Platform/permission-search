@@ -31,6 +31,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sync"
+	"testing"
 	"time"
 
 	"context"
@@ -45,7 +46,7 @@ func Example() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -177,7 +178,7 @@ func ExampleSearch() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -228,7 +229,7 @@ func ExampleDeleteFeatures() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -300,7 +301,7 @@ func ExampleGetRightsToAdministrate() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -344,7 +345,7 @@ func ExampleCheckUserOrGroup() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -406,7 +407,7 @@ func ExampleGetFullListForUserOrGroup() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -432,7 +433,7 @@ func ExampleGetListForUserOrGroup() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -474,7 +475,7 @@ func ExampleGetOrderedListForUserOrGroup() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -550,7 +551,7 @@ func ExampleSearchRightsToAdministrate() {
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg)
+	config, q, w, err := getTestEnv(ctx, wg, nil)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -724,10 +725,18 @@ func elasticsearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ip
 	return hostPort, container.Container.NetworkSettings.IPAddress, err
 }
 
-func getTestEnv(ctx context.Context, wg *sync.WaitGroup) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
+func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
 	config, err = configuration.LoadConfig("./../config.json")
 	if err != nil {
 		return config, q, w, err
+	}
+	if t != nil {
+		config.FatalErrHandler = t.Fatal
+	} else {
+		config.FatalErrHandler = func(v ...interface{}) {
+			log.Println(v...)
+			return
+		}
 	}
 	port, _, err := elasticsearch(ctx, wg)
 	if err != nil {
@@ -742,8 +751,8 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup) (config configuration.C
 	return
 }
 
-func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
-	config, q, w, err = getTestEnv(ctx, wg)
+func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
+	config, q, w, err = getTestEnv(ctx, wg, t)
 	if err != nil {
 		return config, q, w, err
 	}

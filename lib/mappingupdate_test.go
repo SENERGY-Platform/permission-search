@@ -28,6 +28,7 @@ func TestMappingUpdate(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.FatalErrHandler = t.Fatal
 	config.Debug = true
 
 	t.Run("start dependency containers", func(t *testing.T) {

@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic string, listener func(delivery []byte) error) error {
+func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic string, listener func(delivery []byte) error, errhandler func(err error)) error {
 	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
@@ -59,7 +59,8 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 					return
 				}
 				if err != nil {
-					log.Fatal("ERROR: while consuming topic ", topic, err)
+					log.Println("ERROR: while consuming topic ", topic, err)
+					errhandler(err)
 					return
 				}
 				err = listener(m.Value)
@@ -68,7 +69,8 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 				} else {
 					err = r.CommitMessages(ctx, m)
 					if err != nil {
-						log.Fatal("ERROR: while committing consumption ", topic, err)
+						log.Println("ERROR: while committing consumption ", topic, err)
+						errhandler(err)
 						return
 					}
 				}
