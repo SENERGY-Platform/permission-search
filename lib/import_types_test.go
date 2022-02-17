@@ -54,7 +54,7 @@ func TestImportTypes(t *testing.T) {
 				"default_value": 15.3,
 			},
 		},
-		"aspect_ids": []string{
+		"content_aspect_ids": []string{
 			"a1",
 			"a2",
 		},
@@ -71,7 +71,7 @@ func TestImportTypes(t *testing.T) {
 				},
 			},
 		},
-		"function_ids": []string{
+		"content_function_ids": []string{
 			"f1",
 			"f2",
 		},
@@ -111,7 +111,7 @@ func TestImportTypes(t *testing.T) {
 		"image":           "image",
 		"default_restart": true,
 		"creator":         "testOwner",
-		"function_ids": []interface{}{
+		"content_function_ids": []interface{}{
 			"f1",
 			"f2",
 		},
@@ -133,7 +133,7 @@ func TestImportTypes(t *testing.T) {
 			"read_users":    {"testOwner"},
 			"write_users":   {"testOwner"},
 		},
-		"aspect_ids": []interface{}{
+		"content_aspect_ids": []interface{}{
 			"a1",
 			"a2",
 		},

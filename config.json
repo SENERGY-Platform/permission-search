@@ -131,7 +131,9 @@
                 {"Name": "description", "Path": "$.import_type.description"},
                 {"Name": "image", "Path": "$.import_type.image"},
                 {"Name": "default_restart", "Path": "$.import_type.default_restart"},
-                {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions"}
+                {"Name": "aspect_functions", "Path": "$.import_type.aspect_functions"},
+                {"Name": "content_aspect_ids", "Path": "$.import_type.content_aspect_ids"},
+                {"Name": "content_function_ids", "Path": "$.import_type.content_function_ids"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": ""}
         },
@@ -259,7 +261,9 @@
                 "description":        {"type": "keyword"},
                 "image":              {"type": "keyword"},
                 "default_restart":    {"type": "boolean"},
-                "aspect_functions":   {"type": "keyword"}
+                "aspect_functions":   {"type": "keyword"},
+                "content_aspect_ids": {"type": "keyword"},
+                "content_function_ids": {"type": "keyword"}
             }
         },
         "locations":{
