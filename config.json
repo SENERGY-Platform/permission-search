@@ -83,7 +83,8 @@
                 {"Name": "image", "Path": "$.device_group.image"},
                 {"Name": "device_ids", "Path": "$.device_group.device_ids"},
                 {"Name": "criteria", "Path": "$.device_group.criteria"},
-                {"Name": "criteria_short", "Path": "$.device_group.criteria_short"}
+                {"Name": "criteria_short", "Path": "$.device_group.criteria_short"},
+                {"Name": "attributes", "Path": "$.device_group.attributes"}
             ],
             "initial_group_rights":{ "system": "rwxa" }
         },
@@ -187,7 +188,13 @@
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
                 "image":        {"type": "keyword"},
                 "device_ids":   {"type": "keyword"},
-                "criteria_short": {"type": "keyword"}
+                "criteria_short": {"type": "keyword"},
+                "attributes":{
+                    "properties":{
+                        "key":{"type":"keyword"},
+                        "value":{"type":"keyword"}
+                    }
+                }
             }
         },
         "device-classes": {

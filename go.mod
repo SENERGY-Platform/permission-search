@@ -1,6 +1,6 @@
 module github.com/SENERGY-Platform/permission-search
 
-go 1.17
+go 1.18
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.8.0 // indirect
-	github.com/olivere/elastic/v7 v7.0.27
+	github.com/olivere/elastic/v7 v7.0.32
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/samuel/go-zookeeper v0.0.0-20200724154423-2164a8ac840e // indirect
 	github.com/segmentio/kafka-go v0.4.15
