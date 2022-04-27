@@ -34,6 +34,7 @@ type ConfigStruct struct {
 
 	ElasticUrl     string                                       `json:"elastic_url"`
 	ElasticRetry   int64                                        `json:"elastic_retry"`
+	ElasticTimeout string                                       `json:"elastic_timeout"`
 	ElasticMapping map[string]map[string]map[string]interface{} `json:"elastic_mapping"`
 
 	JwtPubRsa string `json:"jwt_pub_rsa"`

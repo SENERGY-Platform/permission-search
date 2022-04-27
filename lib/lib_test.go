@@ -747,7 +747,10 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config c
 	if err != nil {
 		return config, q, w, err
 	}
-	w = worker.New(config, q)
+	w, err = worker.New(config, q)
+	if err != nil {
+		return config, q, w, err
+	}
 	return
 }
 

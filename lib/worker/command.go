@@ -79,7 +79,7 @@ func (this *Worker) DeleteGroupRight(kind string, resource string, group string)
 }
 
 func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.CommandWrapper) (err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	features, err := this.MsgToFeatures(kind, msg)
 	if err != nil {
 		return err

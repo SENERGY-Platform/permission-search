@@ -31,20 +31,31 @@ import (
 )
 
 type Query struct {
-	config configuration.Config
-	client *elastic.Client
+	config  configuration.Config
+	client  *elastic.Client
+	timeout time.Duration
 }
 
 func New(config configuration.Config) (result *Query, err error) {
+	timeout, err := time.ParseDuration(config.ElasticTimeout)
+	if err != nil {
+		return result, err
+	}
 	client, err := CreateElasticClient(config)
 	return &Query{
-		config: config,
-		client: client,
+		config:  config,
+		client:  client,
+		timeout: timeout,
 	}, err
 }
 
+func (this *Query) getTimeout() (ctx context.Context) {
+	ctx, _ = context.WithTimeout(context.Background(), this.timeout)
+	return ctx
+}
+
 func (this *Query) ResourceExists(kind string, resource string) (exists bool, err error) {
-	return this.resourceExists(context.Background(), kind, resource)
+	return this.resourceExists(this.getTimeout(), kind, resource)
 }
 
 func (this *Query) resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
@@ -104,7 +115,7 @@ func getRightsQuery(rights string, user string, groups []string) (result []elast
 }
 
 func (this *Query) GetRightsToAdministrate(kind string, user string, groups []string) (result []model.ResourceRights, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
@@ -122,7 +133,7 @@ func (this *Query) GetRightsToAdministrate(kind string, user string, groups []st
 }
 
 func (this *Query) CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", resource))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
@@ -133,7 +144,7 @@ func (this *Query) CheckUserOrGroup(kind string, resource string, user string, g
 
 func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error) {
 	allowed = map[string]bool{}
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	terms := []interface{}{}
 	for _, id := range ids {
 		terms = append(terms, id)
@@ -155,7 +166,7 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 }
 
 func (this *Query) GetListFromIds(kind string, ids []string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	terms := []interface{}{}
 	for _, id := range ids {
 		terms = append(terms, id)
@@ -177,7 +188,7 @@ func (this *Query) GetListFromIds(kind string, ids []string, user string, groups
 }
 
 func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	terms := []interface{}{}
 	for _, id := range ids {
 		terms = append(terms, id)
@@ -226,7 +237,7 @@ func (this *Query) GetListForUserOrGroup(kind string, user string, groups []stri
 }
 
 func (this *Query) getListForUserOrGroup(kind string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
@@ -244,7 +255,7 @@ func (this *Query) getListForUserOrGroup(kind string, user string, groups []stri
 }
 
 func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
 	if err != nil {
@@ -262,7 +273,7 @@ func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups
 }
 
 func (this *Query) GetListForUser(kind string, user string, rights string) (result []string, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, []string{})...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
@@ -280,7 +291,7 @@ func (this *Query) GetListForUser(kind string, user string, rights string) (resu
 }
 
 func (this *Query) CheckUser(kind string, resource string, user string, rights string) (err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, []string{}), elastic.NewTermQuery("resource", resource))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
@@ -290,7 +301,7 @@ func (this *Query) CheckUser(kind string, resource string, user string, rights s
 }
 
 func (this *Query) GetListForGroup(kind string, groups []string, rights string) (result []string, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, "", groups)...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
 	if err != nil {
@@ -308,7 +319,7 @@ func (this *Query) GetListForGroup(kind string, groups []string, rights string) 
 }
 
 func (this *Query) CheckGroups(kind string, resource string, groups []string, rights string) (err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, "", groups), elastic.NewTermQuery("resource", resource))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
@@ -335,7 +346,7 @@ func (this *Query) SearchRightsToAdministrate(kind string, user string, groups [
 	if err != nil {
 		return result, err
 	}
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
 	if err != nil {
@@ -368,7 +379,7 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 }
 
 func (this *Query) SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
 	if err != nil {
@@ -401,7 +412,7 @@ func (this *Query) SelectByFieldAll(kind string, field string, value string, use
 }
 
 func (this *Query) selectByField(kind string, field string, value string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
@@ -431,7 +442,7 @@ func (this *Query) SearchList(kind string, query string, user string, groups []s
 }
 
 func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
 	if err != nil {
@@ -449,7 +460,7 @@ func (this *Query) searchList(kind string, query string, user string, groups []s
 }
 
 func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
 	if err != nil {
@@ -467,7 +478,7 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 }
 
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx := this.getTimeout()
 	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
 	if err != nil {
 		return result, version, err
@@ -500,7 +511,7 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 }
 
 func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	//elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
 	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND")).Filter(selection)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
@@ -519,7 +530,7 @@ func (this *Query) SearchOrderedListWithSelection(kind string, query string, use
 }
 
 func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Filter(selection)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
 	if err != nil {
