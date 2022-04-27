@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 )
 
@@ -45,7 +46,7 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 		Topic:          topic,
 		MaxWait:        1 * time.Second,
 		Logger:         log.New(ioutil.Discard, "", 0),
-		ErrorLogger:    log.New(ioutil.Discard, "", 0),
+		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
 	})
 	go func() {
 		defer r.Close()
