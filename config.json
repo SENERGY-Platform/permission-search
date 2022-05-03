@@ -233,13 +233,12 @@
         "devices":{
             "features": {
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
-                "description":  {"type": "text",    "copy_to": "feature_search"},
                 "device_type_id":  {"type": "keyword"},
                 "local_id":     {"type": "keyword"},
                 "attributes":{
                     "properties":{
                         "key":{"type":"keyword"},
-                        "value":{"type":"keyword"}
+                        "value":{"type":"keyword", "copy_to": "feature_search"}
                     }
                 }
             },
