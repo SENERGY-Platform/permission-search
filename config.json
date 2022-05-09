@@ -48,6 +48,19 @@
 		"devices":{
             "features":[
                 {"Name": "name", "Path": "$.device.name"},
+                {
+                    "Name": "nickname",
+                    "Path": "$.device.attributes[?@.key==\"shared/nickname\"].value",
+                    "ResultListToFirstElement": true
+                },
+                {
+                    "Name": "display_name",
+                    "FirstOf": [
+                        "$.device.attributes[?@.key==\"shared/nickname\"].value",
+                        "$.device.name"
+                    ],
+                    "ResultListToFirstElement": true
+                },
                 {"Name": "device_type_id", "Path": "$.device.device_type_id"},
                 {"Name": "local_id", "Path": "$.device.local_id"},
                 {"Name": "attributes", "Path": "$.device.attributes"}
@@ -233,12 +246,17 @@
         "devices":{
             "features": {
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
+                "nickname":     {"type": "keyword", "copy_to": "feature_search"},
+                "display_name": {
+                    "type": "keyword",
+                    "normalizer": "sortable"
+                },
                 "device_type_id":  {"type": "keyword"},
                 "local_id":     {"type": "keyword"},
                 "attributes":{
                     "properties":{
                         "key":{"type":"keyword"},
-                        "value":{"type":"keyword", "copy_to": "feature_search"}
+                        "value":{"type":"keyword"}
                     }
                 }
             },

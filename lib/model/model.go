@@ -293,6 +293,15 @@ func CreateMapping(config configuration.Config, kind string) (result map[string]
 						"preserve_original": true,
 					},
 				},
+				"normalizer": map[string]interface{}{
+					"sortable": map[string]interface{}{
+						"type": "custom",
+						"filter": []string{
+							"lowercase",
+							"asciifolding",
+						},
+					},
+				},
 				"analyzer": map[string]interface{}{
 					"custom_analyzer": map[string]interface{}{
 						"type":      "custom",

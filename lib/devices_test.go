@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022 InfAI (CC SES)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package lib
 
 import (
@@ -7,10 +23,271 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestDeviceComplexPathAndAttribute(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, q, w, err := getTestEnv(ctx, wg, t)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	resource := "devices"
+	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	type Attribute struct {
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+		Origin string `json:"origin"`
+	}
+
+	type Device struct {
+		Id           string      `json:"id"`
+		LocalId      string      `json:"local_id"`
+		Name         string      `json:"name"`
+		Attributes   []Attribute `json:"attributes"`
+		DeviceTypeId string      `json:"device_type_id"`
+	}
+
+	deviceMsg, deviceCmd, err := getDeviceTestObj("device1", Device{
+		Id:         "device1",
+		Name:       "device1",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+
+	e, _, err := q.GetResourceEntry(resource, "device1")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(e.Features["name"], "device1") {
+		t.Error(e)
+		return
+	}
+	if !reflect.DeepEqual(e.Features["nickname"], nil) {
+		t.Error(e)
+		return
+	}
+	if !reflect.DeepEqual(e.Features["display_name"], "device1") {
+		t.Error(e)
+		return
+	}
+
+	deviceMsg, deviceCmd, err = getDeviceTestObj("device1", Device{
+		Id:   "device1",
+		Name: "device1",
+		Attributes: []Attribute{
+			{
+				Key:   "shared/nickname",
+				Value: "foobar",
+			},
+		},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+
+	e, _, err = q.GetResourceEntry(resource, "device1")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(e.Features["name"], "device1") {
+		t.Error(e)
+		return
+	}
+	if !reflect.DeepEqual(e.Features["nickname"], "foobar") {
+		t.Error(e.Features["nickname"])
+		t.Error(e.Features["display_name"])
+		return
+	}
+	if !reflect.DeepEqual(e.Features["display_name"], "foobar") {
+		t.Error(e)
+		return
+	}
+}
+
+func TestDeviceDisplayNameSort(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, q, w, err := getTestEnv(ctx, wg, t)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	resource := "devices"
+	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	type Attribute struct {
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+		Origin string `json:"origin"`
+	}
+
+	type Device struct {
+		Id           string      `json:"id"`
+		LocalId      string      `json:"local_id"`
+		Name         string      `json:"name"`
+		Attributes   []Attribute `json:"attributes"`
+		DeviceTypeId string      `json:"device_type_id"`
+	}
+
+	deviceMsg, deviceCmd, err := getDeviceTestObj("1", Device{
+		Id:         "1",
+		Name:       "z",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	deviceMsg, deviceCmd, err = getDeviceTestObj("2", Device{
+		Id:         "2",
+		Name:       "Z",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	deviceMsg, deviceCmd, err = getDeviceTestObj("3", Device{
+		Id:         "3",
+		Name:       "A",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	deviceMsg, deviceCmd, err = getDeviceTestObj("4", Device{
+		Id:         "4",
+		Name:       "a",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures(resource, deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	time.Sleep(2 * time.Second)
+
+	result, err := q.GetOrderedListForUserOrGroup("devices", "testOwner", nil, model.QueryListCommons{
+		Limit:    100,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "display_name",
+		SortDesc: false,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expectedNamesOrderCaseInsensitive := []string{"a", "a", "z", "z"}
+	if len(result) != len(expectedNamesOrderCaseInsensitive) {
+		t.Error(len(result))
+		return
+	}
+	for i, e := range result {
+		if strings.ToLower(e["display_name"].(string)) != expectedNamesOrderCaseInsensitive[i] {
+			t.Error(e["display_name"])
+			return
+		}
+	}
+
+	result, err = q.GetOrderedListForUserOrGroup("devices", "testOwner", nil, model.QueryListCommons{
+		Limit:    100,
+		Offset:   0,
+		Rights:   "r",
+		SortBy:   "display_name",
+		SortDesc: true,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expectedNamesOrderCaseInsensitive = []string{"z", "z", "a", "a"}
+	if len(result) != len(expectedNamesOrderCaseInsensitive) {
+		t.Error(len(result))
+		return
+	}
+	for i, e := range result {
+		if strings.ToLower(e["display_name"].(string)) != expectedNamesOrderCaseInsensitive[i] {
+			t.Error(e["display_name"])
+			return
+		}
+	}
+}
 
 func TestReceiveDevice(t *testing.T) {
 	wg := &sync.WaitGroup{}
