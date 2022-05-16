@@ -22,7 +22,8 @@
             "features":[
                 {"Name": "name", "Path": "$.concept.name"},
                 {"Name": "base_characteristic_id", "Path": "$.concept.base_characteristic_id"},
-                {"Name": "characteristic_ids", "Path": "$.concept.characteristic_ids"}
+                {"Name": "characteristic_ids", "Path": "$.concept.characteristic_ids"},
+                {"Name": "conversions", "Path": "$.concept.conversions"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
@@ -170,7 +171,11 @@
             "features": {
                 "name":   {"type": "keyword", "copy_to": "feature_search"},
                 "base_characteristic_id":   {"type": "keyword"},
-                "characteristic_ids":   {"type": "keyword"}
+                "characteristic_ids":   {"type": "keyword"},
+                "conversions": {
+                    "type": "object",
+                    "enabled": false
+                }
             }
         },
         "characteristics": {
