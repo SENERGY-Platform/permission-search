@@ -260,7 +260,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 		if config.Debug {
 			temp, _ := json.Marshal(query)
-			log.Println("DEBUG:", string(temp))
+			log.Println("DEBUG:", auth.GetAuthToken(request), "\n", string(temp))
 		}
 		var result interface{}
 		if query.Find != nil {
