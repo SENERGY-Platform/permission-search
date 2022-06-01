@@ -18,6 +18,15 @@
     "http_server_read_timeout": "3s",
 
 	"resources": {
+        "smart_service_releases": {
+            "features":[
+                {"Name": "name", "Path": "$.release.name"},
+                {"Name": "description", "Path": "$.release.description"},
+                {"Name": "design_id", "Path": "$.release.design_id"},
+                {"Name": "created_at", "Path": "$.release.created_at"}
+            ],
+            "initial_group_rights":{"admin": "rwxa"}
+        },
         "concepts": {
             "features":[
                 {"Name": "name", "Path": "$.concept.name"},
@@ -167,6 +176,14 @@
     "initial_group_rightsUpdate": "false",
 
     "elastic_mapping": {
+        "smart_service_releases": {
+            "features": {
+                "name":   {"type": "keyword", "copy_to": "feature_search"},
+                "description":   {"type": "keyword", "copy_to": "feature_search"},
+                "design_id":   {"type": "keyword"},
+                "created_at":   {"enabled": false}
+            }
+        },
         "concepts": {
             "features": {
                 "name":   {"type": "keyword", "copy_to": "feature_search"},
