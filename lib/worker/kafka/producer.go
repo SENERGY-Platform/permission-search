@@ -54,7 +54,9 @@ func NewProducer(ctx context.Context, bootstrapUrl string, topic string, debug b
 		Topic:       topic,
 		MaxAttempts: 10,
 		Logger:      logger,
+		Async:       false,
 		BatchSize:   1,
+		Balancer:    &kafka.Hash{},
 	}
 	go func() {
 		<-ctx.Done()
