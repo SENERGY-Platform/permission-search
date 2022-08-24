@@ -255,6 +255,10 @@ func createTestAspect(p *k.Producer, id string) func(t *testing.T) {
 }
 
 func testRequest(config configuration.Config, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
+	return testRequestWithToken(config, testtoken, method, path, body, expectedStatusCode, expected)
+}
+
+func testRequestWithToken(config configuration.Config, token string, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
 	return func(t *testing.T) {
 		var requestBody io.Reader
 		if body != nil {
@@ -272,7 +276,7 @@ func testRequest(config configuration.Config, method string, path string, body i
 			t.Error(err)
 			return
 		}
-		req.Header.Set("Authorization", testtoken)
+		req.Header.Set("Authorization", token)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Error(err)

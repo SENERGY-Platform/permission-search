@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -73,17 +74,17 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, "access denied", http.StatusUnauthorized)
 			return
 		}
-		list, err := q.GetResource(kind, resource)
+		rights, err := q.GetResourceRights(kind, resource)
+		if err == query.ErrNotFound {
+			http.Error(res, "404", http.StatusNotFound)
+			return
+		}
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if len(list) == 0 {
-			http.Error(res, "404", http.StatusNotFound)
-			return
-		}
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(res).Encode(list[0])
+		json.NewEncoder(res).Encode(rights)
 	})
 
 	router.GET("/administrate/rights/:resource_kind/query/:query/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -328,12 +329,12 @@ func (this *Query) CheckGroups(kind string, resource string, groups []string, ri
 	return
 }
 
-func (this *Query) GetResource(kind string, resource string) (result []model.ResourceRights, err error) {
+func (this *Query) GetResourceRights(kind string, resource string) (result model.ResourceRights, err error) {
 	entry, _, err := this.GetResourceEntry(kind, resource)
 	if err != nil {
 		return result, err
 	}
-	result = []model.ResourceRights{entry.ToResourceRights()}
+	result = entry.ToResourceRights()
 	return
 }
 
@@ -477,14 +478,24 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 	return
 }
 
+var ErrNotFound = errors.New("not found")
+
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
 	ctx := this.getTimeout()
 	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
+	if elasticErr, ok := err.(*elastic.Error); ok {
+		if elasticErr.Status == http.StatusNotFound {
+			return result, version, ErrNotFound
+		}
+	}
 	if err != nil {
 		return result, version, err
 	}
 	version.PrimaryTerm = *resp.PrimaryTerm
 	version.SeqNo = *resp.SeqNo
+	if resp.Source == nil {
+		return result, version, ErrNotFound
+	}
 	err = json.Unmarshal(resp.Source, &result)
 	return
 }

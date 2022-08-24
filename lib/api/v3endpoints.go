@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -42,22 +43,24 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
-			log.Println("access denied", err)
-			http.Error(res, "access denied", http.StatusUnauthorized)
+		if !token.IsAdmin() {
+			if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
+				log.Println("access denied", err)
+				http.Error(res, "access denied", http.StatusUnauthorized)
+				return
+			}
+		}
+		rights, err := q.GetResourceRights(resource, id)
+		if err == query.ErrNotFound {
+			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
-		list, err := q.GetResource(resource, id)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if len(list) == 0 {
-			http.Error(res, "404", http.StatusNotFound)
-			return
-		}
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(res).Encode(list[0])
+		json.NewEncoder(res).Encode(rights)
 	})
 
 	router.GET("/v3/resources/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {

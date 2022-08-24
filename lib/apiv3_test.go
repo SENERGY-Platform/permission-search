@@ -18,6 +18,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"strconv"
@@ -214,4 +215,16 @@ func TestApiV3(t *testing.T) {
 		"aspect2": true,
 		"aspect3": true,
 	}))
+
+	expectedRights := map[string]interface{}{}
+	json.Unmarshal([]byte(`{"creator":"testOwner","features":{"name":"aspect2_name","raw":{"name":"aspect2_name","rdf_type":"aspect_type"}},"group_rights":{"admin":{"administrate":true,"execute":true,"read":true,"write":true},"user":{"administrate":false,"execute":true,"read":true,"write":false}},"resource_id":"aspect2","user_rights":{"testOwner":{"administrate":true,"execute":true,"read":true,"write":true}}}`),
+		&expectedRights)
+	t.Run("get aspect2 rights", testRequest(config, "GET", "/v3/administrate/rights/aspects/aspect2", nil, 200, expectedRights))
+
+	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 401, nil))
+
+	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 401, nil))
+
+	t.Run("get rights of unknown with admin", testRequestWithToken(config, admintoken, "GET", "/v3/administrate/rights/aspects/unknown", nil, 404, nil))
+
 }

@@ -27,7 +27,7 @@ import (
 	elastic "github.com/olivere/elastic/v7"
 )
 
-func (this Query) GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error) {
+func (this *Query) GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error) {
 	if len(selection.And) > 0 {
 		and := []elastic.Query{}
 		for _, sub := range selection.And {
@@ -63,7 +63,7 @@ func (this Query) GetFilter(token auth.Token, selection model.Selection) (result
 	return this.GetConditionFilter(token, selection.Condition)
 }
 
-func (this Query) GetConditionFilter(token auth.Token, condition model.ConditionConfig) (elastic.Query, error) {
+func (this *Query) GetConditionFilter(token auth.Token, condition model.ConditionConfig) (elastic.Query, error) {
 	if condition.Feature == "id" {
 		condition.Feature = "_id"
 	}

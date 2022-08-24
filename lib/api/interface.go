@@ -41,7 +41,7 @@ type Query interface {
 	//v3
 	CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error)
 	CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error)
-	GetResource(kind string, resource string) (result []model.ResourceRights, err error)
+	GetResourceRights(kind string, resource string) (result model.ResourceRights, err error)
 	GetOrderedListForUserOrGroup(kind string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
 	SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
 	GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
