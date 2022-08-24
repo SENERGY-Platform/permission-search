@@ -59,7 +59,7 @@ func Example() {
 	//<nil> foo1
 	//<nil> foo2
 	//<nil> zway
-	//elastic: Error 404 (Not Found)
+	//not found
 }
 
 func example(w *worker.Worker, q *query.Query) {
@@ -215,7 +215,7 @@ func ExampleSearch() {
 	//<nil> foo1
 	//<nil> foo2
 	//<nil> zway
-	//elastic: Error 404 (Not Found)
+	//not found
 	//<nil>
 	//foo1
 	//foo2

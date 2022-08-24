@@ -19,6 +19,7 @@ package worker
 import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"runtime/debug"
 
 	"log"
@@ -26,26 +27,52 @@ import (
 
 func (this *Worker) SetUserRight(kind string, resource string, user string, rights string) (err error) {
 	ctx := context.Background()
-	entry, version, err := this.query.GetResourceEntry(kind, resource)
+	exists, err := this.query.ResourceExists(kind, resource)
 	if err != nil {
 		return err
 	}
-	entry.RemoveUserRights(user)
-	entry.AddUserRights(user, rights)
-	_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-	return
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(kind, resource)
+		if err == query.ErrNotFound {
+			log.Println("WARNING: received rights command for none existing resource", kind, resource)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		entry.RemoveUserRights(user)
+		entry.AddUserRights(user, rights)
+		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		return err
+	} else {
+		log.Println("WARNING: received rights command for none existing resource", kind, resource)
+	}
+	return nil
 }
 
 func (this *Worker) SetGroupRight(kind string, resource string, group string, rights string) (err error) {
 	ctx := context.Background()
-	entry, version, err := this.query.GetResourceEntry(kind, resource)
+	exists, err := this.query.ResourceExists(kind, resource)
 	if err != nil {
 		return err
 	}
-	entry.RemoveGroupRights(group)
-	entry.AddGroupRights(group, rights)
-	_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-	return
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(kind, resource)
+		if err == query.ErrNotFound {
+			log.Println("WARNING: received rights command for none existing resource", kind, resource)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		entry.RemoveGroupRights(group)
+		entry.AddGroupRights(group, rights)
+		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		return err
+	} else {
+		log.Println("WARNING: received rights command for none existing resource", kind, resource)
+	}
+	return nil
 }
 
 func (this *Worker) DeleteUserRight(kind string, resource string, user string) (err error) {
@@ -56,26 +83,45 @@ func (this *Worker) DeleteUserRight(kind string, resource string, user string) (
 	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, resource)
+		if err == query.ErrNotFound {
+			log.Println("WARNING: received rights command for none existing resource", kind, resource)
+			return nil
+		}
 		if err != nil {
 			return err
 		}
 		entry.RemoveUserRights(user)
 		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 		return err
+	} else {
+		log.Println("WARNING: received rights command for none existing resource", kind, resource)
 	}
 	return nil
 }
 
 func (this *Worker) DeleteGroupRight(kind string, resource string, group string) (err error) {
 	ctx := context.Background()
-	entry, version, err := this.query.GetResourceEntry(kind, resource)
+	exists, err := this.query.ResourceExists(kind, resource)
 	if err != nil {
-		debug.PrintStack()
 		return err
 	}
-	entry.RemoveGroupRights(group)
-	_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-	return
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(kind, resource)
+		if err == query.ErrNotFound {
+			log.Println("WARNING: received rights command for none existing resource", kind, resource)
+			return nil
+		}
+		if err != nil {
+			debug.PrintStack()
+			return err
+		}
+		entry.RemoveGroupRights(group)
+		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		return err
+	} else {
+		log.Println("WARNING: received rights command for none existing resource", kind, resource)
+	}
+	return nil
 }
 
 func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.CommandWrapper) (err error) {
