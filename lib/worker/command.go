@@ -18,6 +18,8 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"runtime/debug"
@@ -156,7 +158,46 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		}
 	}
 	return nil
+}
 
+func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandWrapper) (err error) {
+	ctx := this.getTimeout()
+	rights, err := this.MsgToRights(msg)
+	if err != nil {
+		return err
+	}
+	if rights == nil {
+		log.Println("WARNING: received rights command without new rights")
+		return nil
+	}
+	exists, err := this.query.ResourceExists(kind, command.Id)
+	if err != nil {
+		return err
+	}
+	if exists {
+		entry, version, err := this.query.GetResourceEntry(kind, command.Id)
+		if err != nil {
+			return err
+		}
+		entry.AdminUsers = []string{}
+		entry.AdminGroups = []string{}
+		entry.ReadUsers = []string{}
+		entry.ReadGroups = []string{}
+		entry.WriteUsers = []string{}
+		entry.WriteGroups = []string{}
+		entry.ExecuteUsers = []string{}
+		entry.ExecuteGroups = []string{}
+		entry.SetResourceRights(*rights)
+
+		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
+			entry.Creator = entry.AdminUsers[0]
+		}
+		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (err error) {
@@ -170,4 +211,16 @@ func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (e
 		_, err = this.query.GetClient().Delete().Index(kind).Id(command.Id).Do(ctx)
 	}
 	return
+}
+
+func (this *Worker) MsgToRights(msg []byte) (result *model.ResourceRightsBase, err error) {
+	command := model.CommandWithRights{}
+	err = json.Unmarshal(msg, &command)
+	if err != nil {
+		return nil, err
+	}
+	if command.Command != "RIGHTS" {
+		return nil, errors.New("MsgToRights() expects Command=='RIGHTS'")
+	}
+	return command.Rights, nil
 }

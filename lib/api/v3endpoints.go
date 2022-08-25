@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -33,8 +34,7 @@ func init() {
 	endpoints = append(endpoints, V3Endpoints)
 }
 
-func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query) {
-
+func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query, p *rigthsproducer.Producer) bool {
 	router.GET("/v3/administrate/rights/:resource/:id", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		resource := ps.ByName("resource")
 		id := ps.ByName("id")
@@ -365,5 +365,5 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})
-
+	return true
 }

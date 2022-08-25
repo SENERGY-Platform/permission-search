@@ -108,12 +108,27 @@ type CommandWrapper struct {
 	Owner   string `json:"owner"`
 }
 
+//RIGHTS commands are expected to be produced in the same partition as PUT and DELETE commands for the same resource/id
+//but the kafka.key has to be different from the keys used by PUT/DELETE commands, to ensure separate compaction between PUT/DELETE commands
+//this can be achieved by using a custom Balancer with the kafka producer. an example can be seen with kafka.KeySeparationBalancer and NewProducerWithKeySeparationBalancer()
+//if the NewProducerWithKeySeparationBalancer() is used a PUT key would be for example 'my-device-id' and the RIGHTS key would be 'my-device-id/rights'
+
+type CommandWithRights struct {
+	Command string              `json:"command"`
+	Id      string              `json:"id"`
+	Rights  *ResourceRightsBase `json:"rights"`
+}
+
+type ResourceRightsBase struct {
+	UserRights  map[string]Right `json:"user_rights"`
+	GroupRights map[string]Right `json:"group_rights"`
+}
+
 type ResourceRights struct {
-	ResourceId  string                 `json:"resource_id"`
-	Features    map[string]interface{} `json:"features"`
-	UserRights  map[string]Right       `json:"user_rights"`
-	GroupRights map[string]Right       `json:"group_rights"`
-	Creator     string                 `json:"creator"`
+	ResourceRightsBase
+	ResourceId string                 `json:"resource_id"`
+	Features   map[string]interface{} `json:"features"`
+	Creator    string                 `json:"creator"`
 }
 
 type Right struct {
@@ -138,7 +153,7 @@ type Entry struct {
 	Creator       string                 `json:"creator"`
 }
 
-func (this *Entry) SetResourceRights(rights ResourceRights) {
+func (this *Entry) SetResourceRights(rights ResourceRightsBase) {
 	for group, right := range rights.GroupRights {
 		if right.Administrate {
 			this.AdminGroups = append(this.AdminGroups, group)

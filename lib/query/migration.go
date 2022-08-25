@@ -37,7 +37,7 @@ func (this *Query) Import(imports map[string][]model.ResourceRights) (err error)
 func (this *Query) ImportResource(kind string, resource model.ResourceRights) (err error) {
 	ctx := context.Background()
 	entry := model.Entry{Resource: resource.ResourceId, Features: resource.Features, Creator: resource.Creator}
-	entry.SetResourceRights(resource)
+	entry.SetResourceRights(resource.ResourceRightsBase)
 	_, err = this.client.Index().Index(kind).Id(resource.ResourceId).BodyJson(entry).Do(ctx)
 	return
 }

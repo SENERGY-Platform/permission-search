@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/api"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 )
 
@@ -29,6 +30,7 @@ type Mode string
 
 const (
 	Query      Mode = "query"
+	Command    Mode = "command"
 	Worker     Mode = "worker"
 	Standalone Mode = "standalone"
 )
@@ -37,6 +39,8 @@ func GetMode(s string) (mode Mode, err error) {
 	switch Mode(s) {
 	case Query:
 		return Query, nil
+	case Command:
+		return Command, nil
 	case Worker:
 		return Worker, nil
 	case Standalone:
@@ -47,37 +51,46 @@ func GetMode(s string) (mode Mode, err error) {
 }
 
 func Start(parentctx context.Context, config configuration.Config, mode Mode) (err error) {
-	_, _, err = StartGetComponents(parentctx, config, mode)
+	_, _, _, err = StartGetComponents(parentctx, config, mode)
 	return
 }
 
-func StartGetComponents(parentctx context.Context, config configuration.Config, mode Mode) (q *query.Query, w *worker.Worker, err error) {
+func StartGetComponents(parentctx context.Context, config configuration.Config, mode Mode) (q *query.Query, p *rigthsproducer.Producer, w *worker.Worker, err error) {
 	ctx, cancel := context.WithCancel(parentctx)
 	defer func() {
 		if err != nil {
 			cancel()
 		}
 	}()
+
 	q, err = query.New(config)
 	if err != nil {
-		return q, w, err
+		return q, p, w, err
 	}
-	if mode == Query || mode == Standalone {
-		err = api.Start(ctx, config, q)
+
+	if mode == Command || mode == Standalone {
+		p, err = rigthsproducer.New(ctx, config)
 		if err != nil {
-			return q, w, err
+			return q, p, w, err
+		}
+	}
+
+	if mode == Query || mode == Command || mode == Standalone {
+		err = api.Start(ctx, config, q, p)
+		if err != nil {
+			return q, p, w, err
 		}
 	}
 
 	if mode == Worker || mode == Standalone {
 		w, err = worker.New(config, q)
 		if err != nil {
-			return q, w, err
+			return q, p, w, err
 		}
 		err = worker.InitEventHandling(ctx, config, w)
 		if err != nil {
-			return q, w, err
+			return q, p, w, err
 		}
 	}
-	return q, w, nil
+	return q, p, w, nil
 }

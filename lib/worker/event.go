@@ -112,6 +112,12 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 			return
 		}
 		switch command.Command {
+		case "RIGHTS":
+			//RIGHTS commands are expected to be produced in the same partition as PUT and DELETE commands for the same resource/id
+			//but the kafka.key has to be different from the keys used by PUT/DELETE commands, to ensure separate compaction between PUT/DELETE commands
+			//this can be achieved by using a custom Balancer with the kafka producer. an example can be seen with kafka.KeySeparationBalancer and NewProducerWithKeySeparationBalancer()
+			//if the NewProducerWithKeySeparationBalancer() is used a PUT key would be for example 'my-device-id' and the RIGHTS key would be 'my-device-id/rights'
+			return this.UpdateRights(resourceName, msg, command)
 		case "PUT":
 			return this.UpdateFeatures(resourceName, msg, command)
 		case "DELETE":

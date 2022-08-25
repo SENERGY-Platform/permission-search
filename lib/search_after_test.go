@@ -74,7 +74,7 @@ func TestSearchAfter(t *testing.T) {
 			return
 		}
 		config.ServerPort = strconv.Itoa(freePort)
-		_, w, err = StartGetComponents(ctx, config, Standalone)
+		_, _, w, err = StartGetComponents(ctx, config, Standalone)
 		if err != nil {
 			t.Error(err)
 			return

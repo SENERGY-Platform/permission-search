@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api/util"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -31,9 +32,9 @@ import (
 	"time"
 )
 
-var endpoints = []func(router *httprouter.Router, config configuration.Config, query Query){}
+var endpoints = []func(router *httprouter.Router, config configuration.Config, query Query, p *rigthsproducer.Producer) bool{}
 
-func Start(ctx context.Context, config configuration.Config, query Query) (err error) {
+func Start(ctx context.Context, config configuration.Config, query Query, p *rigthsproducer.Producer) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(fmt.Sprint(r))
@@ -52,7 +53,7 @@ func Start(ctx context.Context, config configuration.Config, query Query) (err e
 		err = nil
 	}
 
-	router := GetRouter(config, query)
+	router := GetRouter(config, query, p)
 	server := &http.Server{Addr: ":" + config.ServerPort, Handler: router, WriteTimeout: timeout, ReadTimeout: readtimeout}
 	go func() {
 		log.Println("listening on ", server.Addr)
@@ -68,11 +69,13 @@ func Start(ctx context.Context, config configuration.Config, query Query) (err e
 	return
 }
 
-func GetRouter(config configuration.Config, query Query) http.Handler {
+func GetRouter(config configuration.Config, query Query, p *rigthsproducer.Producer) http.Handler {
 	router := httprouter.New()
 	for _, e := range endpoints {
-		log.Println("add endpoint: " + runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
-		e(router, config, query)
+		if e(router, config, query, p) {
+			log.Println("added endpoint: " + runtime.FuncForPC(reflect.ValueOf(e).Pointer()).Name())
+		}
+
 	}
 	handler := util.NewCors(router)
 	handler = util.NewLogger(handler)

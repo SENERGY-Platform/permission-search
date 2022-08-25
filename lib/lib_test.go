@@ -759,7 +759,7 @@ func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (c
 	if err != nil {
 		return config, q, w, err
 	}
-	server := httptest.NewServer(api.GetRouter(config, q))
+	server := httptest.NewServer(api.GetRouter(config, q, nil))
 	serverUrl, err := url.Parse(server.URL)
 	if err != nil {
 		return config, q, w, err

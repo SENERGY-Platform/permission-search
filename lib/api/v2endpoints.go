@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -31,8 +32,7 @@ func init() {
 	endpoints = append(endpoints, V2Endpoints)
 }
 
-func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query) {
-
+func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query, p *rigthsproducer.Producer) bool {
 	router.GET("/v2/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		resource := params.ByName("resource")
 
@@ -257,5 +257,5 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})
-
+	return true
 }
