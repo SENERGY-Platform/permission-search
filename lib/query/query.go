@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -613,7 +614,11 @@ func getEntryResult(entry model.Entry, user string, groups []string) map[string]
 	}
 	result["permissions"] = getPermissions(entry, user, groups)
 	result["shared"] = getSharedState(user, entry)
-	if contains(entry.AdminUsers, user) {
+	sort.Strings(entry.AdminUsers)
+	sort.Strings(entry.ReadUsers)
+	sort.Strings(entry.WriteUsers)
+	sort.Strings(entry.ExecuteUsers)
+	if contains(entry.AdminUsers, user) || hasAdminGroup(entry, groups) {
 		permissionHolders := map[string][]string{
 			"admin_users":   entry.AdminUsers,
 			"read_users":    entry.ReadUsers,
@@ -624,6 +629,15 @@ func getEntryResult(entry model.Entry, user string, groups []string) map[string]
 	}
 
 	return result
+}
+
+func hasAdminGroup(entry model.Entry, groups []string) bool {
+	for _, group := range groups {
+		if contains(entry.AdminGroups, group) {
+			return true
+		}
+	}
+	return false
 }
 
 func setPaginationAndSort(query *elastic.SearchService, queryCommons model.QueryListCommons) *elastic.SearchService {

@@ -46,7 +46,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if !token.IsAdmin() {
 			if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
 				log.Println("access denied", err)
-				http.Error(res, "access denied", http.StatusUnauthorized)
+				http.Error(res, "access denied", http.StatusForbidden)
 				return
 			}
 		}
@@ -199,7 +199,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 		err = q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), right)
 		if err != nil {
-			http.Error(writer, "access denied: "+err.Error(), http.StatusUnauthorized)
+			http.Error(writer, "access denied: "+err.Error(), http.StatusForbidden)
 			return
 		}
 		writer.WriteHeader(200)

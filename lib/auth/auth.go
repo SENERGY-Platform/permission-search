@@ -65,7 +65,7 @@ func parse(token string) (claims Token, err error) {
 }
 
 func (this *Token) IsAdmin() bool {
-	return contains(this.GetRoles(), "admin")
+	return this.HasRole("admin")
 }
 
 func (this *Token) GetUserId() string {
@@ -74,6 +74,10 @@ func (this *Token) GetUserId() string {
 
 func (this *Token) GetRoles() []string {
 	return this.RealmAccess["roles"]
+}
+
+func (this *Token) HasRole(role string) bool {
+	return contains(this.GetRoles(), role)
 }
 
 func contains(s []string, e string) bool {

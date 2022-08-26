@@ -48,6 +48,7 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 		Logger:         log.New(ioutil.Discard, "", 0),
 		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
 	})
+
 	go func() {
 		defer r.Close()
 		defer log.Println("close consumer for topic ", topic)

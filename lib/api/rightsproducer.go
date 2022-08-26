@@ -18,6 +18,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
@@ -53,11 +54,11 @@ func RightsProducerEndpoints(router *httprouter.Router, config configuration.Con
 		if !token.IsAdmin() {
 			if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
 				log.Println("access denied", err)
-				http.Error(res, "access denied", http.StatusUnauthorized)
+				http.Error(res, "access denied", http.StatusForbidden)
 				return
 			}
-			if !rights.UserRights[token.GetUserId()].Administrate {
-				http.Error(res, "user may not remove his own admin rights", http.StatusBadRequest)
+			if err = invalidAdminRemoval(rights, token); err != nil {
+				http.Error(res, err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
@@ -71,4 +72,28 @@ func RightsProducerEndpoints(router *httprouter.Router, config configuration.Con
 	})
 
 	return true
+}
+
+func invalidAdminRemoval(rights model.ResourceRightsBase, token auth.Token) error {
+	if rights.UserRights[token.GetUserId()].Administrate {
+		return nil
+	}
+	adminByGroup := false
+	for group, right := range rights.GroupRights {
+		if right.Administrate && token.HasRole(group) {
+			adminByGroup = true
+			break
+		}
+	}
+	if !adminByGroup {
+		return errors.New("user may not remove his own admin ability")
+	}
+
+	for _, right := range rights.UserRights {
+		if right.Administrate {
+			return nil //at least one admin user is kept
+		}
+	}
+
+	return errors.New("at least one admin user has to be kept")
 }

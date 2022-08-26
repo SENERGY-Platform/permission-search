@@ -221,9 +221,9 @@ func TestApiV3(t *testing.T) {
 		&expectedRights)
 	t.Run("get aspect2 rights", testRequest(config, "GET", "/v3/administrate/rights/aspects/aspect2", nil, 200, expectedRights))
 
-	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 401, nil))
+	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 403, nil))
 
-	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 401, nil))
+	t.Run("get rights of unknown", testRequest(config, "GET", "/v3/administrate/rights/aspects/unknown", nil, 403, nil))
 
 	t.Run("get rights of unknown with admin", testRequestWithToken(config, admintoken, "GET", "/v3/administrate/rights/aspects/unknown", nil, 404, nil))
 

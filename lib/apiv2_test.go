@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -319,7 +320,12 @@ func testRequestWithToken(config configuration.Config, token string, method stri
 }
 
 func getTestAspectResult(id string) map[string]interface{} {
+	return getTestAspectResultWithPermissionHolders(id, []string{"testOwner"}, false)
+}
+
+func getTestAspectResultWithPermissionHolders(id string, userList []string, shared bool) map[string]interface{} {
 	//map[creator:testOwner id:aaspect name:aaspect_name permissions:map[a:true r:true w:true x:true] shared:false
+	sort.Strings(userList)
 	return map[string]interface{}{
 		"creator": "testOwner",
 		"id":      id,
@@ -335,11 +341,11 @@ func getTestAspectResult(id string) map[string]interface{} {
 			"rdf_type": "aspect_type",
 		},
 		"permission_holders": map[string][]string{
-			"admin_users":   {"testOwner"},
-			"execute_users": {"testOwner"},
-			"read_users":    {"testOwner"},
-			"write_users":   {"testOwner"},
+			"admin_users":   userList,
+			"execute_users": userList,
+			"read_users":    userList,
+			"write_users":   userList,
 		},
-		"shared": false,
+		"shared": shared,
 	}
 }

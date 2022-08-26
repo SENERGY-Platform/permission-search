@@ -52,8 +52,8 @@ func NewProducerWithBalancer(ctx context.Context, bootstrapUrl string, topic str
 		log.Println("ERROR: unable to create topic", err)
 		return nil, err
 	}
-	var logger *log.Logger = nil
 
+	var logger kafka.Logger
 	if debug {
 		logger = log.New(os.Stdout, "KAFKA", 0)
 	}
@@ -63,6 +63,7 @@ func NewProducerWithBalancer(ctx context.Context, bootstrapUrl string, topic str
 		Topic:       topic,
 		MaxAttempts: 10,
 		Logger:      logger,
+		ErrorLogger: log.New(os.Stderr, "KAFKA", 0),
 		Async:       false,
 		BatchSize:   1,
 		Balancer:    balancer,
