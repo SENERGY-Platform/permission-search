@@ -560,46 +560,7 @@ func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user s
 }
 
 func getSharedState(reqUser string, entry model.Entry) bool {
-	isShared := false
-	isAdmin := false
-	for _, user := range entry.AdminUsers {
-		if reqUser == user {
-			isAdmin = true
-		} else {
-			isShared = true
-		}
-		if isAdmin && isShared {
-			return true
-		}
-	}
-	if !isAdmin {
-		return false
-	}
-	for _, user := range entry.ReadUsers {
-		if reqUser != user {
-			isShared = true
-		}
-		if isAdmin && isShared {
-			return true
-		}
-	}
-	for _, user := range entry.WriteUsers {
-		if reqUser != user {
-			isShared = true
-		}
-		if isAdmin && isShared {
-			return true
-		}
-	}
-	for _, user := range entry.ExecuteUsers {
-		if reqUser != user {
-			isShared = true
-		}
-		if isAdmin && isShared {
-			return true
-		}
-	}
-	return false
+	return entry.Creator != reqUser
 }
 
 func getEntryResult(entry model.Entry, user string, groups []string) map[string]interface{} {

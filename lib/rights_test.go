@@ -99,12 +99,12 @@ func TestRightsCommand(t *testing.T) {
 	}))
 
 	t.Run("list admin", testRequestWithToken(config, admintoken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
-		getTestAspectResult("aaaa"),
-		getTestAspectResult("aspect1"),
-		getTestAspectResult("aspect2"),
-		getTestAspectResult("aspect3"),
-		getTestAspectResult("aspect4"),
-		getTestAspectResult("aspect5"),
+		getTestAspectResultWithPermissionHolders("aaaa", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect1", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect2", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect3", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect4", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect5", []string{"testOwner"}, true),
 	}))
 
 	t.Run("list secondOwner", testRequestWithToken(config, secondOwnerToken, "GET", "/v3/resources/aspects?rights=a", nil, 200, nil))
@@ -163,7 +163,7 @@ func TestRightsCommand(t *testing.T) {
 
 	t.Run("list owner after rights change", testRequestWithToken(config, testtoken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
 		getTestAspectResult("aaaa"),
-		getTestAspectResultWithPermissionHolders("aspect1", []string{testTokenUser, secendOwnerTokenUser}, true),
+		getTestAspectResultWithPermissionHolders("aspect1", []string{testTokenUser, secendOwnerTokenUser}, false),
 		getTestAspectResult("aspect2"),
 		getTestAspectResult("aspect3"),
 		getTestAspectResult("aspect4"),
@@ -171,10 +171,10 @@ func TestRightsCommand(t *testing.T) {
 	}))
 
 	t.Run("list admin after rights change", testRequestWithToken(config, admintoken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
-		getTestAspectResult("aaaa"),
-		getTestAspectResult("aspect3"),
-		getTestAspectResult("aspect4"),
-		getTestAspectResult("aspect5"),
+		getTestAspectResultWithPermissionHolders("aaaa", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect3", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect4", []string{"testOwner"}, true),
+		getTestAspectResultWithPermissionHolders("aspect5", []string{"testOwner"}, true),
 	}))
 
 	t.Run("list secondOwner after rights change", testRequestWithToken(config, secondOwnerToken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{

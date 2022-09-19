@@ -24,7 +24,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sort"
@@ -284,7 +283,7 @@ func testRequestWithToken(config configuration.Config, token string, method stri
 			return
 		}
 		if resp.StatusCode != expectedStatusCode {
-			temp, _ := ioutil.ReadAll(resp.Body)
+			temp, _ := io.ReadAll(resp.Body)
 			t.Error(resp.StatusCode, string(temp))
 			return
 		}
