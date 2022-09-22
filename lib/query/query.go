@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	"net/http"
 	"sort"
 	"strconv"
@@ -33,9 +34,10 @@ import (
 )
 
 type Query struct {
-	config  configuration.Config
-	client  *elastic.Client
-	timeout time.Duration
+	config   configuration.Config
+	client   *elastic.Client
+	timeout  time.Duration
+	modifier *modifier.Modifier
 }
 
 func New(config configuration.Config) (result *Query, err error) {
@@ -44,11 +46,16 @@ func New(config configuration.Config) (result *Query, err error) {
 		return result, err
 	}
 	client, err := CreateElasticClient(config)
-	return &Query{
+	if err != nil {
+		return result, err
+	}
+	result = &Query{
 		config:  config,
 		client:  client,
 		timeout: timeout,
-	}, err
+	}
+	result.modifier = modifier.New(config, result)
+	return result, err
 }
 
 func (this *Query) getTimeout() (ctx context.Context) {
@@ -135,7 +142,7 @@ func (this *Query) GetRightsToAdministrate(kind string, user string, groups []st
 }
 
 func (this *Query) CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
-	pureId, _ := SplitModifier(resource)
+	pureId, _ := modifier.SplitModifier(resource)
 	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", pureId))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
@@ -149,7 +156,7 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 	allowed = map[string]bool{}
 	ctx := this.getTimeout()
 	terms := []interface{}{}
-	pureIds, preparedModify := this.prepareListModify(ids)
+	pureIds, preparedModify := this.modifier.PrepareListModify(ids)
 	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
@@ -197,7 +204,7 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 	ctx := this.getTimeout()
 	terms := []interface{}{}
 
-	pureIds, preparedModify := this.prepareListModify(ids)
+	pureIds, preparedModify := this.modifier.PrepareListModify(ids)
 
 	for _, id := range pureIds {
 		terms = append(terms, id)
@@ -207,14 +214,14 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 	if err != nil {
 		return result, err
 	}
-	modifyCache := NewModifyResourceReferenceCache()
+	modifyCache := modifier.NewModifyResourceReferenceCache()
 	for _, hit := range resp.Hits.Hits {
 		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
-		modifiedResults, err := this.usePreparedModify(preparedModify, entry, kind, modifyCache)
+		modifiedResults, err := this.modifier.UsePreparedModify(preparedModify, entry, kind, modifyCache)
 		if err != nil {
 			return result, err
 		}
@@ -496,11 +503,11 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 var ErrNotFound = errors.New("not found")
 
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
-	version, err = this.getResourceInterface(kind, resource, &result)
+	version, err = this.GetResourceInterface(kind, resource, &result)
 	return
 }
 
-func (this *Query) getResourceInterface(kind string, resource string, result interface{}) (version model.ResourceVersion, err error) {
+func (this *Query) GetResourceInterface(kind string, resource string, result interface{}) (version model.ResourceVersion, err error) {
 	ctx := this.getTimeout()
 	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
 	if elasticErr, ok := err.(*elastic.Error); ok {
