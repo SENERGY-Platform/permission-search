@@ -135,8 +135,9 @@ func (this *Query) GetRightsToAdministrate(kind string, user string, groups []st
 }
 
 func (this *Query) CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
+	pureId, _ := SplitModifier(resource)
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", resource))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", pureId))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
 		err = errors.New("access denied")
@@ -148,11 +149,12 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 	allowed = map[string]bool{}
 	ctx := this.getTimeout()
 	terms := []interface{}{}
-	for _, id := range ids {
+	pureIds, preparedModify := this.prepareListModify(ids)
+	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := this.client.Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
+	resp, err := this.client.Search().Index(kind).Query(query).Size(len(pureIds)).Do(ctx)
 	if err != nil {
 		return allowed, err
 	}
@@ -162,7 +164,9 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 		if err != nil {
 			return allowed, err
 		}
-		allowed[entry.Resource] = true
+		for _, info := range preparedModify[entry.Resource] {
+			allowed[info.RawId] = true
+		}
 	}
 	return allowed, nil
 }
@@ -192,7 +196,10 @@ func (this *Query) GetListFromIds(kind string, ids []string, user string, groups
 func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
 	terms := []interface{}{}
-	for _, id := range ids {
+
+	pureIds, preparedModify := this.prepareListModify(ids)
+
+	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
@@ -200,13 +207,20 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 	if err != nil {
 		return result, err
 	}
+	modifyCache := NewModifyResourceReferenceCache()
 	for _, hit := range resp.Hits.Hits {
 		entry := model.Entry{}
 		err = json.Unmarshal(hit.Source, &entry)
 		if err != nil {
 			return result, err
 		}
-		result = append(result, getEntryResult(entry, user, groups))
+		modifiedResults, err := this.usePreparedModify(preparedModify, entry, kind, modifyCache)
+		if err != nil {
+			return result, err
+		}
+		for _, modifiedResult := range modifiedResults {
+			result = append(result, getEntryResult(modifiedResult, user, groups))
+		}
 	}
 	return result, nil
 }
@@ -482,22 +496,27 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 var ErrNotFound = errors.New("not found")
 
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
+	version, err = this.getResourceInterface(kind, resource, &result)
+	return
+}
+
+func (this *Query) getResourceInterface(kind string, resource string, result interface{}) (version model.ResourceVersion, err error) {
 	ctx := this.getTimeout()
 	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
 	if elasticErr, ok := err.(*elastic.Error); ok {
 		if elasticErr.Status == http.StatusNotFound {
-			return result, version, ErrNotFound
+			return version, ErrNotFound
 		}
 	}
 	if err != nil {
-		return result, version, err
+		return version, err
 	}
 	version.PrimaryTerm = *resp.PrimaryTerm
 	version.SeqNo = *resp.SeqNo
 	if resp.Source == nil {
-		return result, version, ErrNotFound
+		return version, ErrNotFound
 	}
-	err = json.Unmarshal(resp.Source, &result)
+	err = json.Unmarshal(resp.Source, result)
 	return
 }
 

@@ -91,7 +91,8 @@
                 {"Name": "service", "Path": "$.device_type.services[*].id"},
                 {"Name": "protocols", "Path": "$.device_type.services[*].protocol_id"},
                 {"Name": "device_class_id", "Path": "$.device_type.device_class_id"},
-                {"Name": "attributes", "Path": "$.device_type.attributes"}
+                {"Name": "attributes", "Path": "$.device_type.attributes"},
+                {"Name":  "service_groups", "Path": "$.device_type.service_groups"}
             ],
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         },
@@ -176,6 +177,81 @@
     },
     "initial_group_rightsUpdate": "false",
 
+    "result_modifiers": {
+        "devices": [
+            {
+                "modifier": "service_group_selection",
+                "template": {
+                    "path": "$.features.name",
+                    "value": "{{.this.features.name}} {{.references.service_group_name}}",
+                    "conditions": [
+                        {
+                            "path": "$.features.name",
+                            "operator": "not_empty"
+                        }
+                    ],
+                    "references": {
+                        "service_group_name": {
+                            "default": "",
+                            "resource": "device-types",
+                            "resource_id": "{{.this.features.device_type_id}}",
+                            "path": "$.features.service_groups[?@.key==\"{{.parameter.p0}}\"].name"
+                        }
+                    }
+                }
+            },
+            {
+                "modifier": "service_group_selection",
+                "template": {
+                    "path": "$.features.nickname",
+                    "value": "{{.this.features.nickname}} {{.references.service_group_name}}",
+                    "conditions": [
+                        {
+                            "path": "$.features.nickname",
+                            "operator": "not_empty"
+                        }
+                    ],
+                    "references": {
+                        "service_group_name": {
+                            "default": "",
+                            "resource": "device-types",
+                            "resource_id": "{{.this.features.device_type_id}}",
+                            "path": "$.features.service_groups[?@.key==\"{{.parameter.p0}}\"].name"
+                        }
+                    }
+                }
+            },
+            {
+                "modifier": "service_group_selection",
+                "template": {
+                    "path": "$.features.display_name",
+                    "value": "{{.this.features.display_name}} {{.references.service_group_name}}",
+                    "conditions": [
+                        {
+                            "path": "$.features.display_name",
+                            "operator": "not_empty"
+                        }
+                    ],
+                    "references": {
+                        "service_group_name": {
+                            "default": "",
+                            "resource": "device-types",
+                            "resource_id": "{{.this.features.device_type_id}}",
+                            "path": "$.features.service_groups[?@.key==\"{{.parameter.p0}}\"].name"
+                        }
+                    }
+                }
+            },
+            {
+                "modifier": "service_group_selection",
+                "template": {
+                    "path": "$.features.device_type_id",
+                    "value": "{{.this.features.device_type_id}}?service_group_selection={{.parameter.p0}}"
+                }
+            }
+        ]
+    },
+
     "elastic_mapping": {
         "smart_service_releases": {
             "features": {
@@ -213,6 +289,7 @@
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
                 "service":      {"type": "keyword"},
                 "protocols":    {"type": "keyword"},
+                "service_groups":   {"enabled": false},
                 "attributes":{
                     "properties":{
                         "key":{"type":"keyword"},

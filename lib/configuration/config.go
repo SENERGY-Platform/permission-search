@@ -50,6 +50,8 @@ type ConfigStruct struct {
 
 	PermTopic string `json:"perm_topic"`
 
+	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`
+
 	ElasticUrl     string                                       `json:"elastic_url"`
 	ElasticRetry   int64                                        `json:"elastic_retry"`
 	ElasticTimeout string                                       `json:"elastic_timeout"`

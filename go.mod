@@ -45,6 +45,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.12.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mdaverde/jsonpath v0.2.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
