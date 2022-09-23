@@ -18,6 +18,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
@@ -140,6 +141,12 @@ func TestResultModifiers(t *testing.T) {
 
 	t.Run("rights", testRequest(config, "GET", "/v3/administrate/rights/devices/"+url.PathEscape(dIdWithModify), nil, 200, nil))
 	t.Run("rights not encoded", testRequest(config, "GET", "/v3/administrate/rights/devices/"+dIdWithModify, nil, 200, nil))
+
+	expectedRights := map[string]interface{}{}
+	json.Unmarshal([]byte(`{"creator":"testOwner","features":{"attributes":null,"device_type_id":"urn:infai:ses:device-type:bce1b3a2-8f46-44e7-9077-6d0a721be0a2$service_group_selection=a8ee3b1c-4cda-4f0d-9f55-4ef4882ce0af","display_name":"device-name Left Switch","local_id":null,"name":"device-name Left Switch","nickname":null},"group_rights":{"admin":{"administrate":true,"execute":true,"read":true,"write":true}},"resource_id":"urn:infai:ses:device:a8488d92-891d-4909-88c7-6fd9a2adfa10$service_group_selection=a8ee3b1c-4cda-4f0d-9f55-4ef4882ce0af","user_rights":{"testOwner":{"administrate":true,"execute":true,"read":true,"write":true}}}`),
+		&expectedRights)
+
+	t.Run("rights value", testRequest(config, "GET", "/v3/administrate/rights/devices/"+url.PathEscape(dIdWithModify), nil, 200, expectedRights))
 
 	t.Run("query search", testRequest(config, "POST", "/v3/query", model.QueryMessage{
 		Resource: "devices",

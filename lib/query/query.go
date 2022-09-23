@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	"net/http"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"time"
@@ -352,12 +353,24 @@ func (this *Query) CheckGroups(kind string, resource string, groups []string, ri
 }
 
 func (this *Query) GetResourceRights(kind string, resource string) (result model.ResourceRights, err error) {
-	pureId, _ := modifier.SplitModifier(resource)
-	entry, _, err := this.GetResourceEntry(kind, pureId)
+	pureIds, preparedModify := this.modifier.PrepareListModify([]string{resource})
+	if len(pureIds) == 0 {
+		debug.PrintStack()
+		return result, errors.New("unexpected modifier behavior")
+	}
+	entry, _, err := this.GetResourceEntry(kind, pureIds[0])
 	if err != nil {
 		return result, err
 	}
-	entry.Resource = resource
+	entries, err := this.modifier.UsePreparedModify(preparedModify, entry, kind, nil)
+	if err != nil {
+		return result, err
+	}
+	if len(entries) == 0 {
+		debug.PrintStack()
+		return result, errors.New("unexpected modifier behavior")
+	}
+	entry = entries[0]
 	result = entry.ToResourceRights()
 	return
 }
