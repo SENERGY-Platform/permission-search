@@ -357,6 +357,7 @@ func (this *Query) GetResourceRights(kind string, resource string) (result model
 	if err != nil {
 		return result, err
 	}
+	entry.Resource = resource
 	result = entry.ToResourceRights()
 	return
 }
