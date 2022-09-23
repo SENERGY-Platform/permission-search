@@ -20,9 +20,6 @@ import (
 	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"log"
-	"net/url"
-	"strings"
 )
 
 func New(config configuration.Config, query Query) *Modifier {
@@ -39,22 +36,6 @@ type Modifier struct {
 
 type Query interface {
 	GetResourceInterface(kind string, resource string, result interface{}) (version model.ResourceVersion, err error)
-}
-
-func SplitModifier(id string) (pureId string, modifier map[string][]string) {
-	parts := strings.Split(id, "?")
-	pureId = parts[0]
-	if len(parts) < 2 {
-		return
-	}
-	var err error
-	modifier, err = url.ParseQuery(parts[1])
-	if err != nil {
-		log.Println("WARNING: unable to parse modifier parts as Modifier --> ignore modifiers")
-		modifier = nil
-		return
-	}
-	return
 }
 
 func (this *Modifier) UsePreparedModify(preparedModify map[string][]PreparedModifyInfo, entry model.Entry, kind string, cache ModifyResourceReferenceCache) (result []model.Entry, err error) {

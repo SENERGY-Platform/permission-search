@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"net/url"
 	"strconv"
@@ -97,7 +98,7 @@ func TestResultModifiers(t *testing.T) {
 	dId := "urn:infai:ses:device:a8488d92-891d-4909-88c7-6fd9a2adfa10"
 	dName := "device-name"
 
-	idModifier := "?service_group_selection=" + serviceGroupKey
+	idModifier := modifier.Seperator + modifier.EncodeModifierParameter(map[string][]string{"service_group_selection": {serviceGroupKey}})
 	dtIdModified := dtId + idModifier
 	dIdWithModify := dId + idModifier
 
@@ -122,12 +123,23 @@ func TestResultModifiers(t *testing.T) {
 	t.Run("ids modified", testRequest(config, "GET", "/v3/resources/devices?ids="+url.QueryEscape(dIdWithModify), nil, 200, []map[string]interface{}{
 		getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
 	}))
+	t.Run("ids modified not encoded", testRequest(config, "GET", "/v3/resources/devices?ids="+dIdWithModify, nil, 200, []map[string]interface{}{
+		getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
+	}))
 	t.Run("ids both", testRequest(config, "GET", "/v3/resources/devices?ids="+url.QueryEscape(dId)+","+url.QueryEscape(dIdWithModify), nil, 200, []map[string]interface{}{
+		getTestDeviceResultWithDeviceTypeIdAndName(dId, dName, dtId),
+		getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
+	}))
+	t.Run("ids both not encoded", testRequest(config, "GET", "/v3/resources/devices?ids="+dId+","+dIdWithModify, nil, 200, []map[string]interface{}{
 		getTestDeviceResultWithDeviceTypeIdAndName(dId, dName, dtId),
 		getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
 	}))
 
 	t.Run("access true", testRequest(config, "GET", "/v3/resources/devices/"+url.PathEscape(dIdWithModify)+"/access", nil, 200, true))
+	t.Run("access true not encoded", testRequest(config, "GET", "/v3/resources/devices/"+dIdWithModify+"/access", nil, 200, true))
+
+	t.Run("rights", testRequest(config, "GET", "/v3/administrate/rights/devices/"+url.PathEscape(dIdWithModify), nil, 200, nil))
+	t.Run("rights not encoded", testRequest(config, "GET", "/v3/administrate/rights/devices/"+dIdWithModify, nil, 200, nil))
 
 	t.Run("query search", testRequest(config, "POST", "/v3/query", model.QueryMessage{
 		Resource: "devices",

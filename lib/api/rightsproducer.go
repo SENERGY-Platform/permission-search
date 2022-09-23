@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
@@ -49,6 +50,11 @@ func RightsProducerEndpoints(router *httprouter.Router, config configuration.Con
 		err = json.NewDecoder(r.Body).Decode(&rights)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		pureId, _ := modifier.SplitModifier(id)
+		if pureId != id {
+			http.Error(res, "rights con only be changed for ids without '"+modifier.Seperator+"' result-modifier query parts", http.StatusBadRequest)
 			return
 		}
 		if !token.IsAdmin() {

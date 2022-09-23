@@ -246,7 +246,7 @@
                 "modifier": "service_group_selection",
                 "template": {
                     "path": "$.features.device_type_id",
-                    "value": "{{.this.features.device_type_id}}?service_group_selection={{.parameter.p0}}"
+                    "value": "{{.this.features.device_type_id}}{{.seperator}}service_group_selection={{.parameter.p0}}"
                 }
             }
         ]

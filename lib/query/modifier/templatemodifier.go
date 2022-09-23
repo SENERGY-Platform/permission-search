@@ -44,6 +44,7 @@ func (this *Modifier) applyResultModifyTemplate(entry map[string]interface{}, te
 	placeholders := map[string]interface{}{
 		"this":      result,
 		"parameter": parameterMap,
+		"seperator": Seperator,
 	}
 
 	templateModifier.References, err = this.setReferencesPlaceholders(templateName, templateModifier.References, placeholders)

@@ -352,7 +352,8 @@ func (this *Query) CheckGroups(kind string, resource string, groups []string, ri
 }
 
 func (this *Query) GetResourceRights(kind string, resource string) (result model.ResourceRights, err error) {
-	entry, _, err := this.GetResourceEntry(kind, resource)
+	pureId, _ := modifier.SplitModifier(resource)
+	entry, _, err := this.GetResourceEntry(kind, pureId)
 	if err != nil {
 		return result, err
 	}
