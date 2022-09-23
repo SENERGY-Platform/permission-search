@@ -32,7 +32,7 @@ func (this *Modifier) checkModifyConditions(entry map[string]interface{}, condit
 				debug.PrintStack()
 				return false
 			}
-			if value == nil {
+			if value == nil || value == "" {
 				return false
 			}
 		}
