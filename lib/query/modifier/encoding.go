@@ -33,13 +33,13 @@ func EncodeModifierParameter(parameter map[string][]string) (result string) {
 }
 
 func SplitModifier(id string) (pureId string, modifier map[string][]string) {
-	parts := strings.Split(id, Seperator)
+	parts := strings.SplitN(id, Seperator, 2)
 	pureId = parts[0]
 	if len(parts) < 2 {
 		return
 	}
 	var err error
-	modifier, err = DecodeModifierParameter(strings.Join(parts[1:], Seperator))
+	modifier, err = DecodeModifierParameter(parts[1])
 	if err != nil {
 		log.Println("WARNING: unable to parse modifier parts as Modifier --> ignore modifiers")
 		modifier = nil
