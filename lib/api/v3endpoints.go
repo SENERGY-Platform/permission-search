@@ -18,10 +18,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
@@ -35,6 +38,53 @@ func init() {
 }
 
 func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query, p *rigthsproducer.Producer) bool {
+
+	addParsedModifier := func(token auth.Token, resourceKind string, elements []map[string]interface{}, parsedModifier map[string][]string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
+		if len(elements) == 0 {
+			return elements, nil, http.StatusOK
+		}
+		idList := []string{}
+		for _, e := range elements {
+			id, ok := e["id"].(string)
+			if !ok {
+				return nil, errors.New("unable to use add_id_modifier: result id is not string"), http.StatusInternalServerError
+			}
+			pureId, parameter := modifier.SplitModifier(id)
+
+			if err != nil {
+				err = fmt.Errorf("invalid add_id_modifier value: %w", err)
+				return nil, err, http.StatusBadRequest
+			}
+			if parameter == nil {
+				parameter = map[string][]string{}
+			}
+			for key, values := range parsedModifier {
+				parameter[key] = values
+			}
+			idList = append(idList, modifier.JoinModifier(pureId, parameter))
+		}
+		result, err = q.GetListFromIdsOrdered(resourceKind, idList, token.GetUserId(), token.GetRoles(), model.QueryListCommons{
+			Limit:    len(idList),
+			Offset:   0,
+			Rights:   rights,
+			SortBy:   sortBy,
+			SortDesc: sortDesc,
+		})
+		if err != nil {
+			return nil, err, http.StatusInternalServerError
+		}
+		return result, nil, http.StatusOK
+	}
+
+	addModifier := func(token auth.Token, resourceKind string, elements []map[string]interface{}, modifierString string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
+		parsedModifier, err := modifier.DecodeModifierParameter(modifierString)
+		if err != nil {
+			err = fmt.Errorf("invalid add_id_modifier value: %w", err)
+			return nil, err, http.StatusBadRequest
+		}
+		return addParsedModifier(token, resourceKind, elements, parsedModifier, rights, sortBy, sortDesc)
+	}
+
 	router.GET("/v3/administrate/rights/:resource/:id", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		resource := ps.ByName("resource")
 		id := ps.ByName("id")
@@ -69,6 +119,8 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		search := request.URL.Query().Get("search")
 		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
+
+		addIdModifier := request.URL.Query().Get("add_id_modifier")
 
 		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
 		if err != nil {
@@ -126,6 +178,16 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		if addIdModifier != "" && len(result) > 0 {
+			var code int
+			result, err, code = addModifier(token, resource, result, addIdModifier, queryListCommons.Rights, queryListCommons.SortBy, queryListCommons.SortDesc)
+			if err != nil {
+				http.Error(writer, err.Error(), code)
+				return
+			}
+		}
+
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})
@@ -319,6 +381,14 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 						filter)
 				}
 			}
+			if len(query.Find.AddIdModifier) > 0 {
+				var code int
+				result, err, code = addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.Find.AddIdModifier, query.Find.Rights, query.Find.SortBy, query.Find.SortDesc)
+				if err != nil {
+					http.Error(writer, err.Error(), code)
+					return
+				}
+			}
 		}
 
 		if query.CheckIds != nil {
@@ -346,6 +416,15 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 				token.GetUserId(),
 				token.GetRoles(),
 				query.ListIds.QueryListCommons)
+
+			if len(query.ListIds.AddIdModifier) > 0 {
+				var code int
+				result, err, code = addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.ListIds.AddIdModifier, query.ListIds.Rights, query.ListIds.SortBy, query.ListIds.SortDesc)
+				if err != nil {
+					http.Error(writer, err.Error(), code)
+					return
+				}
+			}
 		}
 
 		if query.TermAggregate != nil {

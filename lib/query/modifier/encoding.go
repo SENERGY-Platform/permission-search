@@ -47,3 +47,7 @@ func SplitModifier(id string) (pureId string, modifier map[string][]string) {
 	}
 	return
 }
+
+func JoinModifier(pureId string, modifier map[string][]string) (id string) {
+	return pureId + Seperator + EncodeModifierParameter(modifier)
+}

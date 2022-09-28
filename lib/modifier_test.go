@@ -189,6 +189,33 @@ func TestResultModifiers(t *testing.T) {
 		dIdWithModify: true,
 	}))
 
+	t.Run("add modify to query filter result", testRequest(config, "POST", "/v3/query", model.QueryMessage{
+		Resource: "devices",
+		Find: &model.QueryFind{
+			QueryListCommons: model.QueryListCommons{
+				AddIdModifier: map[string][]string{
+					"service_group_selection": {serviceGroupKey},
+				},
+			},
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "features.device_type_id",
+					Operation: model.QueryEqualOperation,
+					Value:     dtId,
+				},
+			},
+		},
+	}, 200, []map[string]interface{}{
+		getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
+	}))
+
+	t.Run("add modify to filter result", testRequest(config, "GET", "/v3/resources/devices?filter="+url.PathEscape("device_type_id:"+dtId)+"&add_id_modifier="+url.QueryEscape(modifier.EncodeModifierParameter(map[string][]string{"service_group_selection": {serviceGroupKey}})),
+		nil,
+		200,
+		[]map[string]interface{}{
+			getTestDeviceResultWithDeviceTypeIdAndName(dIdWithModify, dNameModify, dtIdModified),
+		}))
+
 }
 
 func createTestDeviceWithDeviceType(ctx context.Context, config configuration.Config, id string, name string, deviceTypeId string) func(t *testing.T) {
