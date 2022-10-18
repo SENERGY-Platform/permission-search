@@ -90,7 +90,9 @@ func (this *Query) GetConditionFilter(token auth.Token, condition model.Conditio
 			return elastic.NewBoolQuery().MustNot(elastic.NewTermQuery(condition.Feature, val)), nil
 		}
 	case model.QueryAnyValueInFeatureOperation:
-		if reflect.TypeOf(val).Kind() == reflect.String {
+		if val == nil {
+			val = []string{}
+		} else if reflect.TypeOf(val).Kind() == reflect.String {
 			val = strings.Split(val.(string), ",")
 		}
 		arr, err := InterfaceSlice(val)
