@@ -17,8 +17,10 @@
 package worker
 
 import (
+	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/jsonpath"
+	"strings"
 )
 
 func (this *Worker) MsgToFeatures(kind string, msg []byte) (result map[string]interface{}, err error) {
@@ -61,8 +63,62 @@ func UseJsonPath(msg []byte, feature configuration.Feature) (result interface{},
 	if err != nil {
 		return result, err
 	}
+	if len(feature.ConcatListElementFields) > 0 {
+		result, err = concatListElementFields(result, feature.ConcatListElementFields)
+		if err != nil {
+			return result, err
+		}
+	}
 	result = handlePathResultList(result, feature)
 	return result, err
+}
+
+func concatListElementFields(list interface{}, fields []string) (interface{}, error) {
+	if list == nil {
+		return list, nil
+	}
+	if len(fields) == 0 {
+		return list, nil
+	}
+	if temp, ok := list.([]interface{}); ok {
+		result := []interface{}{}
+		for _, element := range temp {
+			concated, err := concatElementFields(element, fields)
+			if err != nil {
+				return result, err
+			}
+			result = append(result, concated)
+		}
+		return result, nil
+	} else {
+		return concatElementFields(list, fields)
+	}
+}
+
+func concatElementFields(element interface{}, fields []string) (interface{}, error) {
+	if element == nil {
+		return element, nil
+	}
+	if len(fields) == 0 {
+		return element, nil
+	}
+	result := ""
+	for _, field := range fields {
+		if strings.HasPrefix(field, "$.") {
+			fieldValue, err := jsonpath.UseJsonPathWithScriptOnObj(element, field)
+			if err != nil {
+				return result, err
+			}
+			if fieldValueStr, ok := fieldValue.(string); ok {
+				result = result + fieldValueStr
+			} else {
+				result = result + fmt.Sprint(fieldValue)
+			}
+		} else {
+			result = result + field
+		}
+	}
+	return result, nil
 }
 
 func handlePathResultList(input interface{}, feature configuration.Feature) interface{} {

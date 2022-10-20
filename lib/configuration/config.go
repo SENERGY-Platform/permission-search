@@ -32,6 +32,7 @@ type Feature struct {
 	Path                     string
 	FirstOf                  []string
 	ResultListToFirstElement bool
+	ConcatListElementFields  []string
 }
 
 type ResourceConfig struct {

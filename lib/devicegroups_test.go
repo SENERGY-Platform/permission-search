@@ -111,11 +111,12 @@ func TestDeviceGroup(t *testing.T) {
 	}
 
 	expected := []map[string]interface{}{{
-		"id":         "g1",
-		"name":       "g1_name",
-		"image":      "g1_image",
-		"attributes": nil,
-		"device_ids": []interface{}{"d1", "d2"},
+		"id":             "g1",
+		"name":           "g1_name",
+		"image":          "g1_image",
+		"attributes":     nil,
+		"attribute_list": nil,
+		"device_ids":     []interface{}{"d1", "d2"},
 		"criteria": []interface{}{
 			map[string]interface{}{
 				"function_id":     "f1",
@@ -338,6 +339,10 @@ func TestDeviceGroupAttributes(t *testing.T) {
 				"key":   "a2",
 				"value": "v2",
 			},
+		},
+		"attribute_list": []interface{}{
+			"a1=v1",
+			"a2=v2",
 		},
 		"device_ids": []interface{}{"d1", "d2"},
 		"criteria": []interface{}{
