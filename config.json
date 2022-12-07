@@ -135,7 +135,8 @@
         "hubs": {
             "features": [
                 {"Name": "name", "Path": "$.hub.name"},
-                {"Name": "device_local_ids", "Path": "$.hub.device_local_ids"}
+                {"Name": "device_local_ids", "Path": "$.hub.device_local_ids"},
+                {"Name": "device_ids", "Path": "$.hub.device_ids"}
             ],
             "annotations": {
                 "gateway_log": [
@@ -376,8 +377,9 @@
         },
         "hubs":{
             "features": {
-                "name":         {"type": "keyword", "copy_to": "feature_search"},
-                "device_local_ids":      {"type": "keyword"}
+                "name":             {"type": "keyword", "copy_to": "feature_search"},
+                "device_local_ids": {"type": "keyword"},
+                "device_ids":       {"type": "keyword"}
             },
             "annotations": {
                 "connected": {"type":"boolean"}
