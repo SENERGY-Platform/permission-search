@@ -88,6 +88,7 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 	if len(topics) == 0 {
 		return nil
 	}
+	log.Println("consume:", topics)
 	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
