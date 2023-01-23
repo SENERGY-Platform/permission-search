@@ -85,6 +85,9 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 }
 
 func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, maxWait time.Duration, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
+	if len(topics) == 0 {
+		return nil
+	}
 	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
