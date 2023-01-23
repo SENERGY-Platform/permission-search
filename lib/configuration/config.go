@@ -49,6 +49,8 @@ type ConfigStruct struct {
 
 	KafkaUrl string `json:"kafka_url"`
 
+	TopicFilter []string `json:"topic_filter"` //optional; default all; comma seperated list of topics that may be consumed; may use '{{.annotations}}' or '{{.resources}}' for all annotation or resource topics
+
 	PermTopic string `json:"perm_topic"`
 
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`

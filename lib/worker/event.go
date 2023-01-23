@@ -46,12 +46,28 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		return err
 	}
 
-	log.Println("init features handlers", config.ResourceList)
+	resourceTopics := config.ResourceList
+
+	annotationTopics := []string{}
+	for topic, _ := range config.AnnotationResourceIndex {
+		annotationTopics = append(annotationTopics, topic)
+	}
+
+	topicFilter := replacePlaceholders(config.TopicFilter, map[string][]string{
+		"{{.annotations}}": annotationTopics,
+		"{{.resources}}":   resourceTopics,
+	})
+
+	resourceTopics = filterSpecialisation(resourceTopics, topicFilter)
+	annotationTopics = filterSpecialisation(annotationTopics, topicFilter)
+
+	log.Println("init features handlers", resourceTopics)
 	handlers := map[string]func(delivery []byte) error{}
-	for _, resource := range config.ResourceList {
+	for _, resource := range resourceTopics {
 		log.Println("init handler for", resource)
 		handlers[resource] = worker.GetResourceCommandHandler(resource)
 	}
+
 	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId, config.ResourceList, 1*time.Second, func(topic string, msg []byte) error {
 		f, ok := handlers[topic]
 		if !ok {
@@ -63,14 +79,14 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		config.HandleFatalError(err)
 	})
 
-	log.Println("init annotation handlers", config.AnnotationResourceIndex)
+	log.Println("init annotation handlers", annotationTopics)
 	annotationHandlers := map[string]func(delivery []byte) error{}
-	annotationTopics := []string{}
-	for topic, resources := range config.AnnotationResourceIndex {
+
+	for _, topic := range annotationTopics {
 		log.Println("init annotation handler for", topic)
-		annotationHandlers[topic] = worker.GetAnnotationHandler(topic, resources)
-		annotationTopics = append(annotationTopics, topic)
+		annotationHandlers[topic] = worker.GetAnnotationHandler(topic, config.AnnotationResourceIndex[topic])
 	}
+
 	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId+"_annotation", annotationTopics, 10*time.Second, func(topic string, msg []byte) error {
 		f, ok := annotationHandlers[topic]
 		if !ok {
@@ -84,20 +100,34 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 	if err != nil {
 		return err
 	}
+	return
+}
 
-	for topic, resources := range config.AnnotationResourceIndex {
-		log.Println("init annotation handler for", topic)
-		f := worker.GetAnnotationHandler(topic, resources)
-		err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId+"_annotation", topic, func(msg []byte) error {
-			return f(msg)
-		}, func(err error) {
-			config.HandleFatalError(err)
-		})
-		if err != nil {
-			return err
+func replacePlaceholders(list []string, replace map[string][]string) (result []string) {
+	for _, element := range list {
+		if repl, ok := replace[element]; ok {
+			result = append(result, repl...)
+		} else {
+			result = append(result, element)
 		}
 	}
-	return
+	return result
+}
+
+func filterSpecialisation(list []string, in []string) (result []string) {
+	if len(in) == 0 {
+		return list
+	}
+	index := map[string]bool{}
+	for _, topic := range in {
+		index[topic] = true
+	}
+	for _, topic := range list {
+		if index[topic] {
+			result = append(result, topic)
+		}
+	}
+	return result
 }
 
 func (this *Worker) HandlePermissionCommand(msg []byte) (err error) {
