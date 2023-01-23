@@ -23,8 +23,8 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
+	"github.com/olivere/elastic/v7"
 	"log"
-	"time"
 )
 
 const permissionsCommandErrorMsg = `ERROR: unable to handle permissions command
@@ -143,7 +143,6 @@ func (this *Worker) GetAnnotationHandler(annotationTopic string, resources []str
 }
 
 func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string, msg []byte) error {
-	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
 	fields, err := this.MsgToAnnotations(resource, annotationTopic, msg)
 	if err != nil {
 		return err
@@ -158,31 +157,14 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 		log.Println("WARNING: _id field in annotation is not string --> ignore ", resource, annotationTopic)
 		return nil
 	}
-	exists, err := this.query.ResourceExists(resource, idStr)
-	if err != nil {
-		return err
-	}
-	if this.config.Debug && !exists {
-		log.Println("WARNING: _id is unknown in", resource, idStr)
-	}
-	if exists {
-		entry, version, err := this.query.GetResourceEntry(resource, idStr)
-		if err != nil {
-			return err
-		}
-		if entry.Annotations == nil {
-			entry.Annotations = map[string]interface{}{}
-		}
-		for fieldName, fieldValue := range fields {
-			if fieldName != "_id" {
-				entry.Annotations[fieldName] = fieldValue
-			}
-		}
 
-		_, err = this.query.GetClient().Index().Index(resource).Id(idStr).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-		if err != nil {
-			return err
+	annotations := map[string]interface{}{}
+	for fieldName, fieldValue := range fields {
+		if fieldName != "_id" {
+			annotations[fieldName] = fieldValue
 		}
 	}
+
+	this.bulk.Add(elastic.NewBulkUpdateRequest().Index(resource).Id(idStr).Doc(map[string]interface{}{"annotations": annotations}))
 	return nil
 }

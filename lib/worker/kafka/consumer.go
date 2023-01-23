@@ -21,7 +21,6 @@ import (
 	"errors"
 	"github.com/segmentio/kafka-go"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -45,7 +44,7 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 		GroupID:        groupId,
 		Topic:          topic,
 		MaxWait:        1 * time.Second,
-		Logger:         log.New(ioutil.Discard, "", 0),
+		Logger:         log.New(io.Discard, "", 0),
 		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
 	})
 

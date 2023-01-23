@@ -83,7 +83,7 @@ func StartGetComponents(parentctx context.Context, config configuration.Config, 
 	}
 
 	if mode == Worker || mode == Standalone {
-		w, err = worker.New(config, q)
+		w, err = worker.New(ctx, config, q)
 		if err != nil {
 			return q, p, w, err
 		}

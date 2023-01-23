@@ -20,6 +20,8 @@ import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/olivere/elastic/v7"
+	"log"
+	"runtime/debug"
 	"time"
 )
 
@@ -27,14 +29,50 @@ type Worker struct {
 	config  configuration.Config
 	query   Query
 	timeout time.Duration
+	bulk    *elastic.BulkProcessor
 }
 
-func New(config configuration.Config, query Query) (result *Worker, err error) {
+func New(ctx context.Context, config configuration.Config, query Query) (result *Worker, err error) {
 	timeout, err := time.ParseDuration(config.ElasticTimeout)
+	if err != nil {
+		return nil, err
+	}
+	bulk, err := query.GetClient().BulkProcessor().
+		Name("bulkworker").
+		Workers(2).
+		BulkActions(1000).               // commit if # requests >= 1000
+		BulkSize(2 << 20).               // commit if size of requests >= 2 MB
+		FlushInterval(10 * time.Second). // commit every 10s
+		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
+			log.Println("BULK-DONE:\n\t", requests, "\n\t", response, "\n\t", err)
+			if err != nil {
+				log.Println("ERROR: bulk:", err)
+				debug.PrintStack()
+			}
+			if response != nil && response.Errors {
+				for _, items := range response.Items {
+					for _, item := range items {
+						if item.Error != nil {
+							log.Println("ERROR: bulk-response:", item.Error)
+						}
+					}
+				}
+			}
+		}).
+		Do(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		<-ctx.Done()
+		bulk.Flush()
+		bulk.Close()
+	}()
 	return &Worker{
 		config:  config,
 		query:   query,
 		timeout: timeout,
+		bulk:    bulk,
 	}, err
 }
 
