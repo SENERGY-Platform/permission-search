@@ -44,7 +44,6 @@ func New(ctx context.Context, config configuration.Config, query Query) (result 
 		BulkSize(2 << 20).               // commit if size of requests >= 2 MB
 		FlushInterval(10 * time.Second). // commit every 10s
 		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
-			log.Println("BULK-DONE:\n\t", requests, "\n\t", response, "\n\t", err)
 			if err != nil {
 				log.Println("ERROR: bulk:", err)
 				debug.PrintStack()
