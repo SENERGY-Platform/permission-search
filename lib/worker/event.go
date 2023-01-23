@@ -46,20 +46,44 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 	}
 
 	log.Println("init features handlers", config.ResourceList)
+	handlers := map[string]func(delivery []byte) error{}
 	for _, resource := range config.ResourceList {
 		log.Println("init handler for", resource)
-		f := worker.GetResourceCommandHandler(resource)
-		err = kafka.NewConsumer(ctx, config.KafkaUrl, config.GroupId, resource, func(msg []byte) error {
-			return f(msg)
-		}, func(err error) {
-			config.HandleFatalError(err)
-		})
-		if err != nil {
-			return err
-		}
+		handlers[resource] = worker.GetResourceCommandHandler(resource)
 	}
+	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId, config.ResourceList, func(topic string, msg []byte) error {
+		f, ok := handlers[topic]
+		if !ok {
+			log.Println("ERROR: unknown topic handler ", topic)
+			return nil
+		}
+		return f(msg)
+	}, func(topic string, err error) {
+		config.HandleFatalError(err)
+	})
 
 	log.Println("init annotation handlers", config.AnnotationResourceIndex)
+	annotationHandlers := map[string]func(delivery []byte) error{}
+	annotationTopics := []string{}
+	for topic, resources := range config.AnnotationResourceIndex {
+		log.Println("init annotation handler for", topic)
+		annotationHandlers[topic] = worker.GetAnnotationHandler(topic, resources)
+		annotationTopics = append(annotationTopics, topic)
+	}
+	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId+"_annotation", annotationTopics, func(topic string, msg []byte) error {
+		f, ok := annotationHandlers[topic]
+		if !ok {
+			log.Println("ERROR: unknown annotation topic handler ", topic)
+			return nil
+		}
+		return f(msg)
+	}, func(topic string, err error) {
+		config.HandleFatalError(err)
+	})
+	if err != nil {
+		return err
+	}
+
 	for topic, resources := range config.AnnotationResourceIndex {
 		log.Println("init annotation handler for", topic)
 		f := worker.GetAnnotationHandler(topic, resources)
