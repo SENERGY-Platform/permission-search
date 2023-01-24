@@ -25,7 +25,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/olivere/elastic/v7"
 	"log"
-	"time"
 )
 
 const permissionsCommandErrorMsg = `ERROR: unable to handle permissions command
@@ -68,7 +67,7 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		handlers[resource] = worker.GetResourceCommandHandler(resource)
 	}
 
-	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId, resourceTopics, 1*time.Second, func(topic string, msg []byte) error {
+	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId, resourceTopics, func(topic string, msg []byte) error {
 		f, ok := handlers[topic]
 		if !ok {
 			log.Println("ERROR: unknown topic handler ", topic)
@@ -87,7 +86,7 @@ func InitEventHandling(ctx context.Context, config configuration.Config, worker 
 		annotationHandlers[topic] = worker.GetAnnotationHandler(topic, config.AnnotationResourceIndex[topic])
 	}
 
-	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId+"_annotation", annotationTopics, 10*time.Second, func(topic string, msg []byte) error {
+	err = kafka.NewConsumerWithMultipleTopics(ctx, config.KafkaUrl, config.GroupId+"_annotation", annotationTopics, func(topic string, msg []byte) error {
 		f, ok := annotationHandlers[topic]
 		if !ok {
 			log.Println("ERROR: unknown annotation topic handler ", topic)

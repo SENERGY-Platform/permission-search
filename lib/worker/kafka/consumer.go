@@ -84,7 +84,7 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 	return nil
 }
 
-func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, maxWait time.Duration, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
+func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
 	if len(topics) == 0 {
 		return nil
 	}
@@ -108,7 +108,6 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 		Brokers:        broker,
 		GroupID:        groupId,
 		GroupTopics:    topics,
-		MaxWait:        maxWait,
 		Logger:         log.New(io.Discard, "", 0),
 		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
 	})
