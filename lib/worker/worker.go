@@ -18,7 +18,10 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/olivere/elastic/v7"
 	"log"
 	"runtime/debug"
@@ -30,9 +33,17 @@ type Worker struct {
 	query   Query
 	timeout time.Duration
 	bulk    *elastic.BulkProcessor
+	done    *kafka.Producer
 }
 
 func New(ctx context.Context, config configuration.Config, query Query) (result *Worker, err error) {
+	var p *kafka.Producer
+	if config.KafkaUrl != "" && config.KafkaUrl != "-" {
+		p, err = kafka.NewProducer(ctx, config.KafkaUrl, config.DoneTopic, config.Debug)
+		if err != nil {
+			return nil, err
+		}
+	}
 	timeout, err := time.ParseDuration(config.ElasticTimeout)
 	if err != nil {
 		return nil, err
@@ -72,6 +83,7 @@ func New(ctx context.Context, config configuration.Config, query Query) (result 
 		query:   query,
 		timeout: timeout,
 		bulk:    bulk,
+		done:    p,
 	}, err
 }
 
@@ -86,4 +98,16 @@ func (this *Worker) GetQuery() Query {
 func (this *Worker) getTimeout() (ctx context.Context) {
 	ctx, _ = context.WithTimeout(context.Background(), this.timeout)
 	return ctx
+}
+
+func (this *Worker) SendDone(msg model.Done) error {
+	if this.done == nil {
+		return nil
+	}
+	msg.Handler = "github.com/SENERGY-Platform/permission-search"
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return this.done.Produce(msg.ResourceId, payload)
 }

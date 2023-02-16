@@ -136,6 +136,15 @@ func (this *Worker) HandlePermissionCommand(msg []byte) (err error) {
 	if err != nil {
 		return
 	}
+	defer func() {
+		if err == nil {
+			err = this.SendDone(model.Done{
+				ResourceKind: command.Kind,
+				ResourceId:   command.Resource,
+				Command:      "RIGHTS",
+			})
+		}
+	}()
 	switch command.Command {
 	case "PUT":
 		if command.User != "" {
@@ -164,6 +173,13 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 		err = json.Unmarshal(msg, &command)
 		if err != nil {
 			return
+		}
+		if err == nil {
+			err = this.SendDone(model.Done{
+				ResourceKind: resourceName,
+				ResourceId:   command.Id,
+				Command:      command.Command,
+			})
 		}
 		switch command.Command {
 		case "RIGHTS":

@@ -18,6 +18,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	kafka2 "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
@@ -29,6 +30,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -68,6 +70,29 @@ func TestRightsCommand(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 			return
+		}
+	})
+
+	doneMessages := []string{}
+	doneMux := sync.Mutex{}
+	t.Run("start done consumer", func(t *testing.T) {
+		err = kafka2.NewConsumer(ctx, config.KafkaUrl, "test-consumer-TestRightsCommand", config.DoneTopic, func(delivery []byte) error {
+			done := model.Done{}
+			err = json.Unmarshal(delivery, &done)
+			if err != nil {
+				t.Error(err)
+				return err
+			}
+			doneMux.Lock()
+			defer doneMux.Unlock()
+			doneMessages = append(doneMessages, done.Command+":"+done.ResourceKind+":"+done.ResourceId+":"+done.Handler)
+			return nil
+		}, func(err error) {
+			t.Error(err)
+			return
+		})
+		if err != nil {
+			t.Error(err)
 		}
 	})
 
@@ -180,6 +205,25 @@ func TestRightsCommand(t *testing.T) {
 	t.Run("list secondOwner after rights change", testRequestWithToken(config, secondOwnerToken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
 		getTestAspectResultWithPermissionHolders("aspect1", []string{testTokenUser, secendOwnerTokenUser}, true),
 	}))
+
+	t.Run("check done messages", func(t *testing.T) {
+		doneMux.Lock()
+		defer doneMux.Unlock()
+		sort.Strings(doneMessages)
+		expected := []string{
+			"PUT:aspects:aaaa:github.com/SENERGY-Platform/permission-search",
+			"PUT:aspects:aspect1:github.com/SENERGY-Platform/permission-search",
+			"PUT:aspects:aspect2:github.com/SENERGY-Platform/permission-search",
+			"PUT:aspects:aspect3:github.com/SENERGY-Platform/permission-search",
+			"PUT:aspects:aspect4:github.com/SENERGY-Platform/permission-search",
+			"PUT:aspects:aspect5:github.com/SENERGY-Platform/permission-search",
+			"RIGHTS:aspects:aspect1:github.com/SENERGY-Platform/permission-search",
+			"RIGHTS:aspects:aspect1:github.com/SENERGY-Platform/permission-search",
+			"RIGHTS:aspects:aspect2:github.com/SENERGY-Platform/permission-search"}
+		if !reflect.DeepEqual(doneMessages, expected) {
+			t.Errorf("%#v\n", doneMessages)
+		}
+	})
 
 }
 

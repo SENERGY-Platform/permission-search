@@ -349,3 +349,10 @@ type ResourceVersion struct {
 	SeqNo       int64
 	PrimaryTerm int64
 }
+
+type Done struct {
+	ResourceKind string `json:"resource_kind"`
+	ResourceId   string `json:"resource_id"`
+	Handler      string `json:"handler"` // == github.com/SENERGY-Platform/permission-search
+	Command      string `json:"command"` // PUT | DELETE | RIGHTS
+}
