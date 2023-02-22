@@ -24,7 +24,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/google/uuid"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"sort"
@@ -84,7 +84,7 @@ func TestSearch(t *testing.T) {
 		}
 	})
 
-	t.Run("create devices", createSearchTestDevices(ctx, config, "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "foo", "cator", "heal", "heat"))
+	t.Run("create devices", createSearchTestDevices(ctx, config, "Plug Kühlschrank Backofen ", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "foo", "cator", "heal", "heat"))
 
 	time.Sleep(10 * time.Second) //kafka latency
 
@@ -106,6 +106,8 @@ func TestSearch(t *testing.T) {
 	t.Run("check Allo", checkDeviceSearch(config, "Allo", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator"))
 	t.Run("check Hea", checkDeviceSearch(config, "Hea", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "heal", "heat"))
 
+	t.Run("check küh", checkDeviceSearch(config, "küh", "Plug Kühlschrank Backofen "))
+	t.Run("check back", checkDeviceSearch(config, "back", "Plug Kühlschrank Backofen "))
 }
 
 func checkDeviceSearch(config configuration.Config, searchText string, expectedResultNames ...string) func(t *testing.T) {
@@ -141,7 +143,7 @@ func checkDeviceSearch(config configuration.Config, searchText string, expectedR
 			return
 		}
 		if resp.StatusCode != 200 {
-			temp, _ := ioutil.ReadAll(resp.Body)
+			temp, _ := io.ReadAll(resp.Body)
 			t.Error(resp.StatusCode, string(temp))
 			return
 		}
