@@ -84,11 +84,12 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 	return nil
 }
 
-func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
+func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, debug bool, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
 	if len(topics) == 0 {
 		return nil
 	}
-	log.Println("consume:", topics)
+
+	log.Println("init topics:", topics)
 	broker, err := GetBroker(bootstrapUrl)
 	if err != nil {
 		log.Println("ERROR: unable to get broker list", err)
@@ -102,6 +103,7 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 			return err
 		}
 	}
+	log.Println("consume:", topics)
 
 	r := kafka.NewReader(kafka.ReaderConfig{
 		CommitInterval: 0, //synchronous commits
@@ -118,11 +120,16 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 		for {
 			select {
 			case <-ctx.Done():
+				log.Println("receive ctx done for consumer of", topics)
 				return
 			default:
 				m, err := r.FetchMessage(ctx)
 				if err == io.EOF || err == context.Canceled {
+					log.Println("ERROR: on fetch:", err)
 					return
+				}
+				if debug {
+					log.Println("DEBUG: receive:", m.Topic, string(m.Value))
 				}
 				topic := m.Topic
 				if err != nil {
@@ -142,6 +149,13 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 					errhandler(topic, err)
 				} else {
 					err = r.CommitMessages(ctx, m)
+					if err != nil {
+						log.Println("ERROR: on commit:", err)
+					} else {
+						if debug {
+							log.Println("DEBUG: committed:", m.Topic, string(m.Value))
+						}
+					}
 				}
 			}
 		}
@@ -149,11 +163,33 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 	return nil
 }
 
+var UseFunctionWithTimeoutError = errors.New("handler timeout")
+
+func useFunctionWithTimeout(f func() error, timeout time.Duration) error {
+	result := make(chan error, 1)
+	go func() {
+		result <- f()
+	}()
+	timer := time.NewTimer(1 * time.Minute)
+	select {
+	case <-timer.C:
+		return UseFunctionWithTimeoutError
+	case r := <-result:
+		if !timer.Stop() {
+			<-timer.C //drain timer channel for gc
+		}
+		return r
+	}
+}
+
 func retry(f func() error, waitProvider func(n int64) time.Duration, timeout time.Duration) (err error) {
 	err = errors.New("")
 	start := time.Now()
 	for i := int64(1); err != nil && time.Since(start) < timeout; i++ {
-		err = f()
+		err = useFunctionWithTimeout(f, 1*time.Minute)
+		if errors.Is(err, UseFunctionWithTimeoutError) {
+			return err
+		}
 		if err != nil {
 			log.Println("ERROR: kafka listener error:", err)
 			wait := waitProvider(i)
