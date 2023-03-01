@@ -123,7 +123,12 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 				log.Println("receive ctx done for consumer of", topics)
 				return
 			default:
-				m, err := r.FetchMessage(ctx)
+				longWait, _ := context.WithTimeout(ctx, time.Minute)
+				m, err := r.FetchMessage(longWait)
+				if errors.Is(err, context.DeadlineExceeded) {
+					log.Println("in the last minute where 0 messages received (" + groupId + ")")
+					continue
+				}
 				if err == io.EOF || err == context.Canceled {
 					log.Println("ERROR: on fetch:", err)
 					return
@@ -170,7 +175,7 @@ func useFunctionWithTimeout(f func() error, timeout time.Duration) error {
 	go func() {
 		result <- f()
 	}()
-	timer := time.NewTimer(1 * time.Minute)
+	timer := time.NewTimer(timeout)
 	select {
 	case <-timer.C:
 		return UseFunctionWithTimeoutError
