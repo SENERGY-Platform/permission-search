@@ -19,16 +19,21 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"io"
 	"net/http"
 )
 
-type Client struct {
+type Client interface {
+	GetRights(token string, resource string, id string) (result model.ResourceRights, code int, err error)
+}
+
+type impl struct {
 	baseUrl string
 }
 
-func NewClient(baseUrl string) *Client {
-	return &Client{baseUrl: baseUrl}
+func NewClient(baseUrl string) Client {
+	return &impl{baseUrl: baseUrl}
 }
 
 func do[T any](req *http.Request) (result T, code int, err error) {

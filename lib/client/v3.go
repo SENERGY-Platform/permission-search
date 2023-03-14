@@ -21,7 +21,7 @@ import (
 	"net/http"
 )
 
-func (this *Client) GetRights(token string, resource string, id string) (result model.ResourceRights, code int, err error) {
+func (this *impl) GetRights(token string, resource string, id string) (result model.ResourceRights, code int, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/administrate/rights/"+resource+"/"+id, nil)
 	req.Header.Set("Authorization", token)
 	if err != nil {
