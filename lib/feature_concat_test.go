@@ -19,7 +19,6 @@ package lib
 import (
 	"context"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
@@ -246,24 +245,24 @@ func TestDeviceGroupAttributeListFilter(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	filter, err := q.GetFilter(auth.Token{}, model.Selection{
+	filter := model.Selection{
 		Condition: model.ConditionConfig{
 			Feature:   "features.attribute_list",
 			Operation: model.QueryEqualOperation,
 			Value:     "platform/generated=true",
 		},
-	})
+	}
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	result, err := q.SearchOrderedListWithSelection(resource, "name", "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err := q.SearchList(createTestToken("testOwner", []string{"user"}), resource, "name", model.QueryListCommons{
 		Limit:  100,
 		Offset: 0,
 		Rights: "r",
 		SortBy: "name",
-	}, filter)
+	}, &filter)
 
 	if err != nil {
 		t.Error(err)
@@ -275,7 +274,7 @@ func TestDeviceGroupAttributeListFilter(t *testing.T) {
 		return
 	}
 
-	filter, err = q.GetFilter(auth.Token{}, model.Selection{
+	filter = model.Selection{
 		Not: &model.Selection{
 			Condition: model.ConditionConfig{
 				Feature:   "features.attribute_list",
@@ -283,18 +282,18 @@ func TestDeviceGroupAttributeListFilter(t *testing.T) {
 				Value:     "platform/generated=true",
 			},
 		},
-	})
+	}
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	result, err = q.SearchOrderedListWithSelection(resource, "name", "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err = q.SearchList(createTestToken("testOwner", []string{"user"}), resource, "name", model.QueryListCommons{
 		Limit:  100,
 		Offset: 0,
 		Rights: "r",
 		SortBy: "name",
-	}, filter)
+	}, &filter)
 
 	if err != nil {
 		t.Error(err)
@@ -306,7 +305,7 @@ func TestDeviceGroupAttributeListFilter(t *testing.T) {
 		return
 	}
 
-	result, err = q.GetOrderedListForUserOrGroupWithSelection(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err = q.GetListWithSelection(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:  100,
 		Offset: 0,
 		Rights: "r",

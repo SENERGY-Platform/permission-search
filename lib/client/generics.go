@@ -18,34 +18,29 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api"
-	"io"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
 )
 
-type impl struct {
-	baseUrl string
+func Query[Result any](client api.ClientV3, token auth.Token, query model.QueryMessage) (result Result, code int, err error) {
+	temp, code, err := client.Query(token, query)
+	if err != nil {
+		return result, code, err
+	}
+	result, err = jsonCast[Result](temp)
+	if err != nil {
+		code = http.StatusBadRequest
+	}
+	return result, code, err
 }
 
-func NewClient(baseUrl string) api.ClientV3 {
-	return &impl{baseUrl: baseUrl}
-}
-
-func do[T any](req *http.Request) (result T, code int, err error) {
-	resp, err := http.DefaultClient.Do(req)
+func jsonCast[Result any](in interface{}) (result Result, err error) {
+	temp, err := json.Marshal(in)
 	if err != nil {
-		return result, http.StatusInternalServerError, err
+		return result, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode > 299 {
-		temp, _ := io.ReadAll(resp.Body) //read error response end ensure that resp.Body is read to EOF
-		return result, resp.StatusCode, fmt.Errorf("unexpected statuscode %v: %v", resp.StatusCode, string(temp))
-	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		_, _ = io.ReadAll(resp.Body) //ensure resp.Body is read to EOF
-		return result, http.StatusInternalServerError, err
-	}
-	return
+	err = json.Unmarshal(temp, &result)
+	return result, err
 }

@@ -112,15 +112,15 @@ func TestSearchAfter(t *testing.T) {
 		getTestAspectResult("009903"),
 	}))
 
-	t.Run("list after 009900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&after.id=009900&after.sort_field_value="+url.QueryEscape(`"009900_name"`), nil, 200, []map[string]interface{}{
+	t.Run("list after 009900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&after.id=009900&after.sort_field_value="+url.QueryEscape(`"009900_name"`), nil, 200, []map[string]interface{}{
 		getTestAspectResult("009901"),
 		getTestAspectResult("009902"),
 		getTestAspectResult("009903"),
 	}))
 
-	t.Run("list offset 19900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&offset=19900", nil, http.StatusBadRequest, nil))
+	t.Run("list offset 19900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&offset=19900", nil, http.StatusBadRequest, nil))
 
-	t.Run("list after 019900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&after.id=019900&after.sort_field_value="+url.QueryEscape(`"019900_name"`), nil, 200, []map[string]interface{}{
+	t.Run("list after 019900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&after.id=019900&after.sort_field_value="+url.QueryEscape(`"019900_name"`), nil, 200, []map[string]interface{}{
 		getTestAspectResult("019901"),
 		getTestAspectResult("019902"),
 		getTestAspectResult("019903"),

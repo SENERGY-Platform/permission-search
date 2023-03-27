@@ -76,7 +76,7 @@ func TestReceiveDeviceClass(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",

@@ -19,7 +19,6 @@ package lib
 import (
 	"context"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 	"reflect"
@@ -242,7 +241,7 @@ func TestDeviceDisplayNameSort(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	result, err := q.GetOrderedListForUserOrGroup("devices", "testOwner", nil, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{}), "devices", model.QueryListCommons{
 		Limit:    100,
 		Offset:   0,
 		Rights:   "r",
@@ -265,7 +264,7 @@ func TestDeviceDisplayNameSort(t *testing.T) {
 		}
 	}
 
-	result, err = q.GetOrderedListForUserOrGroup("devices", "testOwner", nil, model.QueryListCommons{
+	result, err = q.GetList(createTestToken("testOwner", []string{}), "devices", model.QueryListCommons{
 		Limit:    100,
 		Offset:   0,
 		Rights:   "r",
@@ -359,7 +358,7 @@ func TestReceiveDevice(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",
@@ -444,7 +443,7 @@ func TestDeviceWithSpecialCharacterAttribute(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	filter, err := q.GetFilter(auth.Token{Sub: "testOwner", RealmAccess: map[string][]string{"roles": {}}}, model.Selection{
+	filter := model.Selection{
 		And: []model.Selection{
 			{
 				Condition: model.ConditionConfig{
@@ -461,15 +460,14 @@ func TestDeviceWithSpecialCharacterAttribute(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	result, err := q.GetOrderedListForUserOrGroupWithSelection(
+	result, err := q.GetListWithSelection(
+		createTestToken("testOwner", []string{}),
 		"devices",
-		"testOwner",
-		[]string{},
 		model.QueryListCommons{
 			Limit:    10,
 			Offset:   0,

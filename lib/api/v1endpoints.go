@@ -69,12 +69,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := q.CheckUserOrGroup(kind, resource, token.GetUserId(), token.GetRoles(), "a"); err != nil {
-			log.Println("access denied", err)
-			http.Error(res, "access denied", http.StatusUnauthorized)
-			return
-		}
-		rights, err := q.GetResourceRights(kind, resource)
+		rights, err := q.GetRights(token, kind, resource)
 		if err == query.ErrNotFound {
 			http.Error(res, "404", http.StatusNotFound)
 			return
@@ -165,7 +160,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SelectByFieldOrdered(kind, field, value, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.SelectByField(token, kind, field, value, queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -186,7 +181,12 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		list, err := q.SearchList(kind, query, token.GetUserId(), token.GetRoles(), right, limit, offset)
+		queryCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, "", "", right)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		list, err := q.SearchList(token, kind, query, queryCommons, nil)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -214,7 +214,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.SearchList(token, kind, query, queryListCommons, nil)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -242,7 +242,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.SearchList(token, kind, query, queryListCommons, nil)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -270,7 +270,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SearchOrderedList(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.SearchList(token, kind, query, queryListCommons, nil)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -334,7 +334,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.GetList(token, kind, queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -361,7 +361,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.GetOrderedListForUserOrGroup(kind, token.GetUserId(), token.GetRoles(), queryListCommons)
+		list, err := q.GetList(token, kind, queryListCommons)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -379,7 +379,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(kind, resource, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, kind, resource, right)
 		if err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied: "+err.Error(), http.StatusUnauthorized)
@@ -399,7 +399,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(kind, resource, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, kind, resource, right)
 		if err != nil {
 			res.Header().Set("Content-Type", "application/json; charset=utf-8")
 			json.NewEncoder(res).Encode(false)
@@ -424,7 +424,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		ok, err := q.CheckListUserOrGroup(kind, ids, token.GetUserId(), token.GetRoles(), right)
+		ok, err := q.CheckListUserOrGroup(token, kind, ids, right)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -436,9 +436,13 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 	router.POST("/ids/select/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		kind := ps.ByName("resource_kind")
-		right := ps.ByName("right")
+		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(r.URL.Query())
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
 		ids := []string{}
-		err := json.NewDecoder(r.Body).Decode(&ids)
+		err = json.NewDecoder(r.Body).Decode(&ids)
 		if err != nil {
 			log.Println("WARNING: error in user send data", err)
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -449,7 +453,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := q.GetListFromIds(kind, ids, token.GetUserId(), token.GetRoles(), right)
+		result, err := q.GetListFromIds(token, kind, ids, queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -485,7 +489,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		result, err := q.GetListFromIdsOrdered(kind, ids, token.GetUserId(), token.GetRoles(), queryListCommons)
+		result, err := q.GetListFromIds(token, kind, ids, queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", ids, err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -598,11 +602,6 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := q.GetFilter(token, selection)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "asc", right)
 		if err != nil {
@@ -610,7 +609,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
+		list, err := q.SearchList(token, kind, query, queryListCommons, &selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -637,11 +636,6 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := q.GetFilter(token, selection)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, order, "desc", right)
 		if err != nil {
@@ -649,7 +643,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SearchOrderedListWithSelection(kind, query, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
+		list, err := q.SearchList(token, kind, query, queryListCommons, &selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -675,11 +669,6 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := q.GetFilter(token, selection)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "asc", right)
 		if err != nil {
@@ -687,7 +676,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
+		list, err := q.GetListWithSelection(token, kind, queryListCommons, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
@@ -713,11 +702,6 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		selectionFilter, err := q.GetFilter(token, selection)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		queryListCommons, err := model.GetQueryListCommonsFromStrings(limit, offset, orderfeature, "desc", right)
 		if err != nil {
@@ -725,7 +709,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.GetOrderedListForUserOrGroupWithSelection(kind, token.GetUserId(), token.GetRoles(), queryListCommons, selectionFilter)
+		list, err := q.GetListWithSelection(token, kind, queryListCommons, selection)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return

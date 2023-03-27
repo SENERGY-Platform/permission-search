@@ -49,12 +49,22 @@ type QueryCheckIds struct {
 }
 
 type QueryListCommons struct {
-	Limit         int        `json:"limit"`
-	Offset        int        `json:"offset"`
-	After         *ListAfter `json:"after"`
-	Rights        string     `json:"rights"`
-	SortBy        string     `json:"sort_by"`
-	SortDesc      bool       `json:"sort_desc"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
+
+	// After may only be set if offset is 0
+	// this field must be used if offset + limit would exceed 10000
+	// when set the results begin after the referenced id and sort value
+	// the sort value is used to efficiently locate the start point
+	After *ListAfter `json:"after"`
+
+	Rights   string `json:"rights"`
+	SortBy   string `json:"sort_by"`
+	SortDesc bool   `json:"sort_desc"`
+
+	// AddIdModifier is used to modify the resource id in the result
+	// possible modifiers can be found and configured in the configuration.json under result_modifiers
+	// example value: url.Values{"service_group_selection": {"a8ee3b1c-4cda-4f0d-9f55-4ef4882ce0af"}}
 	AddIdModifier url.Values `json:"add_id_modifier,omitempty"`
 }
 
@@ -83,6 +93,9 @@ func (this QueryListCommons) Validate() error {
 		if this.After.Id == "" {
 			return errors.New("'after' needs id value")
 		}
+		if this.SortBy == "" {
+			return errors.New("'after' needs set sort_by value")
+		}
 	}
 	return nil
 }
@@ -97,9 +110,6 @@ func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCo
 		offset = "0"
 	}
 	sort := queryParams.Get("sort")
-	if sort == "" {
-		sort = "name"
-	}
 
 	right := queryParams.Get("rights")
 	if right == "" {
@@ -132,6 +142,15 @@ func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCo
 	if err != nil {
 		return
 	}
+
+	addIdModifier := queryParams.Get("add_id_modifier")
+	if addIdModifier != "" {
+		result.AddIdModifier, err = url.ParseQuery(addIdModifier)
+		if err != nil {
+			return
+		}
+	}
+
 	err = result.Validate()
 	return
 }

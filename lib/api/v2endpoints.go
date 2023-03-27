@@ -75,7 +75,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 		switch mode {
 		case "search":
-			result, err = q.SearchOrderedList(resource, search, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.SearchList(token, resource, search, queryListCommons, nil)
 		case "selection":
 			selectionParts := strings.Split(selection, ":")
 			if len(selectionParts) < 2 {
@@ -84,12 +84,12 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			field := selectionParts[0]
 			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByFieldOrdered(resource, field, value, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.SelectByField(token, resource, field, value, queryListCommons)
 		case "ids":
 			// not more than 10 ids should be send
-			result, err = q.GetListFromIdsOrdered(resource, strings.Split(ids, ","), token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.GetListFromIds(token, resource, strings.Split(ids, ","), queryListCommons)
 		default:
-			result, err = q.GetOrderedListForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.GetList(token, resource, queryListCommons)
 		}
 
 		if err != nil {
@@ -112,7 +112,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, resource, id, right)
 		if err != nil {
 			http.Error(writer, "access denied: "+err.Error(), http.StatusUnauthorized)
 			return
@@ -132,7 +132,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, resource, id, right)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err != nil {
 			json.NewEncoder(writer).Encode(false)
@@ -170,55 +170,32 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			if query.Find.Search == "" {
 				if query.Find.Filter == nil {
-					result, err = q.GetOrderedListForUserOrGroup(
+					result, err = q.GetList(
+						token,
 						query.Resource,
-						token.GetUserId(),
-						token.GetRoles(),
 						query.Find.QueryListCommons)
 				} else {
-					filter, err := q.GetFilter(token, *query.Find.Filter)
-					if err != nil {
-						http.Error(writer, err.Error(), http.StatusBadRequest)
-						return
-					}
-					result, err = q.GetOrderedListForUserOrGroupWithSelection(
+					result, err = q.GetListWithSelection(
+						token,
 						query.Resource,
-						token.GetUserId(),
-						token.GetRoles(),
 						query.Find.QueryListCommons,
-						filter)
+						*query.Find.Filter)
 				}
 			} else {
-				if query.Find.Filter == nil {
-					result, err = q.SearchOrderedList(
-						query.Resource,
-						query.Find.Search,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons)
-				} else {
-					filter, err := q.GetFilter(token, *query.Find.Filter)
-					if err != nil {
-						http.Error(writer, err.Error(), http.StatusBadRequest)
-						return
-					}
-					result, err = q.SearchOrderedListWithSelection(
-						query.Resource,
-						query.Find.Search,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons,
-						filter)
-				}
+				result, err = q.SearchList(
+					token,
+					query.Resource,
+					query.Find.Search,
+					query.Find.QueryListCommons,
+					query.Find.Filter)
 			}
 		}
 
 		if query.CheckIds != nil {
 			result, err = q.CheckListUserOrGroup(
+				token,
 				query.Resource,
 				query.CheckIds.Ids,
-				token.GetUserId(),
-				token.GetRoles(),
 				query.CheckIds.Rights)
 		}
 
@@ -232,16 +209,15 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			if query.ListIds.Rights == "" {
 				query.ListIds.Rights = "r"
 			}
-			result, err = q.GetListFromIdsOrdered(
+			result, err = q.GetListFromIds(
+				token,
 				query.Resource,
 				query.ListIds.Ids,
-				token.GetUserId(),
-				token.GetRoles(),
 				query.ListIds.QueryListCommons)
 		}
 
 		if query.TermAggregate != nil {
-			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate, query.TermAggregateLimit)
+			result, err = q.GetTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
 		}
 
 		if err != nil {

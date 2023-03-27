@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 	"reflect"
@@ -162,7 +161,7 @@ func TestDeviceGroup(t *testing.T) {
 		"shared": false,
 	}}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",
@@ -183,7 +182,7 @@ func TestDeviceGroup(t *testing.T) {
 		return
 	}
 
-	filter, err := q.GetFilter(auth.Token{}, model.Selection{
+	filter := model.Selection{
 		And: []model.Selection{
 			{
 				Condition: model.ConditionConfig{
@@ -200,15 +199,14 @@ func TestDeviceGroup(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	result, err = q.GetOrderedListForUserOrGroupWithSelection(
+	result, err = q.GetListWithSelection(
+		createTestToken("testOwner", []string{"user"}),
 		resource,
-		"testOwner",
-		[]string{"user"},
 		model.QueryListCommons{
 			Limit:    3,
 			Offset:   0,
@@ -390,7 +388,7 @@ func TestDeviceGroupAttributes(t *testing.T) {
 		"shared": false,
 	}}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",
@@ -411,7 +409,7 @@ func TestDeviceGroupAttributes(t *testing.T) {
 		return
 	}
 
-	filter, err := q.GetFilter(auth.Token{}, model.Selection{
+	filter := model.Selection{
 		And: []model.Selection{
 			{
 				Condition: model.ConditionConfig{
@@ -428,15 +426,14 @@ func TestDeviceGroupAttributes(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	result, err = q.GetOrderedListForUserOrGroupWithSelection(
+	result, err = q.GetListWithSelection(
+		createTestToken("testOwner", []string{"user"}),
 		resource,
-		"testOwner",
-		[]string{"user"},
 		model.QueryListCommons{
 			Limit:    3,
 			Offset:   0,

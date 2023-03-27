@@ -19,7 +19,6 @@ package lib
 import (
 	"context"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"reflect"
@@ -51,20 +50,19 @@ func TestQueryNot(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	filter, err := q.GetFilter(auth.Token{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
+	filter := model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
 		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg2", "dg4", "dg5"},
-	}}})
+	}}}
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroupWithSelection(
+	result, err := q.GetListWithSelection(
+		createTestToken("testOwner", []string{"user"}),
 		resource,
-		"testOwner",
-		[]string{"user"},
 		model.QueryListCommons{
 			Limit:    100,
 			Offset:   0,
@@ -101,21 +99,20 @@ func TestQueryNot(t *testing.T) {
 		}
 	})
 
-	filter, err = q.GetFilter(auth.Token{}, model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
+	filter = model.Selection{Not: &model.Selection{Condition: model.ConditionConfig{
 		Feature:   "id",
 		Operation: model.QueryAnyValueInFeatureOperation,
 		Value:     []string{"dg1"},
-	}}})
+	}}}
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	result, err = q.SearchOrderedListWithSelection(
+	result, err = q.SearchList(
+		createTestToken("testOwner", []string{"user"}),
 		resource,
 		"find",
-		"testOwner",
-		[]string{"user"},
 		model.QueryListCommons{
 			Limit:    100,
 			Offset:   0,
@@ -123,7 +120,7 @@ func TestQueryNot(t *testing.T) {
 			SortBy:   "name",
 			SortDesc: false,
 		},
-		filter)
+		&filter)
 
 	if err != nil {
 		t.Error(err)

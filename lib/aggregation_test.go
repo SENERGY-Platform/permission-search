@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"reflect"
@@ -55,7 +56,7 @@ func TestTermAggregation(t *testing.T) {
 		groups := []string{"user"}
 		rights := "r"
 		field := "features.device_type_id"
-		result, err := q.GetTermAggregation(resource, user, groups, rights, field, 1000)
+		result, err := q.GetTermAggregation(createTestToken(user, groups), resource, rights, field, 1000)
 		if err != nil {
 			t.Error(err)
 			return
@@ -107,7 +108,7 @@ func TestTermAggregationLimit(t *testing.T) {
 			groups := []string{"user"}
 			rights := "r"
 			field := "features.device_type_id"
-			result, err := q.GetTermAggregation(resource, user, groups, rights, field, limit)
+			result, err := q.GetTermAggregation(createTestToken(user, groups), resource, rights, field, limit)
 			if err != nil {
 				t.Error(err)
 				return
@@ -156,4 +157,12 @@ func getDeviceTestObj(id string, obj interface{}) (msg []byte, command model.Com
 		return msg, command, err
 	}
 	return msg, command, err
+}
+
+func createTestToken(user string, groups []string) auth.Token {
+	return auth.Token{
+		Token:       "",
+		Sub:         user,
+		RealmAccess: map[string][]string{"roles": groups},
+	}
 }

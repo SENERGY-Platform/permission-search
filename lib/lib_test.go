@@ -382,16 +382,16 @@ func ExampleCheckUserOrGroup() {
 		return
 	}
 	time.Sleep(1 * time.Second)
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{}, "a"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "a"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "r"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "r"))
 
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "a"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "testOwner", []string{"user"}, "ra"))
-	fmt.Println(q.CheckUserOrGroup("device-types", "check3", "nope", []string{"user"}, "ra"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "ra"))
+	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "ra"))
 
 	//Output:
 	//access denied
@@ -483,7 +483,7 @@ func ExampleGetOrderedListForUserOrGroup() {
 	initDb(config, w)
 
 	time.Sleep(1 * time.Second)
-	result, err := q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
 		Limit:    20,
 		Offset:   0,
 		Rights:   "r",
@@ -494,7 +494,7 @@ func ExampleGetOrderedListForUserOrGroup() {
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+	result, err = q.GetList(createTestToken("testOwner", []string{"user"}), "device-types", model.QueryListCommons{
 		Limit:    20,
 		Offset:   0,
 		Rights:   "r",
@@ -505,7 +505,7 @@ func ExampleGetOrderedListForUserOrGroup() {
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+	result, err = q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",
@@ -516,7 +516,7 @@ func ExampleGetOrderedListForUserOrGroup() {
 	for _, r := range result {
 		fmt.Println(r["name"])
 	}
-	result, err = q.GetOrderedListForUserOrGroup("device-types", "testOwner", []string{}, model.QueryListCommons{
+	result, err = q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
 		Limit:    3,
 		Offset:   3,
 		Rights:   "r",

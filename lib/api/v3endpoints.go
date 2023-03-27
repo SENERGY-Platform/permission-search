@@ -18,13 +18,10 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
-	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
@@ -39,52 +36,6 @@ func init() {
 
 func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query, p *rigthsproducer.Producer) bool {
 
-	addParsedModifier := func(token auth.Token, resourceKind string, elements []map[string]interface{}, parsedModifier map[string][]string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
-		if len(elements) == 0 {
-			return elements, nil, http.StatusOK
-		}
-		idList := []string{}
-		for _, e := range elements {
-			id, ok := e["id"].(string)
-			if !ok {
-				return nil, errors.New("unable to use add_id_modifier: result id is not string"), http.StatusInternalServerError
-			}
-			pureId, parameter := modifier.SplitModifier(id)
-
-			if err != nil {
-				err = fmt.Errorf("invalid add_id_modifier value: %w", err)
-				return nil, err, http.StatusBadRequest
-			}
-			if parameter == nil {
-				parameter = map[string][]string{}
-			}
-			for key, values := range parsedModifier {
-				parameter[key] = values
-			}
-			idList = append(idList, modifier.JoinModifier(pureId, parameter))
-		}
-		result, err = q.GetListFromIdsOrdered(resourceKind, idList, token.GetUserId(), token.GetRoles(), model.QueryListCommons{
-			Limit:    len(idList),
-			Offset:   0,
-			Rights:   rights,
-			SortBy:   sortBy,
-			SortDesc: sortDesc,
-		})
-		if err != nil {
-			return nil, err, http.StatusInternalServerError
-		}
-		return result, nil, http.StatusOK
-	}
-
-	addModifier := func(token auth.Token, resourceKind string, elements []map[string]interface{}, modifierString string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
-		parsedModifier, err := modifier.DecodeModifierParameter(modifierString)
-		if err != nil {
-			err = fmt.Errorf("invalid add_id_modifier value: %w", err)
-			return nil, err, http.StatusBadRequest
-		}
-		return addParsedModifier(token, resourceKind, elements, parsedModifier, rights, sortBy, sortDesc)
-	}
-
 	router.GET("/v3/administrate/rights/:resource/:id", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		resource := ps.ByName("resource")
 		id := ps.ByName("id")
@@ -93,16 +44,13 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if !token.IsAdmin() {
-			if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
-				log.Println("access denied", err)
-				http.Error(res, "access denied", http.StatusForbidden)
-				return
-			}
-		}
-		rights, err := q.GetResourceRights(resource, id)
+		rights, err := q.GetRights(token, resource, id)
 		if err == query.ErrNotFound {
 			http.Error(res, err.Error(), http.StatusNotFound)
+			return
+		}
+		if err == query.ErrAccessDenied {
+			http.Error(res, err.Error(), http.StatusForbidden)
 			return
 		}
 		if err != nil {
@@ -119,8 +67,6 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		search := request.URL.Query().Get("search")
 		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
-
-		addIdModifier := request.URL.Query().Get("add_id_modifier")
 
 		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
 		if err != nil {
@@ -157,7 +103,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 		switch mode {
 		case "search":
-			result, err = q.SearchOrderedList(resource, search, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.SearchList(token, resource, search, queryListCommons, nil)
 		case "selection":
 			selectionParts := strings.Split(selection, ":")
 			if len(selectionParts) < 2 {
@@ -166,26 +112,17 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			field := selectionParts[0]
 			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByFieldOrdered(resource, field, value, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.SelectByField(token, resource, field, value, queryListCommons)
 		case "ids":
-			// not more than 10 ids should be send
-			result, err = q.GetListFromIdsOrdered(resource, strings.Split(ids, ","), token.GetUserId(), token.GetRoles(), queryListCommons)
+			// no more than 10 ids should be send
+			result, err = q.GetListFromIds(token, resource, strings.Split(ids, ","), queryListCommons)
 		default:
-			result, err = q.GetOrderedListForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), queryListCommons)
+			result, err = q.GetList(token, resource, queryListCommons)
 		}
 
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		if addIdModifier != "" && len(result) > 0 {
-			var code int
-			result, err, code = addModifier(token, resource, result, addIdModifier, queryListCommons.Rights, queryListCommons.SortBy, queryListCommons.SortDesc)
-			if err != nil {
-				http.Error(writer, err.Error(), code)
-				return
-			}
 		}
 
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -225,7 +162,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 		switch mode {
 		case "search":
-			result, err = q.SearchListTotal(resource, search, token.GetUserId(), token.GetRoles(), right)
+			result, err = q.SearchListTotal(token, resource, search, right)
 		case "selection":
 			selectionParts := strings.Split(selection, ":")
 			if len(selectionParts) < 2 {
@@ -234,9 +171,9 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			field := selectionParts[0]
 			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByFieldTotal(resource, field, value, token.GetUserId(), token.GetRoles(), right)
+			result, err = q.SelectByFieldTotal(token, resource, field, value, right)
 		default:
-			result, err = q.GetListTotalForUserOrGroup(resource, token.GetUserId(), token.GetRoles(), right)
+			result, err = q.GetListTotalForUserOrGroup(token, resource, right)
 		}
 
 		if err != nil {
@@ -259,7 +196,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, resource, id, right)
 		if err != nil {
 			http.Error(writer, "access denied: "+err.Error(), http.StatusForbidden)
 			return
@@ -279,7 +216,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		err = q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), right)
+		err = q.CheckUserOrGroup(token, resource, id, right)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err != nil {
 			json.NewEncoder(writer).Encode(false)
@@ -300,7 +237,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := q.GetTermAggregation(resource, token.GetUserId(), token.GetRoles(), "r", term, limit)
+		result, err := q.GetTermAggregation(token, resource, "r", term, limit)
 
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -327,112 +264,11 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			temp, _ := json.Marshal(query)
 			log.Println("DEBUG:", auth.GetAuthToken(request), "\n", string(temp))
 		}
-		var result interface{}
-		if query.Find != nil {
-			if query.Find.Limit == 0 {
-				query.Find.Limit = 100
-			}
-			if query.Find.SortBy == "" {
-				query.Find.SortBy = "name"
-			}
-			if query.Find.Rights == "" {
-				query.Find.Rights = "r"
-			}
-			if query.Find.Search == "" {
-				if query.Find.Filter == nil {
-					result, err = q.GetOrderedListForUserOrGroup(
-						query.Resource,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons)
-				} else {
-					filter, err := q.GetFilter(token, *query.Find.Filter)
-					if err != nil {
-						http.Error(writer, err.Error(), http.StatusBadRequest)
-						return
-					}
-					result, err = q.GetOrderedListForUserOrGroupWithSelection(
-						query.Resource,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons,
-						filter)
-				}
-			} else {
-				if query.Find.Filter == nil {
-					result, err = q.SearchOrderedList(
-						query.Resource,
-						query.Find.Search,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons)
-				} else {
-					filter, err := q.GetFilter(token, *query.Find.Filter)
-					if err != nil {
-						http.Error(writer, err.Error(), http.StatusBadRequest)
-						return
-					}
-					result, err = q.SearchOrderedListWithSelection(
-						query.Resource,
-						query.Find.Search,
-						token.GetUserId(),
-						token.GetRoles(),
-						query.Find.QueryListCommons,
-						filter)
-				}
-			}
-			if len(query.Find.AddIdModifier) > 0 {
-				var code int
-				result, err, code = addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.Find.AddIdModifier, query.Find.Rights, query.Find.SortBy, query.Find.SortDesc)
-				if err != nil {
-					http.Error(writer, err.Error(), code)
-					return
-				}
-			}
-		}
 
-		if query.CheckIds != nil {
-			result, err = q.CheckListUserOrGroup(
-				query.Resource,
-				query.CheckIds.Ids,
-				token.GetUserId(),
-				token.GetRoles(),
-				query.CheckIds.Rights)
-		}
-
-		if query.ListIds != nil {
-			if query.ListIds.Limit == 0 {
-				query.ListIds.Limit = 100
-			}
-			if query.ListIds.SortBy == "" {
-				query.ListIds.SortBy = "name"
-			}
-			if query.ListIds.Rights == "" {
-				query.ListIds.Rights = "r"
-			}
-			result, err = q.GetListFromIdsOrdered(
-				query.Resource,
-				query.ListIds.Ids,
-				token.GetUserId(),
-				token.GetRoles(),
-				query.ListIds.QueryListCommons)
-
-			if len(query.ListIds.AddIdModifier) > 0 {
-				var code int
-				result, err, code = addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.ListIds.AddIdModifier, query.ListIds.Rights, query.ListIds.SortBy, query.ListIds.SortDesc)
-				if err != nil {
-					http.Error(writer, err.Error(), code)
-					return
-				}
-			}
-		}
-
-		if query.TermAggregate != nil {
-			result, err = q.GetTermAggregation(query.Resource, token.GetUserId(), token.GetRoles(), "r", *query.TermAggregate, query.TermAggregateLimit)
-		}
+		result, code, err := q.Query(token, query)
 
 		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), code)
 			return
 		}
 

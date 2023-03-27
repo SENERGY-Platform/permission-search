@@ -18,12 +18,13 @@ package query
 
 import (
 	"context"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/olivere/elastic/v7"
 )
 
-func (this *Query) SearchListTotal(kind string, query string, user string, groups []string, rights string) (result int64, err error) {
+func (this *Query) SearchListTotal(token auth.Token, kind string, query string, rights string) (result int64, err error) {
 	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
 
 	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).TrackTotalHits(true).Size(1).Do(ctx)
 	if err != nil {
@@ -32,9 +33,9 @@ func (this *Query) SearchListTotal(kind string, query string, user string, group
 	return resp.Hits.TotalHits.Value, nil
 }
 
-func (this *Query) SelectByFieldTotal(kind string, field string, value string, user string, groups []string, rights string) (result int64, err error) {
+func (this *Query) SelectByFieldTotal(token auth.Token, kind string, field string, value string, rights string) (result int64, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+field, value))...)
 	resp, err := this.client.Search().Index(kind).Query(query).TrackTotalHits(true).Size(1).Do(ctx)
 	if err != nil {
 		return result, err
@@ -42,9 +43,9 @@ func (this *Query) SelectByFieldTotal(kind string, field string, value string, u
 	return resp.Hits.TotalHits.Value, nil
 }
 
-func (this *Query) GetListTotalForUserOrGroup(kind string, user string, groups []string, rights string) (result int64, err error) {
+func (this *Query) GetListTotalForUserOrGroup(token auth.Token, kind string, rights string) (result int64, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).TrackTotalHits(true).Size(1).Do(ctx)
 	if err != nil {
 		return result, err

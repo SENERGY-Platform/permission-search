@@ -81,7 +81,7 @@ func TestReceiveAspect(t *testing.T) {
 		return
 	}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",

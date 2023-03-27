@@ -19,16 +19,17 @@ package query
 import (
 	"context"
 	"errors"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 )
 
-func (this *Query) GetTermAggregation(kind string, user string, groups []string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+func (this *Query) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
 	if limit == 0 {
 		limit = 100
 	}
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...)
 	aggregate := elastic.NewTermsAggregation().Field(field).Size(limit)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Aggregation(field, aggregate).Do(ctx)
 	if err != nil {

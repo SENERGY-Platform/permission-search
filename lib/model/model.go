@@ -153,6 +153,39 @@ type Entry struct {
 	Creator       string                 `json:"creator"`
 }
 
+// EntryResult is ment to be used in combination with a resource model
+// is intended to be used with client.Query()
+// example:
+//
+//	type Device struct{
+//		Id   string `json:"id"`
+//		Name string `json:"name"`
+//	}
+//
+//	type DeviceResult struct {
+//		EntryResult
+//		Device
+//	}
+//
+//	func main() {
+//		client.Query[DeviceResult](c, token, model.QueryMessage{Resource:"devices"})
+//		client.Query[Device](c, token, model.QueryMessage{Resource:"devices"})
+//	}
+type EntryResult struct {
+	Creator           string                       `json:"creator"`
+	Annotations       map[string]interface{}       `json:"annotations"`
+	Permissions       map[string]bool              `json:"permissions"`
+	PermissionHolders EntryResultPermissionHolders `json:"permission_holders"`
+	Shared            bool                         `json:"shared"`
+}
+
+type EntryResultPermissionHolders struct {
+	AdminUsers   []string `json:"admin_users"`
+	ReadUsers    []string `json:"read_users"`
+	WriteUsers   []string `json:"write_users"`
+	ExecuteUsers []string `json:"execute_users"`
+}
+
 func (this *Entry) SetResourceRights(rights ResourceRightsBase) {
 	for group, right := range rights.GroupRights {
 		if right.Administrate {

@@ -112,7 +112,7 @@ func TestApiV1(t *testing.T) {
 	time.Sleep(10 * time.Second) //kafka latency
 
 	t.Run("read aspect", func(t *testing.T) {
-		//q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
+		//q.GetList(resource, "testOwner", []string{"user"}, "r", "3", "0", "name", true)
 		path := "/jwt/list/aspects/r/3/0/name/asc"
 		req, err := http.NewRequest("GET", "http://localhost:"+config.ServerPort+path, nil)
 		if err != nil {

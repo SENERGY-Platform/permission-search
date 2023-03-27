@@ -19,14 +19,12 @@ package api
 import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
 )
 
 type Query interface {
 	//v1
 	ResourceExists(kind string, resource string) (exists bool, err error)
 	GetRightsToAdministrate(kind string, user string, groups []string) (result []model.ResourceRights, err error)
-	GetListFromIds(kind string, ids []string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
 	GetFullListForUserOrGroup(kind string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
 	GetListForUserOrGroup(kind string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error)
 	GetListForUser(kind string, user string, rights string) (result []string, err error)
@@ -36,29 +34,32 @@ type Query interface {
 	SearchRightsToAdministrate(kind string, user string, groups []string, query string, limitStr string, offsetStr string) (result []model.ResourceRights, err error)
 	SearchListAll(kind string, query string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
 	SelectByFieldAll(kind string, field string, value string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
-	SearchList(kind string, query string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error)
 
 	//v3
-	CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error)
-	CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error)
-	GetResourceRights(kind string, resource string) (result model.ResourceRights, err error)
-	GetOrderedListForUserOrGroup(kind string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	SearchOrderedListWithSelection(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error)
-	GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error)
-
-	//selection
-	GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error)
+	ClientV3
 
 	//migration
 	Import(imports map[string][]model.ResourceRights) (err error)
 	Export() (exports map[string][]model.ResourceRights, err error)
+}
 
-	GetTermAggregation(kind string, user string, groups []string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+type ClientV3 interface {
+	Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error)
 
-	SearchListTotal(resource string, search string, id string, roles []string, right string) (int64, error)
-	SelectByFieldTotal(resource string, field string, value string, id string, roles []string, right string) (int64, error)
-	GetListTotalForUserOrGroup(resource string, id string, roles []string, right string) (int64, error)
+	CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error)
+	CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error)
+	GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error)
+	GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+	GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+	GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error)
+	SelectByField(token auth.Token, kind string, field string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+
+	// SearchList does a text search with query on the feature_search index
+	// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
+	SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error)
+
+	GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+	SearchListTotal(token auth.Token, kind string, search string, right string) (int64, error)
+	SelectByFieldTotal(token auth.Token, kind string, field string, value string, right string) (int64, error)
+	GetListTotalForUserOrGroup(token auth.Token, kind string, right string) (int64, error)
 }

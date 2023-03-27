@@ -18,6 +18,8 @@ package query
 
 import (
 	"context"
+	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
@@ -81,6 +83,9 @@ func interfaceSlice(strings []string) (result []interface{}) {
 }
 
 func getRightsQuery(rights string, user string, groups []string) (result []elastic.Query) {
+	if rights == "" {
+		rights = "r"
+	}
 	for _, right := range rights {
 		switch right {
 		case 'a':
@@ -142,18 +147,18 @@ func (this *Query) GetRightsToAdministrate(kind string, user string, groups []st
 	return
 }
 
-func (this *Query) CheckUserOrGroup(kind string, resource string, user string, groups []string, rights string) (err error) {
+func (this *Query) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
 	pureId, _ := modifier.SplitModifier(resource)
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("resource", pureId))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("resource", pureId))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
-		err = errors.New("access denied")
+		err = ErrAccessDenied
 	}
 	return
 }
 
-func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, groups []string, rights string) (allowed map[string]bool, err error) {
+func (this *Query) CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error) {
 	allowed = map[string]bool{}
 	ctx := this.getTimeout()
 	terms := []interface{}{}
@@ -161,7 +166,7 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermsQuery("resource", terms...))...)
 	resp, err := this.client.Search().Index(kind).Query(query).Size(len(pureIds)).Do(ctx)
 	if err != nil {
 		return allowed, err
@@ -179,29 +184,7 @@ func (this *Query) CheckListUserOrGroup(kind string, ids []string, user string, 
 	return allowed, nil
 }
 
-func (this *Query) GetListFromIds(kind string, ids []string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
-	ctx := this.getTimeout()
-	terms := []interface{}{}
-	for _, id := range ids {
-		terms = append(terms, id)
-	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := this.client.Search().Index(kind).Query(query).Size(len(ids)).Do(ctx)
-	if err != nil {
-		return result, err
-	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
-	}
-	return result, nil
-}
-
-func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
 	terms := []interface{}{}
 
@@ -210,7 +193,7 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermsQuery("resource", terms...))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermsQuery("resource", terms...))...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -227,8 +210,11 @@ func (this *Query) GetListFromIdsOrdered(kind string, ids []string, user string,
 			return result, err
 		}
 		for _, modifiedResult := range modifiedResults {
-			result = append(result, getEntryResult(modifiedResult, user, groups))
+			result = append(result, getEntryResult(modifiedResult, token.GetUserId(), token.GetRoles()))
 		}
+	}
+	if len(queryCommons.AddIdModifier) > 0 {
+		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
 	return result, nil
 }
@@ -278,9 +264,9 @@ func (this *Query) getListForUserOrGroup(kind string, user string, groups []stri
 	return
 }
 
-func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -291,7 +277,10 @@ func (this *Query) GetOrderedListForUserOrGroup(kind string, user string, groups
 		if err != nil {
 			return result, err
 		}
-		result = append(result, getEntryResult(entry, user, groups))
+		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	}
+	if len(queryCommons.AddIdModifier) > 0 {
+		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
 	return
 }
@@ -352,7 +341,12 @@ func (this *Query) CheckGroups(kind string, resource string, groups []string, ri
 	return
 }
 
-func (this *Query) GetResourceRights(kind string, resource string) (result model.ResourceRights, err error) {
+func (this *Query) GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error) {
+	if !token.IsAdmin() {
+		if err := this.CheckUserOrGroup(token, kind, resource, "a"); err != nil {
+			return result, err
+		}
+	}
 	pureIds, preparedModify := this.modifier.PrepareListModify([]string{resource})
 	if len(pureIds) == 0 {
 		debug.PrintStack()
@@ -416,9 +410,9 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 	return
 }
 
-func (this *Query) SelectByFieldOrdered(kind string, field string, value string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) SelectByField(token auth.Token, kind string, field string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+field, value))...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -429,7 +423,10 @@ func (this *Query) SelectByFieldOrdered(kind string, field string, value string,
 		if err != nil {
 			return result, err
 		}
-		result = append(result, getEntryResult(entry, user, groups))
+		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	}
+	if len(queryCommons.AddIdModifier) > 0 {
+		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
 	return
 }
@@ -467,16 +464,34 @@ func (this *Query) selectByField(kind string, field string, value string, user s
 	return
 }
 
-func (this *Query) SearchList(kind string, query string, user string, groups []string, rights string, limitStr string, offsetStr string) (result []map[string]interface{}, err error) {
-	limit, err := strconv.Atoi(limitStr)
+// SearchList does a text search with query on the feature_search index
+// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
+func (this *Query) SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error) {
+	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
+	if selection != nil {
+		filter, err := this.GetFilter(token, *selection)
+		if err != nil {
+			return result, err
+		}
+		elastic_query = elastic_query.Filter(filter)
+	}
+	ctx := this.getTimeout()
+	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
 	}
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		return result, err
+	for _, hit := range resp.Hits.Hits {
+		entry := model.Entry{}
+		err = json.Unmarshal(hit.Source, &entry)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
 	}
-	return this.searchList(kind, query, user, groups, rights, limit, offset)
+	if len(queryCommons.AddIdModifier) > 0 {
+		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
+	}
+	return
 }
 
 func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
@@ -516,6 +531,7 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 }
 
 var ErrNotFound = errors.New("not found")
+var ErrAccessDenied = errors.New("access denied")
 
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
 	version, err = this.GetResourceInterface(kind, resource, &result)
@@ -562,29 +578,13 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 	}
 	return
 }
-
-func (this *Query) SearchOrderedListWithSelection(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
+func (this *Query) GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	//elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query)).Filter(selection)
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND")).Filter(selection)
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
+	filter, err := this.GetFilter(token, selection)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
-	}
-	return
-}
-
-func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user string, groups []string, queryCommons model.QueryListCommons, selection elastic.Query) (result []map[string]interface{}, err error) {
-	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Filter(selection)
+	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...).Filter(filter)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -595,9 +595,131 @@ func (this *Query) GetOrderedListForUserOrGroupWithSelection(kind string, user s
 		if err != nil {
 			return result, err
 		}
-		result = append(result, getEntryResult(entry, user, groups))
+		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	}
+	if len(queryCommons.AddIdModifier) > 0 {
+		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
 	return
+}
+
+func (this *Query) Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error) {
+	if query.Find != nil {
+		if query.Find.Limit == 0 {
+			query.Find.Limit = 100
+		}
+		if query.Find.Rights == "" {
+			query.Find.Rights = "r"
+		}
+		if query.Find.Search == "" {
+			if query.Find.Filter == nil {
+				result, err = this.GetList(
+					token,
+					query.Resource,
+					query.Find.QueryListCommons)
+			} else {
+				result, err = this.GetListWithSelection(
+					token,
+					query.Resource,
+					query.Find.QueryListCommons,
+					*query.Find.Filter)
+			}
+		} else {
+			result, err = this.SearchList(
+				token,
+				query.Resource,
+				query.Find.Search,
+				query.Find.QueryListCommons,
+				query.Find.Filter)
+		}
+		if len(query.Find.AddIdModifier) > 0 {
+			result, err, code = this.addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.Find.AddIdModifier, query.Find.Rights, query.Find.SortBy, query.Find.SortDesc)
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	if query.CheckIds != nil {
+		result, err = this.CheckListUserOrGroup(
+			token,
+			query.Resource,
+			query.CheckIds.Ids,
+
+			query.CheckIds.Rights)
+	}
+
+	if query.ListIds != nil {
+		if query.ListIds.Limit == 0 {
+			query.ListIds.Limit = 100
+		}
+		if query.ListIds.Rights == "" {
+			query.ListIds.Rights = "r"
+		}
+		result, err = this.GetListFromIds(
+			token,
+			query.Resource,
+			query.ListIds.Ids,
+			query.ListIds.QueryListCommons)
+
+		if len(query.ListIds.AddIdModifier) > 0 {
+			result, err, code = this.addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.ListIds.AddIdModifier, query.ListIds.Rights, query.ListIds.SortBy, query.ListIds.SortDesc)
+			if err != nil {
+				return result, code, err
+			}
+		}
+	}
+
+	if query.TermAggregate != nil {
+		result, err = this.GetTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
+	}
+	return
+}
+
+func (this *Query) addParsedModifier(token auth.Token, resourceKind string, elements []map[string]interface{}, parsedModifier map[string][]string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
+	if len(elements) == 0 {
+		return elements, nil, http.StatusOK
+	}
+	idList := []string{}
+	for _, e := range elements {
+		id, ok := e["id"].(string)
+		if !ok {
+			return nil, errors.New("unable to use add_id_modifier: result id is not string"), http.StatusInternalServerError
+		}
+		pureId, parameter := modifier.SplitModifier(id)
+
+		if err != nil {
+			err = fmt.Errorf("invalid add_id_modifier value: %w", err)
+			return nil, err, http.StatusBadRequest
+		}
+		if parameter == nil {
+			parameter = map[string][]string{}
+		}
+		for key, values := range parsedModifier {
+			parameter[key] = values
+		}
+		idList = append(idList, modifier.JoinModifier(pureId, parameter))
+	}
+	result, err = this.GetListFromIds(token, resourceKind, idList, model.QueryListCommons{
+		Limit:    len(idList),
+		Offset:   0,
+		Rights:   rights,
+		SortBy:   sortBy,
+		SortDesc: sortDesc,
+	})
+	if err != nil {
+		return nil, err, http.StatusInternalServerError
+	}
+	return result, nil, http.StatusOK
+}
+
+func (this *Query) AddModifier(token auth.Token, resourceKind string, elements []map[string]interface{}, modifierString string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {
+	parsedModifier, err := modifier.DecodeModifierParameter(modifierString)
+	if err != nil {
+		err = fmt.Errorf("invalid add_id_modifier value: %w", err)
+		return nil, err, http.StatusBadRequest
+	}
+	return this.addParsedModifier(token, resourceKind, elements, parsedModifier, rights, sortBy, sortDesc)
 }
 
 func getSharedState(reqUser string, entry model.Entry) bool {
@@ -642,12 +764,21 @@ func hasAdminGroup(entry model.Entry, groups []string) bool {
 	return false
 }
 
-func setPaginationAndSort(query *elastic.SearchService, queryCommons model.QueryListCommons) *elastic.SearchService {
-	if queryCommons.After == nil {
-		return query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Sort("resource", !queryCommons.SortDesc)
-	} else {
-		return query.SearchAfter(queryCommons.After.SortFieldValue, queryCommons.After.Id).Size(queryCommons.Limit).Sort("features."+queryCommons.SortBy, !queryCommons.SortDesc).Sort("resource", !queryCommons.SortDesc)
+func setPaginationAndSort(query *elastic.SearchService, queryCommons model.QueryListCommons) (result *elastic.SearchService) {
+	defaultSort := "resource"
+	s := defaultSort
+	if queryCommons.SortBy != "" {
+		s = "features." + queryCommons.SortBy
 	}
+	if queryCommons.After == nil {
+		result = query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
+	} else {
+		result = query.SearchAfter(queryCommons.After.SortFieldValue, queryCommons.After.Id).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
+	}
+	if s != defaultSort {
+		result = result.Sort("resource", !queryCommons.SortDesc)
+	}
+	return result
 }
 
 func contains(list []string, value string) bool {

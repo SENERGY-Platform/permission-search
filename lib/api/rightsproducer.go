@@ -58,7 +58,7 @@ func RightsProducerEndpoints(router *httprouter.Router, config configuration.Con
 			return
 		}
 		if !token.IsAdmin() {
-			if err := q.CheckUserOrGroup(resource, id, token.GetUserId(), token.GetRoles(), "a"); err != nil {
+			if err := q.CheckUserOrGroup(token, resource, id, "a"); err != nil {
 				log.Println("access denied", err)
 				http.Error(res, "access denied", http.StatusForbidden)
 				return

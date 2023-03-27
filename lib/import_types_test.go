@@ -156,7 +156,7 @@ func TestImportTypes(t *testing.T) {
 		"shared": false,
 	}}
 
-	result, err := q.GetOrderedListForUserOrGroup(resource, "testOwner", []string{"user"}, model.QueryListCommons{
+	result, err := q.GetList(createTestToken("testOwner", []string{"user"}), resource, model.QueryListCommons{
 		Limit:    3,
 		Offset:   0,
 		Rights:   "r",
@@ -177,12 +177,11 @@ func TestImportTypes(t *testing.T) {
 		return
 	}
 
-	result, err = q.SelectByFieldOrdered(
+	result, err = q.SelectByField(
+		createTestToken("testOwner", []string{"user"}),
 		resource,
 		"aspect_functions",
 		"a1_f1",
-		"testOwner",
-		[]string{"user"},
 		model.QueryListCommons{
 			Limit:    3,
 			Offset:   0,
