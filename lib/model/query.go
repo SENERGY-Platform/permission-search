@@ -19,6 +19,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -98,6 +99,43 @@ func (this QueryListCommons) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (this QueryListCommons) QueryValues() (result url.Values) {
+	if this.Limit > 0 {
+		result["limit"] = []string{strconv.Itoa(this.Limit)}
+	}
+	if this.Offset > 0 {
+		result["offset"] = []string{strconv.Itoa(this.Offset)}
+	}
+	if this.SortBy != "" {
+		sort := this.SortBy
+		if this.SortDesc {
+			sort = sort + ".desc"
+		}
+		result["sort"] = []string{sort}
+	}
+	if this.Rights != "" {
+		result["rights"] = []string{this.Rights}
+	}
+	if this.After != nil {
+		if this.After.SortFieldValue != nil {
+			temp, err := json.Marshal(this.After.SortFieldValue)
+			if err != nil {
+				log.Println("WARNING: QueryListCommons.QueryValues() fall back to fmt.Sprint() for this.After.SortFieldValue")
+				result["after.sort_field_value"] = []string{fmt.Sprint(this.After.SortFieldValue)}
+			} else {
+				result["after.sort_field_value"] = []string{string(temp)}
+			}
+		}
+		if this.After.Id != "" {
+			result["after.id"] = []string{this.After.Id}
+		}
+	}
+	if len(this.AddIdModifier) > 0 {
+		result["add_id_modifier"] = []string{this.AddIdModifier.Encode()}
+	}
+	return result
 }
 
 func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCommons, err error) {

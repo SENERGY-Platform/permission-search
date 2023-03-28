@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 )
 
 type ListOptions struct {
@@ -30,6 +32,20 @@ type ListOptions struct {
 type FeatureSelection struct {
 	Feature string
 	Value   string
+}
+
+func (this ListOptions) QueryValues() url.Values {
+	result := this.QueryListCommons.QueryValues()
+	if len(this.ListIds) > 0 {
+		result["ids"] = []string{strings.Join(this.ListIds, ",")}
+	}
+	if len(this.TextSearch) > 0 {
+		result["search"] = []string{this.TextSearch}
+	}
+	if this.Selection != nil {
+		result["filter"] = []string{this.Selection.Feature + ":" + this.Selection.Value}
+	}
+	return result
 }
 
 func (this ListOptions) Validate() error {

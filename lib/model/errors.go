@@ -18,7 +18,9 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -39,4 +41,33 @@ func GetErrCode(err error) (code int) {
 		return http.StatusNotFound
 	}
 	return http.StatusInternalServerError
+}
+
+func GetErrFromCode(code int, msg string) error {
+	if code < 300 {
+		return nil
+	}
+
+	//clean message
+	cleanedMessage := msg
+	cleanedMessage = strings.TrimPrefix(msg, ErrBadRequest.Error())
+	cleanedMessage = strings.TrimPrefix(msg, ErrAccessDenied.Error())
+	cleanedMessage = strings.TrimPrefix(msg, ErrBadRequest.Error())
+	cleanedMessage = strings.TrimSpace(msg)
+	cleanedMessage = strings.TrimPrefix(msg, ":")
+	cleanedMessage = strings.TrimSpace(msg)
+	if cleanedMessage == "" {
+		cleanedMessage = msg
+	}
+
+	switch code {
+	case http.StatusBadRequest:
+		return fmt.Errorf("%w: %v", ErrBadRequest, cleanedMessage)
+	case http.StatusForbidden:
+		return fmt.Errorf("%w: %v", ErrAccessDenied, cleanedMessage)
+	case http.StatusNotFound:
+		return fmt.Errorf("%w: %v", ErrNotFound, cleanedMessage)
+	default:
+		return errors.New(msg)
+	}
 }

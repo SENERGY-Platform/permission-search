@@ -71,11 +71,6 @@ func (this *TestClient) CheckUserOrGroup(token auth.Token, kind string, resource
 	panic("implement me")
 }
 
-func (this *TestClient) CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (this *TestClient) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
 	//TODO implement me
 	panic("implement me")

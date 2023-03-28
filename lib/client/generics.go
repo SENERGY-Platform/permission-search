@@ -35,6 +35,14 @@ func Query[Result any](client Client, token auth.Token, query model.QueryMessage
 	return result, code, err
 }
 
+func List[Result any](client Client, token auth.Token, kind string, options model.ListOptions) (result Result, err error) {
+	temp, err := client.List(token, kind, options)
+	if err != nil {
+		return result, err
+	}
+	return jsonCast[Result](temp)
+}
+
 func jsonCast[Result any](in interface{}) (result Result, err error) {
 	temp, err := json.Marshal(in)
 	if err != nil {

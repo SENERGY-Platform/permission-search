@@ -43,6 +43,8 @@ type Query interface {
 	GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error)
 	SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
 
+	CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error)
+
 	//v3
 	V3
 
@@ -57,7 +59,7 @@ type V3 interface {
 	Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error)
 
 	CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error)
-	CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error)
+
 	GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error)
 
 	GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)

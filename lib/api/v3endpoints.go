@@ -165,7 +165,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 		err = q.CheckUserOrGroup(token, resource, id, right)
 		if err != nil {
-			http.Error(writer, "access denied: "+err.Error(), http.StatusForbidden)
+			http.Error(writer, err.Error(), model.GetErrCode(err))
 			return
 		}
 		writer.WriteHeader(200)
@@ -195,6 +195,10 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	router.GET("/v3/aggregates/term/:resource/:term", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		resource := params.ByName("resource")
 		term := params.ByName("term")
+		rights := params.ByName("rights")
+		if rights == "" {
+			rights = "r"
+		}
 		limit, err := strconv.Atoi(request.URL.Query().Get("limit"))
 		if err != nil {
 			limit = 100
@@ -204,7 +208,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		result, err := q.GetTermAggregation(token, resource, "r", term, limit)
+		result, err := q.GetTermAggregation(token, resource, rights, term, limit)
 
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)

@@ -22,6 +22,8 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
+	"net/url"
+	"strconv"
 )
 
 func (this *impl) GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error) {
@@ -40,7 +42,7 @@ func (this *impl) Query(token auth.Token, query model.QueryMessage) (result inte
 	if err != nil {
 		return result, http.StatusInternalServerError, err
 	}
-	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/query", nil)
+	req, err := http.NewRequest(http.MethodPost, this.baseUrl+"/v3/query", nil)
 	req.Header.Set("Authorization", token.Jwt())
 	if err != nil {
 		return result, http.StatusInternalServerError, err
@@ -50,26 +52,41 @@ func (this *impl) Query(token auth.Token, query model.QueryMessage) (result inte
 }
 
 func (this *impl) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
-	//TODO implement me
-	panic("implement me")
+	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
+	req.Header.Set("Authorization", token.Jwt())
+	if err != nil {
+		return result, err
+	}
+	result, _, err = do[[]map[string]interface{}](req)
+	return
 }
 
 func (this *impl) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
-	//TODO implement me
-	panic("implement me")
+	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/total/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
+	req.Header.Set("Authorization", token.Jwt())
+	if err != nil {
+		return result, err
+	}
+	result, _, err = do[int64](req)
+	return
 }
 
 func (this *impl) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
-	//TODO implement me
-	panic("implement me")
+	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"/"+url.PathEscape(resource)+"/access?rights="+rights, nil)
+	req.Header.Set("Authorization", token.Jwt())
+	if err != nil {
+		return err
+	}
+	_, err = head(req)
+	return
 }
 
-func (this *impl) CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (this *impl) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
-	//TODO implement me
-	panic("implement me")
+func (this *impl) GetTermAggregation(token auth.Token, kind string, rights string, term string, limit int) (result []model.TermAggregationResultElement, err error) {
+	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/aggregates/term/"+url.PathEscape(kind)+"/"+url.PathEscape(term)+"?limit="+strconv.Itoa(limit)+"&rights="+rights, nil)
+	req.Header.Set("Authorization", token.Jwt())
+	if err != nil {
+		return result, err
+	}
+	result, _, err = do[[]model.TermAggregationResultElement](req)
+	return
 }
