@@ -21,7 +21,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
@@ -45,11 +44,11 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		rights, err := q.GetRights(token, resource, id)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
-		if err == query.ErrAccessDenied {
+		if err == model.ErrAccessDenied {
 			http.Error(res, err.Error(), http.StatusForbidden)
 			return
 		}
@@ -68,60 +67,40 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
 
-		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		mode := ""
-		if search != "" {
-			mode = "search"
-		}
-		if selection != "" {
-			if mode != "" {
-				http.Error(writer, "the query parameters "+mode+" and 'select' may not be combined", http.StatusBadRequest)
-				return
-			}
-			mode = "selection"
-		}
-		if ids != "" {
-			if mode != "" {
-				http.Error(writer, "the query parameters "+mode+" and 'ids' may not be combined", http.StatusBadRequest)
-				return
-			}
-			mode = "ids"
-		}
-
 		token, err := auth.GetParsedToken(request)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var result []map[string]interface{}
-
-		switch mode {
-		case "search":
-			result, err = q.SearchList(token, resource, search, queryListCommons, nil)
-		case "selection":
-			selectionParts := strings.Split(selection, ":")
-			if len(selectionParts) < 2 {
-				http.Error(writer, "the query parameter 'select' expects a value like 'field_name:field_value'", http.StatusBadRequest)
-				return
-			}
-			field := selectionParts[0]
-			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByField(token, resource, field, value, queryListCommons)
-		case "ids":
-			// no more than 10 ids should be send
-			result, err = q.GetListFromIds(token, resource, strings.Split(ids, ","), queryListCommons)
-		default:
-			result, err = q.GetList(token, resource, queryListCommons)
+		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
 		}
 
+		listOptions := model.ListOptions{
+			QueryListCommons: queryListCommons,
+			TextSearch:       search,
+		}
+		if ids != "" {
+			listOptions.ListIds = strings.Split(ids, ",")
+		}
+		if selection != "" {
+			selectionParts := strings.Split(selection, ":")
+			if len(selectionParts) < 2 {
+				http.Error(writer, "the query parameter 'select' expects a value like 'feature_name:feature_value'", http.StatusBadRequest)
+				return
+			}
+			listOptions.Selection = &model.FeatureSelection{
+				Feature: selectionParts[0],
+				Value:   strings.Join(selectionParts[1:], ":"),
+			}
+		}
+
+		result, err := q.List(token, resource, listOptions)
 		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), model.GetErrCode(err))
 			return
 		}
 
@@ -135,49 +114,37 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		search := request.URL.Query().Get("search")
 		selection := request.URL.Query().Get("filter")
 
-		right := request.URL.Query().Get("rights")
-		if right == "" {
-			right = "r"
-		}
-
-		mode := ""
-		if search != "" {
-			mode = "search"
-		}
-		if selection != "" {
-			if mode != "" {
-				http.Error(writer, "the query parameters "+mode+" and 'select' may not be combined", http.StatusBadRequest)
-				return
-			}
-			mode = "selection"
-		}
-
 		token, err := auth.GetParsedToken(request)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var result interface{}
-
-		switch mode {
-		case "search":
-			result, err = q.SearchListTotal(token, resource, search, right)
-		case "selection":
-			selectionParts := strings.Split(selection, ":")
-			if len(selectionParts) < 2 {
-				http.Error(writer, "the query parameter 'select' expects a value like 'field_name:field_value'", http.StatusBadRequest)
-				return
-			}
-			field := selectionParts[0]
-			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByFieldTotal(token, resource, field, value, right)
-		default:
-			result, err = q.GetListTotalForUserOrGroup(token, resource, right)
+		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
 		}
 
+		listOptions := model.ListOptions{
+			QueryListCommons: queryListCommons,
+			TextSearch:       search,
+		}
+		if selection != "" {
+			selectionParts := strings.Split(selection, ":")
+			if len(selectionParts) < 2 {
+				http.Error(writer, "the query parameter 'select' expects a value like 'feature_name:feature_value'", http.StatusBadRequest)
+				return
+			}
+			listOptions.Selection = &model.FeatureSelection{
+				Feature: selectionParts[0],
+				Value:   strings.Join(selectionParts[1:], ":"),
+			}
+		}
+
+		result, err := q.Total(token, resource, listOptions)
 		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), model.GetErrCode(err))
 			return
 		}
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")

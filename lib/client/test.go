@@ -18,35 +18,65 @@ package client
 
 import (
 	"errors"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"net/http"
 )
 
 type TestClient struct {
 	resourceRights map[string]map[string]model.ResourceRights
 }
 
-func NewTestClient() TestClient {
-	return TestClient{resourceRights: map[string]map[string]model.ResourceRights{}}
+func NewTestClient() *TestClient {
+	return &TestClient{resourceRights: map[string]map[string]model.ResourceRights{}}
 }
 
-func (this TestClient) GetRights(_ string, resource string, id string) (result model.ResourceRights, code int, err error) {
+func (this *TestClient) GetRights(_ auth.Token, resource string, id string) (result model.ResourceRights, err error) {
 	resources, ok := this.resourceRights[resource]
 	if !ok {
-		return model.ResourceRights{}, http.StatusNotFound, errors.New("not found")
+		return model.ResourceRights{}, errors.New("not found")
 	}
 	result, ok = resources[id]
 	if !ok {
-		return model.ResourceRights{}, http.StatusNotFound, errors.New("not found")
+		return model.ResourceRights{}, errors.New("not found")
 	}
-	return result, http.StatusOK, nil
+	return result, nil
 }
 
-func (this TestClient) SetRights(resource string, id string, rights model.ResourceRights) {
+func (this *TestClient) SetRights(resource string, id string, rights model.ResourceRights) {
 	resources, ok := this.resourceRights[resource]
 	if !ok {
 		resources = map[string]model.ResourceRights{}
 	}
 	resources[id] = rights
 	this.resourceRights[resource] = resources
+}
+
+func (this *TestClient) Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (this *TestClient) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (this *TestClient) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (this *TestClient) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (this *TestClient) CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (this *TestClient) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+	//TODO implement me
+	panic("implement me")
 }

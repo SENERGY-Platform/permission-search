@@ -177,7 +177,7 @@ func TestImportTypes(t *testing.T) {
 		return
 	}
 
-	result, err = q.SelectByField(
+	result, err = q.SelectByFeature(
 		createTestToken("testOwner", []string{"user"}),
 		resource,
 		"aspect_functions",

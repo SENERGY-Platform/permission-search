@@ -153,7 +153,7 @@ func (this *Query) CheckUserOrGroup(token auth.Token, kind string, resource stri
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("resource", pureId))...)
 	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
 	if err == nil && resp.Hits.TotalHits.Value == 0 {
-		err = ErrAccessDenied
+		err = model.ErrAccessDenied
 	}
 	return
 }
@@ -410,9 +410,9 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 	return
 }
 
-func (this *Query) SelectByField(token auth.Token, kind string, field string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+field, value))...)
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+feature, value))...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err
@@ -530,9 +530,6 @@ func (this *Query) SearchOrderedList(kind string, query string, user string, gro
 	return
 }
 
-var ErrNotFound = errors.New("not found")
-var ErrAccessDenied = errors.New("access denied")
-
 func (this *Query) GetResourceEntry(kind string, resource string) (result model.Entry, version model.ResourceVersion, err error) {
 	version, err = this.GetResourceInterface(kind, resource, &result)
 	return
@@ -543,7 +540,7 @@ func (this *Query) GetResourceInterface(kind string, resource string, result int
 	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
 	if elasticErr, ok := err.(*elastic.Error); ok {
 		if elasticErr.Status == http.StatusNotFound {
-			return version, ErrNotFound
+			return version, model.ErrNotFound
 		}
 	}
 	if err != nil {
@@ -552,7 +549,7 @@ func (this *Query) GetResourceInterface(kind string, resource string, result int
 	version.PrimaryTerm = *resp.PrimaryTerm
 	version.SeqNo = *resp.SeqNo
 	if resp.Source == nil {
-		return version, ErrNotFound
+		return version, model.ErrNotFound
 	}
 	err = json.Unmarshal(resp.Source, result)
 	return
@@ -611,6 +608,10 @@ func (this *Query) Query(token auth.Token, query model.QueryMessage) (result int
 		if query.Find.Rights == "" {
 			query.Find.Rights = "r"
 		}
+		err = query.Find.QueryListCommons.Validate()
+		if err != nil {
+			return result, model.GetErrCode(err), err
+		}
 		if query.Find.Search == "" {
 			if query.Find.Filter == nil {
 				result, err = this.GetList(
@@ -645,7 +646,6 @@ func (this *Query) Query(token auth.Token, query model.QueryMessage) (result int
 			token,
 			query.Resource,
 			query.CheckIds.Ids,
-
 			query.CheckIds.Rights)
 	}
 
@@ -655,6 +655,10 @@ func (this *Query) Query(token auth.Token, query model.QueryMessage) (result int
 		}
 		if query.ListIds.Rights == "" {
 			query.ListIds.Rights = "r"
+		}
+		err = query.ListIds.QueryListCommons.Validate()
+		if err != nil {
+			return result, model.GetErrCode(err), err
 		}
 		result, err = this.GetListFromIds(
 			token,
@@ -674,6 +678,28 @@ func (this *Query) Query(token auth.Token, query model.QueryMessage) (result int
 		result, err = this.GetTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
 	}
 	return
+}
+
+func (this *Query) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+	mode, err := options.Mode()
+	if err != nil {
+		return result, err
+	}
+	err = options.QueryListCommons.Validate()
+	if err != nil {
+		return result, err
+	}
+	switch mode {
+	case model.ListOptionsModeTextSearch:
+		return this.SearchList(token, kind, options.TextSearch, options.QueryListCommons, nil)
+	case model.ListOptionsModeSelection:
+		//options.Mode() guaranties that options.Selection is not empty; panic otherwise
+		return this.SelectByFeature(token, kind, options.Selection.Feature, options.Selection.Value, options.QueryListCommons)
+	case model.ListOptionsModeListIds:
+		return this.GetListFromIds(token, kind, options.ListIds, options.QueryListCommons)
+	default:
+		return this.GetList(token, kind, options.QueryListCommons)
+	}
 }
 
 func (this *Query) addParsedModifier(token auth.Token, resourceKind string, elements []map[string]interface{}, parsedModifier map[string][]string, rights string, sortBy string, sortDesc bool) (result []map[string]interface{}, err error, code int) {

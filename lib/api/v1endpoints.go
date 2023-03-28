@@ -21,7 +21,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
 	"github.com/julienschmidt/httprouter"
 	"log"
@@ -70,7 +69,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 		rights, err := q.GetRights(token, kind, resource)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			http.Error(res, "404", http.StatusNotFound)
 			return
 		}
@@ -160,7 +159,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			return
 		}
 
-		list, err := q.SelectByField(token, kind, field, value, queryListCommons)
+		list, err := q.SelectByFeature(token, kind, field, value, queryListCommons)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(res, err.Error(), http.StatusInternalServerError)

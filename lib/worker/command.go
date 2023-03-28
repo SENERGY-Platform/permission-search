@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"runtime/debug"
 
 	"log"
@@ -35,7 +34,7 @@ func (this *Worker) SetUserRight(kind string, resource string, user string, righ
 	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, resource)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			log.Println("WARNING: received rights command for none existing resource", kind, resource)
 			return nil
 		}
@@ -60,7 +59,7 @@ func (this *Worker) SetGroupRight(kind string, resource string, group string, ri
 	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, resource)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			log.Println("WARNING: received rights command for none existing resource", kind, resource)
 			return nil
 		}
@@ -85,7 +84,7 @@ func (this *Worker) DeleteUserRight(kind string, resource string, user string) (
 	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, resource)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			log.Println("WARNING: received rights command for none existing resource", kind, resource)
 			return nil
 		}
@@ -109,7 +108,7 @@ func (this *Worker) DeleteGroupRight(kind string, resource string, group string)
 	}
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, resource)
-		if err == query.ErrNotFound {
+		if err == model.ErrNotFound {
 			log.Println("WARNING: received rights command for none existing resource", kind, resource)
 			return nil
 		}

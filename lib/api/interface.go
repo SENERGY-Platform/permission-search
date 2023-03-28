@@ -35,31 +35,30 @@ type Query interface {
 	SearchListAll(kind string, query string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
 	SelectByFieldAll(kind string, field string, value string, user string, groups []string, rights string) (result []map[string]interface{}, err error)
 
+	// SearchList does a text search with query on the feature_search index
+	// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
+	SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error)
+	GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+	GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+	GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error)
+	SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
+
 	//v3
-	ClientV3
+	V3
 
 	//migration
 	Import(imports map[string][]model.ResourceRights) (err error)
 	Export() (exports map[string][]model.ResourceRights, err error)
 }
 
-type ClientV3 interface {
+type V3 interface {
 	Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error)
+	List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error)
+	Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error)
 
 	CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error)
 	CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error)
 	GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error)
-	GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-	GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error)
-	SelectByField(token auth.Token, kind string, field string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error)
-
-	// SearchList does a text search with query on the feature_search index
-	// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
-	SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error)
 
 	GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
-	SearchListTotal(token auth.Token, kind string, search string, right string) (int64, error)
-	SelectByFieldTotal(token auth.Token, kind string, field string, value string, right string) (int64, error)
-	GetListTotalForUserOrGroup(token auth.Token, kind string, right string) (int64, error)
 }

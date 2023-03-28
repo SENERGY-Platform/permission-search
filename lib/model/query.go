@@ -18,7 +18,7 @@ package model
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -75,26 +75,26 @@ type ListAfter struct {
 
 func (this QueryListCommons) Validate() error {
 	if this.Offset < 0 {
-		return errors.New("offset should be at least 0")
+		return fmt.Errorf("%w: offset should be at least 0", ErrBadRequest)
 	}
 	if this.Limit < 0 {
-		return errors.New("limit should be at least 0")
+		return fmt.Errorf("%w: imit should be at least 0", ErrBadRequest)
 	}
 	if this.Limit+this.Offset > 10000 {
-		return errors.New("limit + offset may not be bigger than 10000. pleas use after.id and after.sort_field_value")
+		return fmt.Errorf("%w: limit + offset may not be bigger than 10000. pleas use after.id and after.sort_field_value", ErrBadRequest)
 	}
 	if this.After != nil {
 		if this.Offset != 0 {
-			return errors.New("'offset' should be 0 if 'after' is used")
+			return fmt.Errorf("%w: 'offset' should be 0 if 'after' is used", ErrBadRequest)
 		}
 		if this.After.SortFieldValue == nil {
-			return errors.New("'after' needs sort_field_value")
+			return fmt.Errorf("%w: 'after' needs sort_field_value", ErrBadRequest)
 		}
 		if this.After.Id == "" {
-			return errors.New("'after' needs id value")
+			return fmt.Errorf("%w: 'after' needs id value", ErrBadRequest)
 		}
 		if this.SortBy == "" {
-			return errors.New("'after' needs set sort_by value")
+			return fmt.Errorf("%w: 'after' needs set sort_by value", ErrBadRequest)
 		}
 	}
 	return nil

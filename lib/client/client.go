@@ -19,16 +19,29 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/api"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"io"
 	"net/http"
 )
+
+type Client interface {
+	Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error)
+	List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error)
+	Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error)
+
+	CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error)
+	CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error)
+	GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error)
+
+	GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+}
 
 type impl struct {
 	baseUrl string
 }
 
-func NewClient(baseUrl string) api.ClientV3 {
+func NewClient(baseUrl string) Client {
 	return &impl{baseUrl: baseUrl}
 }
 

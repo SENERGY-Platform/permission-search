@@ -19,8 +19,25 @@ package query
 import (
 	"context"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
 )
+
+func (this *Query) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
+	mode, err := options.Mode()
+	if err != nil {
+		return result, err
+	}
+	switch mode {
+	case model.ListOptionsModeTextSearch:
+		return this.SearchListTotal(token, kind, options.TextSearch, options.QueryListCommons.Rights)
+	case model.ListOptionsModeSelection:
+		//options.Mode() guaranties that options.Selection is not empty; panic otherwise
+		return this.SelectByFeatureTotal(token, kind, options.Selection.Feature, options.Selection.Value, options.QueryListCommons.Rights)
+	default:
+		return this.GetListTotalForUserOrGroup(token, kind, options.QueryListCommons.Rights)
+	}
+}
 
 func (this *Query) SearchListTotal(token auth.Token, kind string, query string, rights string) (result int64, err error) {
 	ctx := context.Background()
@@ -33,7 +50,7 @@ func (this *Query) SearchListTotal(token auth.Token, kind string, query string, 
 	return resp.Hits.TotalHits.Value, nil
 }
 
-func (this *Query) SelectByFieldTotal(token auth.Token, kind string, field string, value string, rights string) (result int64, err error) {
+func (this *Query) SelectByFeatureTotal(token auth.Token, kind string, field string, value string, rights string) (result int64, err error) {
 	ctx := context.Background()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+field, value))...)
 	resp, err := this.client.Search().Index(kind).Query(query).TrackTotalHits(true).Size(1).Do(ctx)

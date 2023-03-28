@@ -18,13 +18,12 @@ package client
 
 import (
 	"encoding/json"
-	"github.com/SENERGY-Platform/permission-search/lib/api"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
 )
 
-func Query[Result any](client api.ClientV3, token auth.Token, query model.QueryMessage) (result Result, code int, err error) {
+func Query[Result any](client Client, token auth.Token, query model.QueryMessage) (result Result, code int, err error) {
 	temp, code, err := client.Query(token, query)
 	if err != nil {
 		return result, code, err

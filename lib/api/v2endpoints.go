@@ -84,7 +84,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 			}
 			field := selectionParts[0]
 			value := strings.Join(selectionParts[1:], ":")
-			result, err = q.SelectByField(token, resource, field, value, queryListCommons)
+			result, err = q.SelectByFeature(token, resource, field, value, queryListCommons)
 		case "ids":
 			// not more than 10 ids should be send
 			result, err = q.GetListFromIds(token, resource, strings.Split(ids, ","), queryListCommons)
