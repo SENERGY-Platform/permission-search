@@ -18,7 +18,6 @@ package client
 
 import (
 	"errors"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 )
 
@@ -30,7 +29,7 @@ func NewTestClient() *TestClient {
 	return &TestClient{resourceRights: map[string]map[string]model.ResourceRights{}}
 }
 
-func (this *TestClient) GetRights(_ auth.Token, resource string, id string) (result model.ResourceRights, err error) {
+func (this *TestClient) GetRights(_ string, resource string, id string) (result model.ResourceRights, err error) {
 	resources, ok := this.resourceRights[resource]
 	if !ok {
 		return model.ResourceRights{}, errors.New("not found")
@@ -51,27 +50,27 @@ func (this *TestClient) SetRights(resource string, id string, rights model.Resou
 	this.resourceRights[resource] = resources
 }
 
-func (this *TestClient) Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error) {
+func (this *TestClient) Query(token string, query QueryMessage) (result interface{}, code int, err error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (this *TestClient) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+func (this *TestClient) List(token string, kind string, options ListOptions) (result []map[string]interface{}, err error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (this *TestClient) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
+func (this *TestClient) Total(token string, kind string, options ListOptions) (result int64, err error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (this *TestClient) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
+func (this *TestClient) CheckUserOrGroup(token string, kind string, resource string, rights string) (err error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (this *TestClient) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+func (this *TestClient) GetTermAggregation(token string, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
 	//TODO implement me
 	panic("implement me")
 }
