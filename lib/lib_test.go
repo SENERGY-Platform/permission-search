@@ -382,16 +382,16 @@ func ExampleCheckUserOrGroup() {
 		return
 	}
 	time.Sleep(1 * time.Second)
-	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{}), "device-types", "check3", "a"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "a"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "r"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "r"))
 
-	fmt.Println(q.CheckUserOrGroup(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "a"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "a"))
 
-	fmt.Println(q.CheckUserOrGroup(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "ra"))
-	fmt.Println(q.CheckUserOrGroup(createTestToken("nope", []string{"user"}), "device-types", "check3", "ra"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "ra"))
+	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "ra"))
 
 	//Output:
 	//access denied

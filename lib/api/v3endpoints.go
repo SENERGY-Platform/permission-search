@@ -38,11 +38,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	router.GET("/v3/administrate/rights/:resource/:id", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		resource := ps.ByName("resource")
 		id := ps.ByName("id")
-		token, err := auth.GetParsedToken(r)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(r)
 		rights, err := q.GetRights(token, resource, id)
 		if err == model.ErrNotFound {
 			http.Error(res, err.Error(), http.StatusNotFound)
@@ -67,11 +63,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		selection := request.URL.Query().Get("filter")
 		ids := request.URL.Query().Get("ids")
 
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(request)
 
 		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
 		if err != nil {
@@ -114,11 +106,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		search := request.URL.Query().Get("search")
 		selection := request.URL.Query().Get("filter")
 
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(request)
 
 		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(request.URL.Query())
 		if err != nil {
@@ -158,12 +146,8 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if right == "" {
 			right = "r"
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, resource, id, right)
+		token := auth.GetAuthToken(request)
+		err := q.CheckUserOrGroup(token, resource, id, right)
 		if err != nil {
 			http.Error(writer, err.Error(), model.GetErrCode(err))
 			return
@@ -178,12 +162,8 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if right == "" {
 			right = "r"
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, resource, id, right)
+		token := auth.GetAuthToken(request)
+		err := q.CheckUserOrGroup(token, resource, id, right)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err != nil {
 			json.NewEncoder(writer).Encode(false)
@@ -203,11 +183,7 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if err != nil {
 			limit = 100
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(request)
 		result, err := q.GetTermAggregation(token, resource, rights, term, limit)
 
 		if err != nil {
@@ -220,13 +196,9 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/v3/query", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(request)
 		query := model.QueryMessage{}
-		err = json.NewDecoder(request.Body).Decode(&query)
+		err := json.NewDecoder(request.Body).Decode(&query)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 			return

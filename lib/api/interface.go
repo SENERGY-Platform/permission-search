@@ -54,13 +54,13 @@ type Query interface {
 }
 
 type V3 interface {
-	Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error)
-	List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error)
-	Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error)
+	Query(token string, query model.QueryMessage) (result interface{}, code int, err error)
+	List(token string, kind string, options model.ListOptions) (result []map[string]interface{}, err error)
+	Total(token string, kind string, options model.ListOptions) (result int64, err error)
 
-	CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error)
+	CheckUserOrGroup(token string, kind string, resource string, rights string) (err error)
 
-	GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error)
+	GetRights(token string, kind string, resource string) (result model.ResourceRights, err error)
 
-	GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+	GetTermAggregation(token string, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
 }

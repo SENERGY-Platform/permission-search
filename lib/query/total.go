@@ -23,7 +23,11 @@ import (
 	"github.com/olivere/elastic/v7"
 )
 
-func (this *Query) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
+func (this *Query) Total(tokenStr string, kind string, options model.ListOptions) (result int64, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return result, err
+	}
 	mode, err := options.Mode()
 	if err != nil {
 		return result, err

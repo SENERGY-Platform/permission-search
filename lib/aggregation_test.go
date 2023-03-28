@@ -52,11 +52,9 @@ func TestTermAggregation(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	t.Run("check device-type aggregation", func(t *testing.T) {
-		user := "testOwner"
-		groups := []string{"user"}
 		rights := "r"
 		field := "features.device_type_id"
-		result, err := q.GetTermAggregation(createTestToken(user, groups), resource, rights, field, 1000)
+		result, err := q.GetTermAggregation(testtoken, resource, rights, field, 1000)
 		if err != nil {
 			t.Error(err)
 			return
@@ -104,11 +102,9 @@ func TestTermAggregationLimit(t *testing.T) {
 
 	check := func(limit int, expectedSize int) func(t *testing.T) {
 		return func(t *testing.T) {
-			user := "testOwner"
-			groups := []string{"user"}
 			rights := "r"
 			field := "features.device_type_id"
-			result, err := q.GetTermAggregation(createTestToken(user, groups), resource, rights, field, limit)
+			result, err := q.GetTermAggregation(testtoken, resource, rights, field, limit)
 			if err != nil {
 				t.Error(err)
 				return

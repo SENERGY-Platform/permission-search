@@ -102,6 +102,7 @@ func (this QueryListCommons) Validate() error {
 }
 
 func (this QueryListCommons) QueryValues() (result url.Values) {
+	result = map[string][]string{}
 	if this.Limit > 0 {
 		result["limit"] = []string{strconv.Itoa(this.Limit)}
 	}

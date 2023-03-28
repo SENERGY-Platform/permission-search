@@ -18,32 +18,31 @@ package client
 
 import (
 	"encoding/json"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
 )
 
-func Query[Result any](client Client, token auth.Token, query model.QueryMessage) (result Result, code int, err error) {
+func Query[Result any](client Client, token string, query model.QueryMessage) (result Result, code int, err error) {
 	temp, code, err := client.Query(token, query)
 	if err != nil {
 		return result, code, err
 	}
-	result, err = jsonCast[Result](temp)
+	result, err = JsonCast[Result](temp)
 	if err != nil {
 		code = http.StatusBadRequest
 	}
 	return result, code, err
 }
 
-func List[Result any](client Client, token auth.Token, kind string, options model.ListOptions) (result Result, err error) {
+func List[Result any](client Client, token string, kind string, options model.ListOptions) (result Result, err error) {
 	temp, err := client.List(token, kind, options)
 	if err != nil {
 		return result, err
 	}
-	return jsonCast[Result](temp)
+	return JsonCast[Result](temp)
 }
 
-func jsonCast[Result any](in interface{}) (result Result, err error) {
+func JsonCast[Result any](in interface{}) (result Result, err error) {
 	temp, err := json.Marshal(in)
 	if err != nil {
 		return result, err

@@ -19,16 +19,15 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"net/http"
 	"net/url"
 	"strconv"
 )
 
-func (this *impl) GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error) {
+func (this *impl) GetRights(token string, kind string, resource string) (result model.ResourceRights, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/administrate/rights/"+kind+"/"+resource, nil)
-	req.Header.Set("Authorization", token.Jwt())
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
@@ -36,14 +35,14 @@ func (this *impl) GetRights(token auth.Token, kind string, resource string) (res
 	return
 }
 
-func (this *impl) Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error) {
+func (this *impl) Query(token string, query model.QueryMessage) (result interface{}, code int, err error) {
 	buf := &bytes.Buffer{}
 	err = json.NewEncoder(buf).Encode(query)
 	if err != nil {
 		return result, http.StatusInternalServerError, err
 	}
-	req, err := http.NewRequest(http.MethodPost, this.baseUrl+"/v3/query", nil)
-	req.Header.Set("Authorization", token.Jwt())
+	req, err := http.NewRequest(http.MethodPost, this.baseUrl+"/v3/query", buf)
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, http.StatusInternalServerError, err
 	}
@@ -51,9 +50,9 @@ func (this *impl) Query(token auth.Token, query model.QueryMessage) (result inte
 	return
 }
 
-func (this *impl) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+func (this *impl) List(token string, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
-	req.Header.Set("Authorization", token.Jwt())
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
@@ -61,9 +60,9 @@ func (this *impl) List(token auth.Token, kind string, options model.ListOptions)
 	return
 }
 
-func (this *impl) Total(token auth.Token, kind string, options model.ListOptions) (result int64, err error) {
+func (this *impl) Total(token string, kind string, options model.ListOptions) (result int64, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/total/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
-	req.Header.Set("Authorization", token.Jwt())
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
@@ -71,9 +70,9 @@ func (this *impl) Total(token auth.Token, kind string, options model.ListOptions
 	return
 }
 
-func (this *impl) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
-	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"/"+url.PathEscape(resource)+"/access?rights="+rights, nil)
-	req.Header.Set("Authorization", token.Jwt())
+func (this *impl) CheckUserOrGroup(token string, kind string, resource string, rights string) (err error) {
+	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"/"+url.PathEscape(resource)+"?rights="+rights, nil)
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return err
 	}
@@ -81,9 +80,9 @@ func (this *impl) CheckUserOrGroup(token auth.Token, kind string, resource strin
 	return
 }
 
-func (this *impl) GetTermAggregation(token auth.Token, kind string, rights string, term string, limit int) (result []model.TermAggregationResultElement, err error) {
+func (this *impl) GetTermAggregation(token string, kind string, rights string, term string, limit int) (result []model.TermAggregationResultElement, err error) {
 	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/aggregates/term/"+url.PathEscape(kind)+"/"+url.PathEscape(term)+"?limit="+strconv.Itoa(limit)+"&rights="+rights, nil)
-	req.Header.Set("Authorization", token.Jwt())
+	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}

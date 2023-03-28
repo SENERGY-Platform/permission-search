@@ -24,7 +24,15 @@ import (
 	"github.com/olivere/elastic/v7"
 )
 
-func (this *Query) GetTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+func (this *Query) GetTermAggregation(tokenStr string, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return result, err
+	}
+	return this.getTermAggregation(token, kind, rights, field, limit)
+}
+
+func (this *Query) getTermAggregation(token auth.Token, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
 	if limit == 0 {
 		limit = 100
 	}

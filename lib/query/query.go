@@ -147,7 +147,15 @@ func (this *Query) GetRightsToAdministrate(kind string, user string, groups []st
 	return
 }
 
-func (this *Query) CheckUserOrGroup(token auth.Token, kind string, resource string, rights string) (err error) {
+func (this *Query) CheckUserOrGroup(tokenStr string, kind string, resource string, rights string) (err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return err
+	}
+	return this.CheckUserOrGroupFromAuthToken(token, kind, resource, rights)
+}
+
+func (this *Query) CheckUserOrGroupFromAuthToken(token auth.Token, kind string, resource string, rights string) (err error) {
 	pureId, _ := modifier.SplitModifier(resource)
 	ctx := this.getTimeout()
 	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("resource", pureId))...)
@@ -341,9 +349,13 @@ func (this *Query) CheckGroups(kind string, resource string, groups []string, ri
 	return
 }
 
-func (this *Query) GetRights(token auth.Token, kind string, resource string) (result model.ResourceRights, err error) {
+func (this *Query) GetRights(tokenStr string, kind string, resource string) (result model.ResourceRights, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return result, err
+	}
 	if !token.IsAdmin() {
-		if err := this.CheckUserOrGroup(token, kind, resource, "a"); err != nil {
+		if err := this.CheckUserOrGroup(tokenStr, kind, resource, "a"); err != nil {
 			return result, err
 		}
 	}
@@ -600,7 +612,11 @@ func (this *Query) GetListWithSelection(token auth.Token, kind string, queryComm
 	return
 }
 
-func (this *Query) Query(token auth.Token, query model.QueryMessage) (result interface{}, code int, err error) {
+func (this *Query) Query(tokenStr string, query model.QueryMessage) (result interface{}, code int, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return result, model.GetErrCode(err), err
+	}
 	if query.Find != nil {
 		if query.Find.Limit == 0 {
 			query.Find.Limit = 100
@@ -675,12 +691,16 @@ func (this *Query) Query(token auth.Token, query model.QueryMessage) (result int
 	}
 
 	if query.TermAggregate != nil {
-		result, err = this.GetTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
+		result, err = this.getTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
 	}
 	return
 }
 
-func (this *Query) List(token auth.Token, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+func (this *Query) List(tokenStr string, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return result, err
+	}
 	mode, err := options.Mode()
 	if err != nil {
 		return result, err

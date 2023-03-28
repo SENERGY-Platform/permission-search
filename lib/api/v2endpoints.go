@@ -107,12 +107,8 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if right == "" {
 			right = "r"
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, resource, id, right)
+		token := auth.GetAuthToken(request)
+		err := q.CheckUserOrGroup(token, resource, id, right)
 		if err != nil {
 			http.Error(writer, "access denied: "+err.Error(), http.StatusUnauthorized)
 			return
@@ -127,12 +123,8 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		if right == "" {
 			right = "r"
 		}
-		token, err := auth.GetParsedToken(request)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, resource, id, right)
+		token := auth.GetAuthToken(request)
+		err := q.CheckUserOrGroup(token, resource, id, right)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err != nil {
 			json.NewEncoder(writer).Encode(false)
@@ -217,7 +209,7 @@ func V2Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		}
 
 		if query.TermAggregate != nil {
-			result, err = q.GetTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
+			result, err = q.GetTermAggregation(token.Jwt(), query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
 		}
 
 		if err != nil {

@@ -63,11 +63,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	router.GET("/administrate/rights/:resource_kind/get/:resource", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		kind := ps.ByName("resource_kind")
 		resource := ps.ByName("resource")
-		token, err := auth.GetParsedToken(r)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
+		token := auth.GetAuthToken(r)
 		rights, err := q.GetRights(token, kind, resource)
 		if err == model.ErrNotFound {
 			http.Error(res, "404", http.StatusNotFound)
@@ -373,12 +369,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		token, err := auth.GetParsedToken(r)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, kind, resource, right)
+		token := auth.GetAuthToken(r)
+		err := q.CheckUserOrGroup(token, kind, resource, right)
 		if err != nil {
 			log.Println("access denied", err)
 			http.Error(res, "access denied: "+err.Error(), http.StatusUnauthorized)
@@ -393,12 +385,8 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
-		token, err := auth.GetParsedToken(r)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
-		err = q.CheckUserOrGroup(token, kind, resource, right)
+		token := auth.GetAuthToken(r)
+		err := q.CheckUserOrGroup(token, kind, resource, right)
 		if err != nil {
 			res.Header().Set("Content-Type", "application/json; charset=utf-8")
 			json.NewEncoder(res).Encode(false)

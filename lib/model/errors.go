@@ -20,12 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 var ErrNotFound = errors.New("not found")
 var ErrAccessDenied = errors.New("access denied")
 var ErrBadRequest = errors.New("bad request")
+var ErrInvalidAuth = errors.New("invalid auth token")
 
 func GetErrCode(err error) (code int) {
 	if err == nil {
@@ -40,6 +42,9 @@ func GetErrCode(err error) (code int) {
 	if errors.Is(err, ErrNotFound) {
 		return http.StatusNotFound
 	}
+	if errors.Is(err, ErrInvalidAuth) {
+		return http.StatusUnauthorized
+	}
 	return http.StatusInternalServerError
 }
 
@@ -48,11 +53,16 @@ func GetErrFromCode(code int, msg string) error {
 		return nil
 	}
 
+	if msg == "" {
+		msg = "received status code " + strconv.Itoa(code)
+	}
+
 	//clean message
 	cleanedMessage := msg
 	cleanedMessage = strings.TrimPrefix(msg, ErrBadRequest.Error())
 	cleanedMessage = strings.TrimPrefix(msg, ErrAccessDenied.Error())
 	cleanedMessage = strings.TrimPrefix(msg, ErrBadRequest.Error())
+	cleanedMessage = strings.TrimPrefix(msg, ErrInvalidAuth.Error())
 	cleanedMessage = strings.TrimSpace(msg)
 	cleanedMessage = strings.TrimPrefix(msg, ":")
 	cleanedMessage = strings.TrimSpace(msg)
@@ -67,6 +77,8 @@ func GetErrFromCode(code int, msg string) error {
 		return fmt.Errorf("%w: %v", ErrAccessDenied, cleanedMessage)
 	case http.StatusNotFound:
 		return fmt.Errorf("%w: %v", ErrNotFound, cleanedMessage)
+	case http.StatusUnauthorized:
+		return fmt.Errorf("%w: %v", ErrInvalidAuth, cleanedMessage)
 	default:
 		return errors.New(msg)
 	}

@@ -18,17 +18,33 @@ package auth
 
 import (
 	"errors"
+	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/golang-jwt/jwt"
 	"net/http"
 	"strings"
 )
+
+func Parse(token string) (claims Token, err error) {
+	orig := token
+	if len(token) > 7 && strings.ToLower(token[:7]) == "bearer " {
+		token = token[7:]
+	}
+	_, _, err = new(jwt.Parser).ParseUnverified(token, &claims)
+	if err == nil {
+		claims.Token = orig
+	} else {
+		err = fmt.Errorf("%w: %v", model.ErrInvalidAuth, err.Error())
+	}
+	return
+}
 
 func GetAuthToken(req *http.Request) string {
 	return req.Header.Get("Authorization")
 }
 
 func GetParsedToken(req *http.Request) (token Token, err error) {
-	return parse(GetAuthToken(req))
+	return Parse(GetAuthToken(req))
 }
 
 type Token struct {
@@ -50,18 +66,6 @@ func (this *Token) Valid() error {
 		return errors.New("missing subject")
 	}
 	return nil
-}
-
-func parse(token string) (claims Token, err error) {
-	orig := token
-	if len(token) > 7 && strings.ToLower(token[:7]) == "bearer " {
-		token = token[7:]
-	}
-	_, _, err = new(jwt.Parser).ParseUnverified(token, &claims)
-	if err == nil {
-		claims.Token = orig
-	}
-	return
 }
 
 func (this *Token) IsAdmin() bool {
