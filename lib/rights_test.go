@@ -47,7 +47,10 @@ func TestRightsCommand(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)

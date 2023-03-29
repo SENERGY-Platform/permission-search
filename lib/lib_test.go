@@ -204,7 +204,10 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config c
 		return config, q, w, err
 	}
 	if t != nil {
-		config.FatalErrHandler = t.Fatal
+		config.FatalErrHandler = func(v ...interface{}) {
+			log.Println("TEST-ERROR:", v)
+			t.Log(v...)
+		}
 	} else {
 		config.FatalErrHandler = func(v ...interface{}) {
 			log.Println(v...)

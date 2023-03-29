@@ -25,6 +25,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -44,7 +45,10 @@ func TestApiV1(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)

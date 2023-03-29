@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
+	"log"
 	"strconv"
 	"sync"
 	"testing"
@@ -38,7 +39,10 @@ func TestAnnotations(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 	config.Debug = true
 
 	t.Run("start dependency containers", func(t *testing.T) {

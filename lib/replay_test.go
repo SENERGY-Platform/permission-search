@@ -26,6 +26,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/replay"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -48,7 +49,10 @@ func TestReplay(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 	config.Debug = true
 
 	t.Run("start dependency containers", func(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/client"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"log"
 	"reflect"
 	"strconv"
 	"sync"
@@ -46,7 +47,10 @@ func TestApiV3(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)

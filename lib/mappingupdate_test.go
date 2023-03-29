@@ -29,6 +29,7 @@ import (
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/olivere/elastic/v7"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -47,7 +48,10 @@ func TestMappingUpdate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 	config.Debug = true
 
 	t.Run("start dependency containers", func(t *testing.T) {

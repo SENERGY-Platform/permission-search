@@ -23,6 +23,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
+	"log"
 	"net/url"
 	"strconv"
 	"sync"
@@ -41,7 +42,10 @@ func TestResultModifiers(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)

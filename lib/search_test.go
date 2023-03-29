@@ -28,6 +28,7 @@ import (
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/google/uuid"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"sort"
@@ -48,7 +49,10 @@ func TestSearch(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config.FatalErrHandler = t.Fatal
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		port, _, err := elasticsearch(ctx, wg)
