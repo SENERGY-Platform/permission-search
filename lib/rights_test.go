@@ -24,7 +24,6 @@ import (
 	kafka2 "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/segmentio/kafka-go"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -225,59 +224,7 @@ func TestRightsCommand(t *testing.T) {
 		}
 	})
 
-}
-
-func TestRightsCommandKey(t *testing.T) {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config, err := configuration.LoadConfig("./../config.json")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	config.FatalErrHandler = t.Fatal
-
-	t.Run("start dependency containers", func(t *testing.T) {
-		port, _, err := elasticsearch(ctx, wg)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		config.ElasticUrl = "http://localhost:" + port
-
-		_, zkIp, err := Zookeeper(ctx, wg)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		config.KafkaUrl = zkIp + ":2181"
-
-		//kafka
-		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	})
-
-	t.Run("start server", func(t *testing.T) {
-		freePort, err := GetFreePort()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		config.ServerPort = strconv.Itoa(freePort)
-		err = Start(ctx, config, Standalone)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	})
-
-	t.Run("without key", testRequestWithToken(config, admintoken, "PUT", "/v3/administrate/rights/aspects/aspect1", model.ResourceRightsBase{
+	t.Run("update with custom kafka message key", testRequestWithToken(config, admintoken, "PUT", "/v3/administrate/rights/aspects/aspect2?key="+url.QueryEscape("prefix/suffix:aspect2"), model.ResourceRightsBase{
 		UserRights: map[string]model.Right{
 			testTokenUser: {
 				Read:         true,
@@ -289,19 +236,7 @@ func TestRightsCommandKey(t *testing.T) {
 		GroupRights: map[string]model.Right{},
 	}, http.StatusOK, nil))
 
-	t.Run("without key", testRequestWithToken(config, admintoken, "PUT", "/v3/administrate/rights/aspects/aspect2?key="+url.QueryEscape("prefix/suffix:aspect2"), model.ResourceRightsBase{
-		UserRights: map[string]model.Right{
-			testTokenUser: {
-				Read:         true,
-				Write:        true,
-				Execute:      true,
-				Administrate: true,
-			},
-		},
-		GroupRights: map[string]model.Right{},
-	}, http.StatusOK, nil))
-
-	t.Run("consume", func(t *testing.T) {
+	t.Run("check kafka message keys", func(t *testing.T) {
 		broker, err := kafka2.GetBroker(config.KafkaUrl)
 		if err != nil {
 			t.Error(err)
@@ -313,7 +248,7 @@ func TestRightsCommandKey(t *testing.T) {
 			GroupID:        "test",
 			Topic:          "aspects",
 			MaxWait:        1 * time.Second,
-			Logger:         log.New(ioutil.Discard, "", 0),
+			Logger:         log.New(io.Discard, "", 0),
 			ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
 		})
 
@@ -346,7 +281,7 @@ func TestRightsCommandKey(t *testing.T) {
 						return
 					}
 					count++
-					if count >= 2 {
+					if count >= 10 {
 						consumerCancel()
 					}
 				}
@@ -356,8 +291,15 @@ func TestRightsCommandKey(t *testing.T) {
 		<-consumerCtx.Done()
 
 		if !reflect.DeepEqual(keys, map[string]int{
+			"aaaa":                  1,
+			"aspect1":               1,
+			"aspect1/rights":        2,
+			"aspect2":               1,
+			"aspect2/rights":        1,
+			"aspect3":               1,
+			"aspect4":               1,
+			"aspect5":               1,
 			"prefix/suffix:aspect2": 1,
-			"aspect1/rights":        1,
 		}) {
 			t.Error(keys)
 		}
