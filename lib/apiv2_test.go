@@ -1,3 +1,6 @@
+//go:build !ci
+// +build !ci
+
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -17,16 +20,9 @@
 package lib
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"io"
-	"net/http"
-	"reflect"
-	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -221,130 +217,4 @@ func TestApiV2(t *testing.T) {
 		"aspect2": true,
 		"aspect3": true,
 	}))
-}
-
-func createTestAspects(ctx context.Context, config configuration.Config, ids ...string) func(t *testing.T) {
-	return func(t *testing.T) {
-		p, err := k.NewProducer(ctx, config.KafkaUrl, "aspects", true)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		for _, id := range ids {
-			t.Run("create "+id, createTestAspect(p, id))
-		}
-	}
-}
-
-func createTestAspect(p *k.Producer, id string) func(t *testing.T) {
-	return func(t *testing.T) {
-		aspectMsg, aspectCmd, err := getAspectTestObj(id, map[string]interface{}{
-			"name":     id + "_name",
-			"rdf_type": "aspect_type",
-		})
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		err = p.Produce(aspectCmd.Id, aspectMsg)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	}
-}
-
-func testRequest(config configuration.Config, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
-	return testRequestWithToken(config, testtoken, method, path, body, expectedStatusCode, expected)
-}
-
-func testRequestWithToken(config configuration.Config, token string, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
-	return func(t *testing.T) {
-		var requestBody io.Reader
-		if body != nil {
-			temp := new(bytes.Buffer)
-			err := json.NewEncoder(temp).Encode(body)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			requestBody = temp
-		}
-
-		req, err := http.NewRequest(method, "http://localhost:"+config.ServerPort+path, requestBody)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		req.Header.Set("Authorization", token)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		if resp.StatusCode != expectedStatusCode {
-			temp, _ := io.ReadAll(resp.Body)
-			t.Error(resp.StatusCode, string(temp))
-			return
-		}
-
-		if expected != nil {
-			temp, err := json.Marshal(expected)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			var normalizedExpected interface{}
-			err = json.Unmarshal(temp, &normalizedExpected)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-
-			var actual interface{}
-			err = json.NewDecoder(resp.Body).Decode(&actual)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-
-			if !reflect.DeepEqual(actual, normalizedExpected) {
-				a, _ := json.Marshal(actual)
-				e, _ := json.Marshal(normalizedExpected)
-				t.Error("\n", string(a), "\n", string(e))
-				return
-			}
-		}
-	}
-}
-
-func getTestAspectResult(id string) map[string]interface{} {
-	return getTestAspectResultWithPermissionHolders(id, []string{"testOwner"}, false)
-}
-
-func getTestAspectResultWithPermissionHolders(id string, userList []string, shared bool) map[string]interface{} {
-	//map[creator:testOwner id:aaspect name:aaspect_name permissions:map[a:true r:true w:true x:true] shared:false
-	sort.Strings(userList)
-	return map[string]interface{}{
-		"creator": "testOwner",
-		"id":      id,
-		"name":    id + "_name",
-		"permissions": map[string]bool{
-			"a": true,
-			"r": true,
-			"w": true,
-			"x": true,
-		},
-		"raw": map[string]interface{}{
-			"name":     id + "_name",
-			"rdf_type": "aspect_type",
-		},
-		"permission_holders": map[string][]string{
-			"admin_users":   userList,
-			"execute_users": userList,
-			"read_users":    userList,
-			"write_users":   userList,
-		},
-		"shared": shared,
-	}
 }

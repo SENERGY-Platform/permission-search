@@ -1,3 +1,6 @@
+//go:build !ci
+// +build !ci
+
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -18,7 +21,6 @@ package lib
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
@@ -100,23 +102,4 @@ func TestReceiveAspect(t *testing.T) {
 		t.Error(result)
 		return
 	}
-}
-
-func getAspectTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
-	text := `{
-		"command": "PUT",
-		"id": "%s",
-		"owner": "testOwner",
-		"aspect": %s
-	}`
-	dtStr, err := json.Marshal(obj)
-	if err != nil {
-		return msg, command, err
-	}
-	msg = []byte(fmt.Sprintf(text, id, string(dtStr)))
-	err = json.Unmarshal(msg, &command)
-	if err != nil {
-		return msg, command, err
-	}
-	return msg, command, err
 }

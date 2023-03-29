@@ -1,3 +1,6 @@
+//go:build !ci
+// +build !ci
+
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -20,9 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"reflect"
 	"strconv"
 	"sync"
@@ -119,46 +120,4 @@ func TestTermAggregationLimit(t *testing.T) {
 	t.Run("check limit 10", check(10, 10))
 	t.Run("check limit 100", check(100, 100))
 	t.Run("check limit 150", check(150, 150))
-}
-
-func saveTestDevice(w *worker.Worker, resource string, id string, fields map[string]interface{}) func(t *testing.T) {
-	return func(t *testing.T) {
-		msg, cmd, err := getDeviceTestObj(id, fields)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		err = w.UpdateFeatures(resource, msg, cmd)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	}
-}
-
-func getDeviceTestObj(id string, obj interface{}) (msg []byte, command model.CommandWrapper, err error) {
-	text := `{
-		"command": "PUT",
-		"id": "%s",
-		"owner": "testOwner",
-		"device": %s
-	}`
-	dtStr, err := json.Marshal(obj)
-	if err != nil {
-		return msg, command, err
-	}
-	msg = []byte(fmt.Sprintf(text, id, string(dtStr)))
-	err = json.Unmarshal(msg, &command)
-	if err != nil {
-		return msg, command, err
-	}
-	return msg, command, err
-}
-
-func createTestToken(user string, groups []string) auth.Token {
-	return auth.Token{
-		Token:       "",
-		Sub:         user,
-		RealmAccess: map[string][]string{"roles": groups},
-	}
 }

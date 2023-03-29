@@ -17,140 +17,38 @@
 package lib
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
+	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/segmentio/kafka-go"
+	"github.com/wvanbergen/kazoo-go"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	"runtime/debug"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"context"
-
-	"reflect"
-
 	elastic "github.com/olivere/elastic/v7"
 )
-
-func Example() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	config.ElasticRetry = 3
-	example(w, q)
-
-	//Output:
-	//<nil> test
-	//<nil> foo1
-	//<nil> foo2
-	//<nil> zway
-	//not found
-}
-
-func example(w *worker.Worker, q *query.Query) {
-
-	test, testCmd := getDtTestObj("test", map[string]interface{}{
-		"name":        "test",
-		"description": "desc",
-		"maintenance": []string{"something", "onotherthing"},
-		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	foo1, foo1Cmd := getDtTestObj("foo1", map[string]interface{}{
-		"name":        "foo1",
-		"description": "foo1Desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{{"id": "foo1Service"}},
-		"vendor":      map[string]interface{}{"name": "foo1Vendor"},
-	})
-	foo2, foo2Cmd := getDtTestObj("foo2", map[string]interface{}{
-		"name":        "foo2",
-		"description": "foo2Desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{{"id": "foo2Service"}},
-		"vendor":      map[string]interface{}{"name": "foo2Vendor"},
-	})
-	bar, barCmd := getDtTestObj("test", map[string]interface{}{
-		"name":        "test",
-		"description": "changedDesc",
-		"maintenance": []string{"something", "different"},
-		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest3"}},
-		"vendor":      map[string]interface{}{"name": "chengedvendor"},
-	})
-	//ZWay-SwitchMultilevel
-	zway, zwayCmd := getDtTestObj("zway", map[string]interface{}{
-		"name":        "ZWay-SwitchMultilevel",
-		"description": "desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	_, err := q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = w.UpdateFeatures("device-types", test, testCmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = w.UpdateFeatures("device-types", foo1, foo1Cmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = w.UpdateFeatures("device-types", foo2, foo2Cmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = w.UpdateFeatures("device-types", bar, barCmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = w.UpdateFeatures("device-types", zway, zwayCmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	e, _, err := q.GetResourceEntry("device-types", "test")
-	fmt.Println(err, e.Resource)
-	e, _, err = q.GetResourceEntry("device-types", "foo1")
-	fmt.Println(err, e.Resource)
-	e, _, err = q.GetResourceEntry("device-types", "foo2")
-	fmt.Println(err, e.Resource)
-	e, _, err = q.GetResourceEntry("device-types", "zway")
-	fmt.Println(err, e.Resource)
-	_, _, err = q.GetResourceEntry("device-types", "bar")
-	fmt.Println(err)
-}
 
 func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command model.CommandWrapper) {
 	text := `{
@@ -171,431 +69,6 @@ func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command mod
 		return
 	}
 	return
-}
-
-func ExampleSearch() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	config.ElasticRetry = 3
-
-	time.Sleep(1 * time.Second)
-	example(w, q)
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	query := elastic.NewBoolQuery().Should(
-		elastic.NewTermQuery("admin_users", "testOwner"),
-		elastic.NewTermQuery("read_users", "testOwner"),
-		elastic.NewTermQuery("write_users", "testOwner"),
-		elastic.NewTermQuery("execute_users", "testOwner"))
-	time.Sleep(1 * time.Second)
-	result, err := q.GetClient().Search().Index("device-types").Query(query).Sort("resource", true).Do(context.Background())
-	fmt.Println(err)
-
-	var entity model.Entry
-	if result != nil {
-		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(model.Entry); ok {
-				fmt.Println(t.Resource)
-			}
-		}
-	}
-
-	//Output:
-	//<nil> test
-	//<nil> foo1
-	//<nil> foo2
-	//<nil> zway
-	//not found
-	//<nil>
-	//foo1
-	//foo2
-	//test
-	//zway
-
-}
-
-func ExampleDeleteFeatures() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	config.ElasticRetry = 3
-	msg, cmd := getDtTestObj("del1", map[string]interface{}{
-		"name":        "ZWay-SwitchMultilevel",
-		"description": "desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	err = w.UpdateFeatures("device-types", msg, cmd)
-	msg, cmd = getDtTestObj("nodel", map[string]interface{}{
-		"name":        "ZWay-SwitchMultilevel",
-		"description": "desc",
-		"maintenance": []string{},
-		"services":    []map[string]interface{}{},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = w.UpdateFeatures("device-types", msg, cmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = w.DeleteFeatures("device-types", model.CommandWrapper{Id: "del1"})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	query := elastic.NewMatchAllQuery()
-	result, err := q.GetClient().Search().Index("device-types").Query(query).Do(context.Background())
-	fmt.Println(err)
-	var entity model.Entry
-	if result != nil {
-		for _, item := range result.Each(reflect.TypeOf(entity)) {
-			if t, ok := item.(model.Entry); ok {
-				fmt.Println(t.Resource)
-			}
-		}
-	}
-
-	//Output:
-	//<nil>
-	//nodel
-}
-
-func ExampleGetRightsToAdministrate() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	initDb(config, w)
-
-	time.Sleep(1 * time.Second)
-	rights, err := q.GetRightsToAdministrate("device-types", "nope", []string{})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"nope"})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"nope", "admin"})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "testOwner", []string{"admin"})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "nope", []string{"nope", "admin"})
-	fmt.Println(len(rights), err)
-
-	rights, err = q.GetRightsToAdministrate("device-types", "nope", []string{"admin"})
-	fmt.Println(len(rights), err)
-
-	//Output:
-	//0 <nil>
-	//4 <nil>
-	//4 <nil>
-	//4 <nil>
-	//4 <nil>
-	//4 <nil>
-	//4 <nil>
-}
-
-func ExampleCheckUserOrGroup() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	config.ElasticRetry = 3
-	test, testCmd := getDtTestObj("check3", map[string]interface{}{
-		"name":        "test",
-		"description": "desc",
-		"maintenance": []string{"something", "onotherthing"},
-		"services":    []map[string]interface{}{{"id": "serviceTest1"}, {"id": "serviceTest2"}},
-		"vendor":      map[string]interface{}{"name": "vendor"},
-	})
-	_, err = q.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	err = w.UpdateFeatures("device-types", test, testCmd)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	_, err = q.GetClient().Flush().Index("device-types").Do(context.Background())
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	time.Sleep(1 * time.Second)
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{}), "device-types", "check3", "a"))
-
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "a"))
-
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "r"))
-
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "a"))
-
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("testOwner", []string{"user"}), "device-types", "check3", "ra"))
-	fmt.Println(q.CheckUserOrGroupFromAuthToken(createTestToken("nope", []string{"user"}), "device-types", "check3", "ra"))
-
-	//Output:
-	//access denied
-	//access denied
-	//<nil>
-	//<nil>
-	//<nil>
-	//access denied
-}
-
-func ExampleGetFullListForUserOrGroup() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	initDb(config, w)
-
-	time.Sleep(1 * time.Second)
-	result, err := q.GetFullListForUserOrGroup("device-types", "testOwner", []string{}, "r")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	//Output:
-	//<nil>
-	//foo1
-	//foo2
-	//test
-	//ZWay-SwitchMultilevel
-}
-
-func ExampleGetListForUserOrGroup() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	initDb(config, w)
-
-	time.Sleep(1 * time.Second)
-	result, err := q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	result, err = q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	result, err = q.GetListForUserOrGroup("device-types", "testOwner", []string{}, "r", "3", "3")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	//Output:
-	//<nil>
-	//foo1
-	//foo2
-	//test
-	//ZWay-SwitchMultilevel
-	//<nil>
-	//foo1
-	//foo2
-	//test
-	//<nil>
-	//ZWay-SwitchMultilevel
-}
-
-func ExampleGetOrderedListForUserOrGroup() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	initDb(config, w)
-
-	time.Sleep(1 * time.Second)
-	result, err := q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
-		Limit:    20,
-		Offset:   0,
-		Rights:   "r",
-		SortBy:   "name",
-		SortDesc: false,
-	})
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	result, err = q.GetList(createTestToken("testOwner", []string{"user"}), "device-types", model.QueryListCommons{
-		Limit:    20,
-		Offset:   0,
-		Rights:   "r",
-		SortBy:   "name",
-		SortDesc: true,
-	})
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	result, err = q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
-		Limit:    3,
-		Offset:   0,
-		Rights:   "r",
-		SortBy:   "name",
-		SortDesc: false,
-	})
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	result, err = q.GetList(createTestToken("testOwner", []string{}), "device-types", model.QueryListCommons{
-		Limit:    3,
-		Offset:   3,
-		Rights:   "r",
-		SortBy:   "name",
-		SortDesc: false,
-	})
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println(r["name"])
-	}
-	//Output:
-	//<nil>
-	//ZWay-SwitchMultilevel
-	//foo1
-	//foo2
-	//test
-	//<nil>
-	//test
-	//foo2
-	//foo1
-	//ZWay-SwitchMultilevel
-	//<nil>
-	//ZWay-SwitchMultilevel
-	//foo1
-	//foo2
-	//<nil>
-	//test
-}
-
-func ExampleSearchRightsToAdministrate() {
-	wg := &sync.WaitGroup{}
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	config, q, w, err := getTestEnv(ctx, wg, nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	initDb(config, w)
-
-	time.Sleep(1 * time.Second)
-	result, err := q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "z", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "zway switch", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "switch", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-
-	result, err = q.SearchRightsToAdministrate("device-types", "testOwner", []string{}, "nope", "20", "0")
-	fmt.Println(err)
-	for _, r := range result {
-		fmt.Println("found: ", r.ResourceId)
-	}
-
-	//Output:
-	//<nil>
-	//found:  zway
-	//<nil>
-	//found:  zway
-	//<nil>
-	//found:  zway
-	//<nil>
-	//found:  zway
-	//<nil>
 }
 
 func initDb(config configuration.Config, worker *worker.Worker) {
@@ -772,4 +245,316 @@ func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (c
 	}()
 	config.ServerPort = serverUrl.Port()
 	return
+}
+
+const testTokenUser = "testOwner"
+const testtoken = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOGM0N2E4OC0yYzc5LTQyMGYtODEwNC02NWJkOWViYmU0MWUiLCJleHAiOjE1NDY1MDcyMzMsIm5iZiI6MCwiaWF0IjoxNTQ2NTA3MTczLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDEvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiZnJvbnRlbmQiLCJzdWIiOiJ0ZXN0T3duZXIiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJmcm9udGVuZCIsIm5vbmNlIjoiOTJjNDNjOTUtNzViMC00NmNmLTgwYWUtNDVkZDk3M2I0YjdmIiwiYXV0aF90aW1lIjoxNTQ2NTA3MDA5LCJzZXNzaW9uX3N0YXRlIjoiNWRmOTI4ZjQtMDhmMC00ZWI5LTliNjAtM2EwYWUyMmVmYzczIiwiYWNyIjoiMCIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJ1c2VyIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsibWFzdGVyLXJlYWxtIjp7InJvbGVzIjpbInZpZXctcmVhbG0iLCJ2aWV3LWlkZW50aXR5LXByb3ZpZGVycyIsIm1hbmFnZS1pZGVudGl0eS1wcm92aWRlcnMiLCJpbXBlcnNvbmF0aW9uIiwiY3JlYXRlLWNsaWVudCIsIm1hbmFnZS11c2VycyIsInF1ZXJ5LXJlYWxtcyIsInZpZXctYXV0aG9yaXphdGlvbiIsInF1ZXJ5LWNsaWVudHMiLCJxdWVyeS11c2VycyIsIm1hbmFnZS1ldmVudHMiLCJtYW5hZ2UtcmVhbG0iLCJ2aWV3LWV2ZW50cyIsInZpZXctdXNlcnMiLCJ2aWV3LWNsaWVudHMiLCJtYW5hZ2UtYXV0aG9yaXphdGlvbiIsIm1hbmFnZS1jbGllbnRzIiwicXVlcnktZ3JvdXBzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJyb2xlcyI6WyJ1c2VyIl19.ykpuOmlpzj75ecSI6cHbCATIeY4qpyut2hMc1a67Ycg`
+
+const adminTokenUser = "admin"
+const admintoken = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOGM0N2E4OC0yYzc5LTQyMGYtODEwNC02NWJkOWViYmU0MWUiLCJleHAiOjE1NDY1MDcyMzMsIm5iZiI6MCwiaWF0IjoxNTQ2NTA3MTczLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDEvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiZnJvbnRlbmQiLCJzdWIiOiJhZG1pbiIsInR5cCI6IkJlYXJlciIsImF6cCI6ImZyb250ZW5kIiwibm9uY2UiOiI5MmM0M2M5NS03NWIwLTQ2Y2YtODBhZS00NWRkOTczYjRiN2YiLCJhdXRoX3RpbWUiOjE1NDY1MDcwMDksInNlc3Npb25fc3RhdGUiOiI1ZGY5MjhmNC0wOGYwLTRlYjktOWI2MC0zYTBhZTIyZWZjNzMiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbIioiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInVzZXIiLCJhZG1pbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7Im1hc3Rlci1yZWFsbSI6eyJyb2xlcyI6WyJ2aWV3LXJlYWxtIiwidmlldy1pZGVudGl0eS1wcm92aWRlcnMiLCJtYW5hZ2UtaWRlbnRpdHktcHJvdmlkZXJzIiwiaW1wZXJzb25hdGlvbiIsImNyZWF0ZS1jbGllbnQiLCJtYW5hZ2UtdXNlcnMiLCJxdWVyeS1yZWFsbXMiLCJ2aWV3LWF1dGhvcml6YXRpb24iLCJxdWVyeS1jbGllbnRzIiwicXVlcnktdXNlcnMiLCJtYW5hZ2UtZXZlbnRzIiwibWFuYWdlLXJlYWxtIiwidmlldy1ldmVudHMiLCJ2aWV3LXVzZXJzIiwidmlldy1jbGllbnRzIiwibWFuYWdlLWF1dGhvcml6YXRpb24iLCJtYW5hZ2UtY2xpZW50cyIsInF1ZXJ5LWdyb3VwcyJdfSwiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwicm9sZXMiOlsidXNlciIsImFkbWluIl19.ggcFFFEsjwdfSzEFzmZt_m6W4IiSQub2FRhZVfWttDI`
+
+const secendOwnerTokenUser = "secondOwner"
+const secondOwnerToken = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOGM0N2E4OC0yYzc5LTQyMGYtODEwNC02NWJkOWViYmU0MWUiLCJleHAiOjE1NDY1MDcyMzMsIm5iZiI6MCwiaWF0IjoxNTQ2NTA3MTczLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDEvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiZnJvbnRlbmQiLCJzdWIiOiJzZWNvbmRPd25lciIsInR5cCI6IkJlYXJlciIsImF6cCI6ImZyb250ZW5kIiwibm9uY2UiOiI5MmM0M2M5NS03NWIwLTQ2Y2YtODBhZS00NWRkOTczYjRiN2YiLCJhdXRoX3RpbWUiOjE1NDY1MDcwMDksInNlc3Npb25fc3RhdGUiOiI1ZGY5MjhmNC0wOGYwLTRlYjktOWI2MC0zYTBhZTIyZWZjNzMiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbIioiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInVzZXIiXX0sInJlc291cmNlX2FjY2VzcyI6eyJtYXN0ZXItcmVhbG0iOnsicm9sZXMiOlsidmlldy1yZWFsbSIsInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwibWFuYWdlLWlkZW50aXR5LXByb3ZpZGVycyIsImltcGVyc29uYXRpb24iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInJvbGVzIjpbInVzZXIiXX0.cq8YeUuR0jSsXCEzp634fTzNbGkq_B8KbVrwBPgceJ4`
+
+func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaUrl string, err error) {
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return kafkaUrl, err
+	}
+	kafkaport, err := GetFreePort()
+	if err != nil {
+		return kafkaUrl, err
+	}
+	networks, _ := pool.Client.ListNetworks()
+	hostIp := ""
+	for _, network := range networks {
+		if network.Name == "bridge" {
+			hostIp = network.IPAM.Config[0].Gateway
+		}
+	}
+	kafkaUrl = hostIp + ":" + strconv.Itoa(kafkaport)
+	log.Println("host ip: ", hostIp)
+	log.Println("kafka url: ", kafkaUrl)
+	env := []string{
+		"ALLOW_PLAINTEXT_LISTENER=yes",
+		"KAFKA_LISTENERS=OUTSIDE://:9092",
+		"KAFKA_ADVERTISED_LISTENERS=OUTSIDE://" + hostIp + ":" + strconv.Itoa(kafkaport),
+		"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=OUTSIDE:PLAINTEXT",
+		"KAFKA_INTER_BROKER_LISTENER_NAME=OUTSIDE",
+		"KAFKA_ZOOKEEPER_CONNECT=" + zookeeperUrl,
+	}
+	log.Println("start kafka with env ", env)
+	container, err := pool.RunWithOptions(&dockertest.RunOptions{Repository: "bitnami/kafka", Tag: "latest", Env: env, PortBindings: map[docker.Port][]docker.PortBinding{
+		"9092/tcp": {{HostIP: "", HostPort: strconv.Itoa(kafkaport)}},
+	}})
+	if err != nil {
+		return kafkaUrl, err
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		log.Println("DEBUG: remove container " + container.Container.Name)
+		container.Close()
+	}()
+	err = pool.Retry(func() error {
+		log.Println("try kafka connection...")
+		conn, err := kafka.Dial("tcp", kafkaUrl)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		defer conn.Close()
+		return nil
+	})
+	time.Sleep(5 * time.Second)
+	return kafkaUrl, err
+}
+
+func Zookeeper(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return "", "", err
+	}
+	zkport, err := GetFreePort()
+	if err != nil {
+		debug.PrintStack()
+		return "", "", err
+	}
+	env := []string{}
+	log.Println("start zookeeper on ", zkport)
+	container, err := pool.RunWithOptions(&dockertest.RunOptions{Repository: "wurstmeister/zookeeper", Tag: "latest", Env: env, PortBindings: map[docker.Port][]docker.PortBinding{
+		"2181/tcp": {{HostIP: "", HostPort: strconv.Itoa(zkport)}},
+	}})
+	if err != nil {
+		debug.PrintStack()
+		return "", "", err
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		log.Println("DEBUG: remove container " + container.Container.Name)
+		container.Close()
+	}()
+	hostPort = strconv.Itoa(zkport)
+	err = pool.Retry(func() error {
+		log.Println("try zk connection...")
+		zookeeper := kazoo.NewConfig()
+		zk, chroot := kazoo.ParseConnectionString(container.Container.NetworkSettings.IPAddress)
+		zookeeper.Chroot = chroot
+		kz, err := kazoo.NewKazoo(zk, zookeeper)
+		if err != nil {
+			log.Println("kazoo", err)
+			return err
+		}
+		_, err = kz.Brokers()
+		if err != nil && strings.TrimSpace(err.Error()) != strings.TrimSpace("zk: node does not exist") {
+			log.Println("brokers", err)
+			return err
+		}
+		return nil
+	})
+	return hostPort, container.Container.NetworkSettings.IPAddress, err
+}
+
+func GetFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	listener, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close()
+	return listener.Addr().(*net.TCPAddr).Port, nil
+}
+
+func createTestAspects(ctx context.Context, config configuration.Config, ids ...string) func(t *testing.T) {
+	return func(t *testing.T) {
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "aspects", true)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		for _, id := range ids {
+			t.Run("create "+id, createTestAspect(p, id))
+		}
+	}
+}
+
+func createTestAspect(p *k.Producer, id string) func(t *testing.T) {
+	return func(t *testing.T) {
+		aspectMsg, aspectCmd, err := getAspectTestObj(id, map[string]interface{}{
+			"name":     id + "_name",
+			"rdf_type": "aspect_type",
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		err = p.Produce(aspectCmd.Id, aspectMsg)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+}
+
+func testRequest(config configuration.Config, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
+	return testRequestWithToken(config, testtoken, method, path, body, expectedStatusCode, expected)
+}
+
+func testRequestWithToken(config configuration.Config, token string, method string, path string, body interface{}, expectedStatusCode int, expected interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		var requestBody io.Reader
+		if body != nil {
+			temp := new(bytes.Buffer)
+			err := json.NewEncoder(temp).Encode(body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			requestBody = temp
+		}
+
+		req, err := http.NewRequest(method, "http://localhost:"+config.ServerPort+path, requestBody)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		req.Header.Set("Authorization", token)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if resp.StatusCode != expectedStatusCode {
+			temp, _ := io.ReadAll(resp.Body)
+			t.Error(resp.StatusCode, string(temp))
+			return
+		}
+
+		if expected != nil {
+			temp, err := json.Marshal(expected)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			var normalizedExpected interface{}
+			err = json.Unmarshal(temp, &normalizedExpected)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			var actual interface{}
+			err = json.NewDecoder(resp.Body).Decode(&actual)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			if !reflect.DeepEqual(actual, normalizedExpected) {
+				a, _ := json.Marshal(actual)
+				e, _ := json.Marshal(normalizedExpected)
+				t.Error("\n", string(a), "\n", string(e))
+				return
+			}
+		}
+	}
+}
+
+func getTestAspectResult(id string) map[string]interface{} {
+	return getTestAspectResultWithPermissionHolders(id, []string{"testOwner"}, false)
+}
+
+func getTestAspectResultWithPermissionHolders(id string, userList []string, shared bool) map[string]interface{} {
+	//map[creator:testOwner id:aaspect name:aaspect_name permissions:map[a:true r:true w:true x:true] shared:false
+	sort.Strings(userList)
+	return map[string]interface{}{
+		"creator": "testOwner",
+		"id":      id,
+		"name":    id + "_name",
+		"permissions": map[string]bool{
+			"a": true,
+			"r": true,
+			"w": true,
+			"x": true,
+		},
+		"raw": map[string]interface{}{
+			"name":     id + "_name",
+			"rdf_type": "aspect_type",
+		},
+		"permission_holders": map[string][]string{
+			"admin_users":   userList,
+			"execute_users": userList,
+			"read_users":    userList,
+			"write_users":   userList,
+		},
+		"shared": shared,
+	}
+}
+
+func saveTestDevice(w *worker.Worker, resource string, id string, fields map[string]interface{}) func(t *testing.T) {
+	return func(t *testing.T) {
+		msg, cmd, err := getDeviceTestObj(id, fields)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		err = w.UpdateFeatures(resource, msg, cmd)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+}
+
+func getDeviceTestObj(id string, obj interface{}) (msg []byte, command model.CommandWrapper, err error) {
+	text := `{
+		"command": "PUT",
+		"id": "%s",
+		"owner": "testOwner",
+		"device": %s
+	}`
+	dtStr, err := json.Marshal(obj)
+	if err != nil {
+		return msg, command, err
+	}
+	msg = []byte(fmt.Sprintf(text, id, string(dtStr)))
+	err = json.Unmarshal(msg, &command)
+	if err != nil {
+		return msg, command, err
+	}
+	return msg, command, err
+}
+
+func createTestToken(user string, groups []string) auth.Token {
+	return auth.Token{
+		Token:       "",
+		Sub:         user,
+		RealmAccess: map[string][]string{"roles": groups},
+	}
+}
+
+func getAspectTestObj(id string, obj map[string]interface{}) (msg []byte, command model.CommandWrapper, err error) {
+	text := `{
+		"command": "PUT",
+		"id": "%s",
+		"owner": "testOwner",
+		"aspect": %s
+	}`
+	dtStr, err := json.Marshal(obj)
+	if err != nil {
+		return msg, command, err
+	}
+	msg = []byte(fmt.Sprintf(text, id, string(dtStr)))
+	err = json.Unmarshal(msg, &command)
+	if err != nil {
+		return msg, command, err
+	}
+	return msg, command, err
 }

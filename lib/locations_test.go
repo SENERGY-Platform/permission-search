@@ -1,3 +1,6 @@
+//go:build !ci
+// +build !ci
+
 /*
  * Copyright 2022 InfAI (CC SES)
  *
