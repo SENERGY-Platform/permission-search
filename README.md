@@ -1,3 +1,8 @@
+<a href="https://github.com/SENERGY-Platform/permission-search/actions/workflows/tests.yml" rel="nofollow">
+    <img src="https://github.com/SENERGY-Platform/permission-search/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests" />
+</a>
+
+
 Service to search for resources with added permissions. 
 Receives resources from kafka and saves it to elastic search. 
 Resources will be enriched with permission information. 
