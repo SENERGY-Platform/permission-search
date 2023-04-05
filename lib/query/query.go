@@ -72,6 +72,9 @@ func (this *Query) ResourceExists(kind string, resource string) (exists bool, er
 
 func (this *Query) resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
 	exists, err = elastic.NewExistsService(this.client).Index(kind).Id(resource).Do(context)
+	if err != nil {
+		debug.PrintStack()
+	}
 	return
 }
 
@@ -556,6 +559,7 @@ func (this *Query) GetResourceInterface(kind string, resource string, result int
 		}
 	}
 	if err != nil {
+		debug.PrintStack()
 		return version, err
 	}
 	version.PrimaryTerm = *resp.PrimaryTerm

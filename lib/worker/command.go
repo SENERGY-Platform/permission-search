@@ -146,6 +146,7 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		}
 		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
 		if err != nil {
+			debug.PrintStack()
 			return err
 		}
 	} else {
@@ -153,6 +154,7 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		entry.SetDefaultPermissions(this.config, kind, command.Owner)
 		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).BodyJson(entry).Do(ctx)
 		if err != nil {
+			debug.PrintStack()
 			return err
 		}
 	}

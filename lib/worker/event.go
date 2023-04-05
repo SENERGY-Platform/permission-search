@@ -174,13 +174,15 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 		if err != nil {
 			return
 		}
-		if err == nil {
-			err = this.SendDone(model.Done{
-				ResourceKind: resourceName,
-				ResourceId:   command.Id,
-				Command:      command.Command,
-			})
-		}
+		defer func() {
+			if err == nil {
+				err = this.SendDone(model.Done{
+					ResourceKind: resourceName,
+					ResourceId:   command.Id,
+					Command:      command.Command,
+				})
+			}
+		}()
 		switch command.Command {
 		case "RIGHTS":
 			//RIGHTS commands are expected to be produced in the same partition as PUT and DELETE commands for the same resource/id
