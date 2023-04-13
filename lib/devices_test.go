@@ -1,6 +1,3 @@
-//go:build !ci
-// +build !ci
-
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -32,6 +29,9 @@ import (
 )
 
 func TestDeviceComplexPathAndAttribute(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -146,6 +146,9 @@ func TestDeviceComplexPathAndAttribute(t *testing.T) {
 }
 
 func TestDeviceDisplayNameSort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -292,6 +295,9 @@ func TestDeviceDisplayNameSort(t *testing.T) {
 }
 
 func TestReceiveDevice(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -392,6 +398,9 @@ func TestReceiveDevice(t *testing.T) {
 }
 
 func TestDeviceWithSpecialCharacterAttribute(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())

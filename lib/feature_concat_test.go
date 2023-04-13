@@ -1,6 +1,3 @@
-//go:build !ci
-// +build !ci
-
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -33,6 +30,9 @@ import (
 )
 
 func TestFeatureConcat(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	msg, _, err := getDeviceGroupTestObj("g1", map[string]interface{}{
 		"attributes": []interface{}{
 			map[string]interface{}{
@@ -64,6 +64,9 @@ func TestFeatureConcat(t *testing.T) {
 }
 
 func TestFeatureConcatWithDeviceGroup(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -143,6 +146,9 @@ func TestFeatureConcatWithDeviceGroup(t *testing.T) {
 }
 
 func TestDeviceGroupAttributeListFilter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())

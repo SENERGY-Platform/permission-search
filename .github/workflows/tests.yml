@@ -23,7 +23,7 @@ jobs:
           go-version: '1.20'
 
       - name: Build
-        run: go build -v --tags=ci ./...
+        run: go build -v ./...
 
       - name: Test
         timeout-minutes: 120
@@ -32,4 +32,4 @@ jobs:
           max_attempts: 3
           retry_on: error
           timeout_minutes: 120
-          command: go test --tags=ci -v -timeout 99999s -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+          command: go test -short -timeout 99999s ./...

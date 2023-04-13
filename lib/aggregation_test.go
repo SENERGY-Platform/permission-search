@@ -1,6 +1,3 @@
-//go:build !ci
-// +build !ci
-
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -32,6 +29,9 @@ import (
 )
 
 func TestTermAggregation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -79,6 +79,9 @@ func TestTermAggregation(t *testing.T) {
 }
 
 func TestTermAggregationLimit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())

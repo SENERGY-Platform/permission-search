@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/api"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
@@ -28,9 +29,9 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/query"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/segmentio/kafka-go"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/wvanbergen/kazoo-go"
 	"io"
 	"log"
@@ -39,7 +40,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
-	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -155,47 +155,98 @@ func initDb(config configuration.Config, worker *worker.Worker) {
 
 func elasticsearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
 	log.Println("start elasticsearch")
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		return "", "", err
-	}
-
-	container, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        "7.6.1",
-		Env: []string{
-			"discovery.type=single-node",
-			"path.data=/opt/elasticsearch/volatile/data",
-			"path.logs=/opt/elasticsearch/volatile/logs",
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image: "docker.elastic.co/elasticsearch/elasticsearch:7.6.1",
+			Env: map[string]string{
+				"discovery.type": "single-node",
+				"path.data":      "/opt/elasticsearch/volatile/data",
+				"path.logs":      "/opt/elasticsearch/volatile/logs",
+			},
+			Tmpfs: map[string]string{
+				"/opt/elasticsearch/volatile/data": "rw",
+				"/opt/elasticsearch/volatile/logs": "rw",
+				"/tmp":                             "rw",
+			},
+			WaitingFor: wait.ForAll(
+				wait.ForListeningPort("9200/tcp"),
+				wait.ForNop(waitretry(1*time.Minute, func(ctx context.Context, target wait.StrategyTarget) error {
+					host, err := target.Host(ctx)
+					if err != nil {
+						log.Println("host", err)
+						return err
+					}
+					port, err := target.MappedPort(ctx, "9200/tcp")
+					if err != nil {
+						log.Println("port", err)
+						return err
+					}
+					return tryElasticSearchConnection(host, port.Port())
+				}))),
+			ExposedPorts:    []string{"9200/tcp"},
+			AlwaysPullImage: true,
 		},
-	}, func(config *docker.HostConfig) {
-		config.Tmpfs = map[string]string{
-			"/opt/elasticsearch/volatile/data": "rw",
-			"/opt/elasticsearch/volatile/logs": "rw",
-			"/tmp":                             "rw",
-		}
+		Started: true,
 	})
-
 	if err != nil {
 		return "", "", err
 	}
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container " + container.Container.Name)
-		container.Close()
-		wg.Done()
+		log.Println("DEBUG: remove container elasticsearch", c.Terminate(context.Background()))
 	}()
-	hostPort = container.GetPort("9200/tcp")
-	err = pool.Retry(func() error {
-		log.Println("try elastic connection...")
-		_, err := http.Get("http://" + container.Container.NetworkSettings.IPAddress + ":9200/_cluster/health")
-		return err
-	})
+
+	ipAddress, err = c.ContainerIP(ctx)
 	if err != nil {
-		log.Println(err)
+		return "", "", err
 	}
-	return hostPort, container.Container.NetworkSettings.IPAddress, err
+	temp, err := c.MappedPort(ctx, "9200/tcp")
+	if err != nil {
+		return "", "", err
+	}
+	hostPort = temp.Port()
+
+	err = tryElasticSearchConnection("localhost", hostPort)
+	if err != nil {
+		log.Println("ERROR: tryElasticSearchConnection(\"localhost\", hostPort)", err)
+		return "", "", err
+	}
+	err = tryElasticSearchConnection(ipAddress, "9200")
+	if err != nil {
+		log.Println("ERROR: tryElasticSearchConnection(ipAddress, \"9200\")", err)
+		return "", "", err
+	}
+
+	return hostPort, ipAddress, err
+}
+
+func tryElasticSearchConnection(ip string, port string) error {
+	log.Println("try elastic connection to ", ip, port, "...")
+	resp, err := http.Get("http://" + ip + ":" + port + "/_cluster/health?wait_for_status=green&timeout=50s")
+	if err != nil {
+		log.Println("ERROR:", err)
+		return err
+	}
+	if resp.StatusCode >= 300 {
+		temp, _ := io.ReadAll(resp.Body)
+		err = errors.New("unexpected status code " + resp.Status)
+		log.Println("ERROR:", err, "\n", string(temp))
+		return err
+	}
+	result := map[string]interface{}{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		log.Println("ERROR:", err)
+		return err
+	}
+	if result["number_of_nodes"] != float64(1) || result["status"] != "green" {
+		err = fmt.Errorf("%#v", result)
+		log.Println("ERROR:", err)
+		return err
+	}
+	return err
 }
 
 func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config configuration.Config, q *query.Query, w *worker.Worker, err error) {
@@ -260,36 +311,43 @@ const secendOwnerTokenUser = "secondOwner"
 const secondOwnerToken = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOGM0N2E4OC0yYzc5LTQyMGYtODEwNC02NWJkOWViYmU0MWUiLCJleHAiOjE1NDY1MDcyMzMsIm5iZiI6MCwiaWF0IjoxNTQ2NTA3MTczLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDEvYXV0aC9yZWFsbXMvbWFzdGVyIiwiYXVkIjoiZnJvbnRlbmQiLCJzdWIiOiJzZWNvbmRPd25lciIsInR5cCI6IkJlYXJlciIsImF6cCI6ImZyb250ZW5kIiwibm9uY2UiOiI5MmM0M2M5NS03NWIwLTQ2Y2YtODBhZS00NWRkOTczYjRiN2YiLCJhdXRoX3RpbWUiOjE1NDY1MDcwMDksInNlc3Npb25fc3RhdGUiOiI1ZGY5MjhmNC0wOGYwLTRlYjktOWI2MC0zYTBhZTIyZWZjNzMiLCJhY3IiOiIwIiwiYWxsb3dlZC1vcmlnaW5zIjpbIioiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInVzZXIiXX0sInJlc291cmNlX2FjY2VzcyI6eyJtYXN0ZXItcmVhbG0iOnsicm9sZXMiOlsidmlldy1yZWFsbSIsInZpZXctaWRlbnRpdHktcHJvdmlkZXJzIiwibWFuYWdlLWlkZW50aXR5LXByb3ZpZGVycyIsImltcGVyc29uYXRpb24iLCJjcmVhdGUtY2xpZW50IiwibWFuYWdlLXVzZXJzIiwicXVlcnktcmVhbG1zIiwidmlldy1hdXRob3JpemF0aW9uIiwicXVlcnktY2xpZW50cyIsInF1ZXJ5LXVzZXJzIiwibWFuYWdlLWV2ZW50cyIsIm1hbmFnZS1yZWFsbSIsInZpZXctZXZlbnRzIiwidmlldy11c2VycyIsInZpZXctY2xpZW50cyIsIm1hbmFnZS1hdXRob3JpemF0aW9uIiwibWFuYWdlLWNsaWVudHMiLCJxdWVyeS1ncm91cHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInJvbGVzIjpbInVzZXIiXX0.cq8YeUuR0jSsXCEzp634fTzNbGkq_B8KbVrwBPgceJ4`
 
 func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaUrl string, err error) {
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		return kafkaUrl, err
-	}
 	kafkaport, err := GetFreePort()
 	if err != nil {
 		return kafkaUrl, err
 	}
-	networks, _ := pool.Client.ListNetworks()
-	hostIp := ""
-	for _, network := range networks {
-		if network.Name == "bridge" {
-			hostIp = network.IPAM.Config[0].Gateway
-		}
+	provider, err := testcontainers.NewDockerProvider(testcontainers.DefaultNetwork("bridge"))
+	if err != nil {
+		return kafkaUrl, err
+	}
+	hostIp, err := provider.GetGatewayIP(ctx)
+	if err != nil {
+		return kafkaUrl, err
 	}
 	kafkaUrl = hostIp + ":" + strconv.Itoa(kafkaport)
 	log.Println("host ip: ", hostIp)
-	log.Println("kafka url: ", kafkaUrl)
-	env := []string{
-		"ALLOW_PLAINTEXT_LISTENER=yes",
-		"KAFKA_LISTENERS=OUTSIDE://:9092",
-		"KAFKA_ADVERTISED_LISTENERS=OUTSIDE://" + hostIp + ":" + strconv.Itoa(kafkaport),
-		"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=OUTSIDE:PLAINTEXT",
-		"KAFKA_INTER_BROKER_LISTENER_NAME=OUTSIDE",
-		"KAFKA_ZOOKEEPER_CONNECT=" + zookeeperUrl,
-	}
-	log.Println("start kafka with env ", env)
-	container, err := pool.RunWithOptions(&dockertest.RunOptions{Repository: "bitnami/kafka", Tag: "latest", Env: env, PortBindings: map[docker.Port][]docker.PortBinding{
-		"9092/tcp": {{HostIP: "", HostPort: strconv.Itoa(kafkaport)}},
-	}})
+	log.Println("host port: ", kafkaport)
+	log.Println("kafkaUrl url: ", kafkaUrl)
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image: "bitnami/kafka:latest",
+			Tmpfs: map[string]string{},
+			WaitingFor: wait.ForAll(
+				wait.ForLog("INFO Awaiting socket connections on"),
+				wait.ForListeningPort("9092/tcp"),
+			),
+			ExposedPorts:    []string{"9092/tcp"},
+			AlwaysPullImage: true,
+			Env: map[string]string{
+				"ALLOW_PLAINTEXT_LISTENER":             "yes",
+				"KAFKA_LISTENERS":                      "OUTSIDE://:9092",
+				"KAFKA_ADVERTISED_LISTENERS":           "OUTSIDE://" + kafkaUrl,
+				"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP": "OUTSIDE:PLAINTEXT",
+				"KAFKA_INTER_BROKER_LISTENER_NAME":     "OUTSIDE",
+				"KAFKA_ZOOKEEPER_CONNECT":              zookeeperUrl,
+			},
+		},
+		Started: true,
+	})
 	if err != nil {
 		return kafkaUrl, err
 	}
@@ -297,68 +355,183 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 	go func() {
 		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container " + container.Container.Name)
-		container.Close()
+		log.Println("DEBUG: remove container kafka", c.Terminate(context.Background()))
 	}()
-	err = pool.Retry(func() error {
-		log.Println("try kafka connection...")
-		conn, err := kafka.Dial("tcp", kafkaUrl)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		defer conn.Close()
-		return nil
+
+	containerPort, err := c.MappedPort(ctx, "9092/tcp")
+	if err != nil {
+		return kafkaUrl, err
+	}
+	err = Forward(ctx, kafkaport, hostIp+":"+containerPort.Port())
+	if err != nil {
+		return kafkaUrl, err
+	}
+
+	err = retry(1*time.Minute, func() error {
+		return tryKafkaConn(kafkaUrl)
 	})
-	time.Sleep(5 * time.Second)
+	if err != nil {
+		return kafkaUrl, err
+	}
+
 	return kafkaUrl, err
 }
 
+func tryKafkaConn(kafkaUrl string) error {
+	log.Println("try kafka connection to " + kafkaUrl + "...")
+	conn, err := kafka.Dial("tcp", kafkaUrl)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer conn.Close()
+	brokers, err := conn.Brokers()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(brokers) == 0 {
+		err = errors.New("missing brokers")
+		log.Println(err)
+		return err
+	}
+	log.Println("kafka connection ok")
+	return nil
+}
+
 func Zookeeper(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
-	pool, err := dockertest.NewPool("")
+	log.Println("start zookeeper")
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image: "wurstmeister/zookeeper:latest",
+			Tmpfs: map[string]string{"/opt/zookeeper-3.4.13/data": "rw"},
+			WaitingFor: wait.ForAll(
+				wait.ForLog("binding to port"),
+				wait.ForListeningPort("2181/tcp"),
+				wait.ForNop(waitretry(1*time.Minute, func(ctx context.Context, target wait.StrategyTarget) error {
+					log.Println("try zk connection...")
+					zookeeper := kazoo.NewConfig()
+					host, err := target.Host(ctx)
+					if err != nil {
+						log.Println("host", err)
+						return err
+					}
+					port, err := target.MappedPort(ctx, "2181/tcp")
+					if err != nil {
+						log.Println("port", err)
+						return err
+					}
+					zk, chroot := kazoo.ParseConnectionString(host + ":" + port.Port())
+					zookeeper.Chroot = chroot
+					kz, err := kazoo.NewKazoo(zk, zookeeper)
+					if err != nil {
+						log.Println("kazoo", err)
+						return err
+					}
+					_, err = kz.Brokers()
+					if err != nil && strings.TrimSpace(err.Error()) != strings.TrimSpace("zk: node does not exist") {
+						log.Println("brokers", err)
+						return err
+					}
+					return nil
+				}))),
+			ExposedPorts:    []string{"2181/tcp"},
+			AlwaysPullImage: true,
+		},
+		Started: true,
+	})
 	if err != nil {
-		return "", "", err
-	}
-	zkport, err := GetFreePort()
-	if err != nil {
-		debug.PrintStack()
-		return "", "", err
-	}
-	env := []string{}
-	log.Println("start zookeeper on ", zkport)
-	container, err := pool.RunWithOptions(&dockertest.RunOptions{Repository: "wurstmeister/zookeeper", Tag: "latest", Env: env, PortBindings: map[docker.Port][]docker.PortBinding{
-		"2181/tcp": {{HostIP: "", HostPort: strconv.Itoa(zkport)}},
-	}})
-	if err != nil {
-		debug.PrintStack()
 		return "", "", err
 	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		<-ctx.Done()
-		log.Println("DEBUG: remove container " + container.Container.Name)
-		container.Close()
+		log.Println("DEBUG: remove container zookeeper", c.Terminate(context.Background()))
 	}()
-	hostPort = strconv.Itoa(zkport)
-	err = pool.Retry(func() error {
-		log.Println("try zk connection...")
-		zookeeper := kazoo.NewConfig()
-		zk, chroot := kazoo.ParseConnectionString(container.Container.NetworkSettings.IPAddress)
-		zookeeper.Chroot = chroot
-		kz, err := kazoo.NewKazoo(zk, zookeeper)
+
+	ipAddress, err = c.ContainerIP(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	temp, err := c.MappedPort(ctx, "2181/tcp")
+	if err != nil {
+		return "", "", err
+	}
+	hostPort = temp.Port()
+
+	return hostPort, ipAddress, err
+}
+
+func waitretry(timeout time.Duration, f func(ctx context.Context, target wait.StrategyTarget) error) func(ctx context.Context, target wait.StrategyTarget) error {
+	return func(ctx context.Context, target wait.StrategyTarget) (err error) {
+		return retry(timeout, func() error {
+			return f(ctx, target)
+		})
+	}
+}
+
+func retry(timeout time.Duration, f func() error) (err error) {
+	err = errors.New("initial")
+	start := time.Now()
+	for i := int64(1); err != nil && time.Since(start) < timeout; i++ {
+		err = f()
 		if err != nil {
-			log.Println("kazoo", err)
-			return err
+			log.Println("ERROR: :", err)
+			wait := time.Duration(i) * time.Second
+			if time.Since(start)+wait < timeout {
+				log.Println("ERROR: retry after:", wait.String())
+				time.Sleep(wait)
+			} else {
+				time.Sleep(time.Since(start) + wait - timeout)
+				return f()
+			}
 		}
-		_, err = kz.Brokers()
-		if err != nil && strings.TrimSpace(err.Error()) != strings.TrimSpace("zk: node does not exist") {
-			log.Println("brokers", err)
-			return err
+	}
+	return err
+}
+
+func Forward(ctx context.Context, fromPort int, toAddr string) error {
+	log.Println("forward", fromPort, "to", toAddr)
+	incoming, err := net.Listen("tcp", fmt.Sprintf(":%d", fromPort))
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer log.Println("closed forward incoming")
+		<-ctx.Done()
+		incoming.Close()
+	}()
+	go func() {
+		for {
+			client, err := incoming.Accept()
+			if err != nil {
+				log.Println("FORWARD ERROR:", err)
+				return
+			}
+			go handleForwardClient(client, toAddr)
 		}
-		return nil
-	})
-	return hostPort, container.Container.NetworkSettings.IPAddress, err
+	}()
+	return nil
+}
+
+func handleForwardClient(client net.Conn, addr string) {
+	log.Println("new forward client")
+	target, err := net.Dial("tcp", addr)
+	if err != nil {
+		log.Println("FORWARD ERROR:", err)
+		return
+	}
+	go func() {
+		defer target.Close()
+		defer client.Close()
+		io.Copy(target, client)
+	}()
+	go func() {
+		defer target.Close()
+		defer client.Close()
+		io.Copy(client, target)
+	}()
 }
 
 func GetFreePort() (int, error) {

@@ -1,6 +1,3 @@
-//go:build !ci
-// +build !ci
-
 /*
  * Copyright 2022 InfAI (CC SES)
  *
@@ -32,6 +29,9 @@ import (
 )
 
 func TestTotal(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
