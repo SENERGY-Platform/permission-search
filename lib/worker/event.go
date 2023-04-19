@@ -236,7 +236,6 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 			annotations[fieldName] = fieldValue
 		}
 	}
-
 	this.bulk.Add(elastic.NewBulkUpdateRequest().Index(resource).Id(idStr).Doc(map[string]interface{}{"annotations": annotations}))
 	return nil
 }
