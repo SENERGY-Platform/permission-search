@@ -25,6 +25,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/olivere/elastic/v7"
 	"log"
+	"time"
 )
 
 const permissionsCommandErrorMsg = `ERROR: unable to handle permissions command
@@ -230,12 +231,44 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 		return nil
 	}
 
-	annotations := map[string]interface{}{}
-	for fieldName, fieldValue := range fields {
-		if fieldName != "_id" {
-			annotations[fieldName] = fieldValue
+	exists, err := this.query.ResourceExists(resource, idStr)
+	if err != nil {
+		return err
+	}
+	if this.config.Debug && !exists {
+		log.Println("WARNING: _id is unknown in", resource, idStr)
+	}
+
+	if this.config.UseBulkWorkerForAnnotations {
+		annotations := map[string]interface{}{}
+		for fieldName, fieldValue := range fields {
+			if fieldName != "_id" {
+				annotations[fieldName] = fieldValue
+			}
+		}
+		this.bulk.Add(elastic.NewBulkUpdateRequest().Index(resource).Id(idStr).Doc(map[string]interface{}{"annotations": annotations}))
+	} else {
+		entry, version, err := this.query.GetResourceEntry(resource, idStr)
+		if err != nil {
+			return err
+		}
+		if entry.Annotations == nil {
+			entry.Annotations = map[string]interface{}{}
+		}
+		for fieldName, fieldValue := range fields {
+			if fieldName != "_id" {
+				entry.Annotations[fieldName] = fieldValue
+			}
+		}
+		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+		_, err = this.query.GetClient().Index().Index(resource).Id(idStr).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		if err != nil {
+			return err
+		}
+		if exists {
+
 		}
 	}
-	this.bulk.Add(elastic.NewBulkUpdateRequest().Index(resource).Id(idStr).Doc(map[string]interface{}{"annotations": annotations}))
+
 	return nil
 }

@@ -57,10 +57,13 @@ type ConfigStruct struct {
 
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`
 
-	ElasticUrl     string                                       `json:"elastic_url"`
-	ElasticRetry   int64                                        `json:"elastic_retry"`
-	ElasticTimeout string                                       `json:"elastic_timeout"`
-	ElasticMapping map[string]map[string]map[string]interface{} `json:"elastic_mapping"`
+	ElasticUrl                  string                                       `json:"elastic_url"`
+	ElasticRetry                int64                                        `json:"elastic_retry"`
+	ElasticTimeout              string                                       `json:"elastic_timeout"`
+	BulkFlushInterval           string                                       `json:"bulk_flush_interval"`
+	ElasticMapping              map[string]map[string]map[string]interface{} `json:"elastic_mapping"`
+	BulkWorkerCount             int64                                        `json:"bulk_worker_count"`
+	UseBulkWorkerForAnnotations bool                                         `json:"use_bulk_worker_for_annotations"`
 
 	JwtPubRsa string `json:"jwt_pub_rsa"`
 	ForceUser string `json:"force_user"`

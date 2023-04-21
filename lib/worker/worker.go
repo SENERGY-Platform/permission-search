@@ -48,12 +48,15 @@ func New(ctx context.Context, config configuration.Config, query Query) (result 
 	if err != nil {
 		return nil, err
 	}
+
+	bulkFlushInterval, err := time.ParseDuration(config.BulkFlushInterval)
+
 	bulk, err := query.GetClient().BulkProcessor().
 		Name("bulkworker").
-		Workers(2).
-		BulkActions(1000).              // commit if # requests >= 1000
-		BulkSize(2 << 20).              // commit if size of requests >= 2 MB
-		FlushInterval(2 * time.Second). // commit every 2s
+		Workers(int(config.BulkWorkerCount)).
+		BulkActions(1000).                // commit if # requests >= 1000
+		BulkSize(2 << 20).                // commit if size of requests >= 2 MB
+		FlushInterval(bulkFlushInterval). // commit every 2s
 		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
 			if err != nil {
 				log.Println("ERROR: bulk:", err)

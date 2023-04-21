@@ -39,7 +39,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -329,10 +331,10 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 	log.Println("kafkaUrl url: ", kafkaUrl)
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image: "bitnami/kafka:latest",
+			Image: "bitnami/kafka:3.4.0-debian-11-r21",
 			Tmpfs: map[string]string{},
 			WaitingFor: wait.ForAll(
-				wait.ForLog("INFO Awaiting socket connections on"),
+				//wait.ForLog("INFO Awaiting socket connections on"),
 				wait.ForListeningPort("9092/tcp"),
 			),
 			ExposedPorts:    []string{"9092/tcp"},
@@ -349,6 +351,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 		Started: true,
 	})
 	if err != nil {
+		debug.PrintStack()
 		return kafkaUrl, err
 	}
 	wg.Add(1)
@@ -358,12 +361,19 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 		log.Println("DEBUG: remove container kafka", c.Terminate(context.Background()))
 	}()
 
+	err = Dockerlog(ctx, c, "KAFKA")
+	if err != nil {
+		return kafkaUrl, err
+	}
+
 	containerPort, err := c.MappedPort(ctx, "9092/tcp")
 	if err != nil {
+		debug.PrintStack()
 		return kafkaUrl, err
 	}
 	err = Forward(ctx, kafkaport, hostIp+":"+containerPort.Port())
 	if err != nil {
+		debug.PrintStack()
 		return kafkaUrl, err
 	}
 
@@ -371,6 +381,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 		return tryKafkaConn(kafkaUrl)
 	})
 	if err != nil {
+		debug.PrintStack()
 		return kafkaUrl, err
 	}
 
@@ -489,6 +500,30 @@ func retry(timeout time.Duration, f func() error) (err error) {
 		}
 	}
 	return err
+}
+
+func Dockerlog(ctx context.Context, container testcontainers.Container, name string) error {
+	l, err := container.Logs(ctx)
+	if err != nil {
+		return err
+	}
+	out := &LogWriter{logger: log.New(os.Stdout, "["+name+"] ", log.LstdFlags)}
+	go func() {
+		_, err := io.Copy(out, l)
+		if err != nil {
+			log.Println("ERROR: unable to copy docker log", err)
+		}
+	}()
+	return nil
+}
+
+type LogWriter struct {
+	logger *log.Logger
+}
+
+func (this *LogWriter) Write(p []byte) (n int, err error) {
+	this.logger.Print(string(p))
+	return len(p), nil
 }
 
 func Forward(ctx context.Context, fromPort int, toAddr string) error {
