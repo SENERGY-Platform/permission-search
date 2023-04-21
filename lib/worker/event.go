@@ -265,9 +265,6 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 		if err != nil {
 			return err
 		}
-		if exists {
-
-		}
 	}
 
 	return nil
