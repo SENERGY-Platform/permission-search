@@ -33,6 +33,7 @@ func init() {
 
 func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query, p *rigthsproducer.Producer) bool {
 	router.GET("/administrate/exists/:resource_kind/:resource", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		resource := ps.ByName("resource")
 		exists, err := q.ResourceExists(kind, resource)
@@ -45,6 +46,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/administrate/rights/:resource_kind", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		token, err := auth.GetParsedToken(r)
 		if err != nil {
@@ -61,6 +63,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/administrate/rights/:resource_kind/get/:resource", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		resource := ps.ByName("resource")
 		token := auth.GetAuthToken(r)
@@ -78,6 +81,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/administrate/rights/:resource_kind/query/:query/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		query := ps.ByName("query")
 		limit := ps.ByName("limit")
@@ -97,6 +101,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -115,6 +120,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/select/:resource_kind/:field/:value/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		field := ps.ByName("field")
@@ -135,6 +141,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/select/:resource_kind/:field/:value/:right/:limit/:offset/:orderfeature/:direction", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		field := ps.ByName("field")
@@ -166,6 +173,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -191,6 +199,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -219,6 +228,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -247,6 +257,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -276,6 +287,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 	//TODO: add limit/offset variant
 	router.GET("/jwt/list/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		token, err := auth.GetParsedToken(r)
@@ -293,6 +305,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
@@ -312,6 +325,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
@@ -339,6 +353,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
@@ -366,6 +381,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/check/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
@@ -382,6 +398,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/jwt/check/:resource_kind/:resource_id/:right/bool", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		resource := ps.ByName("resource_id")
@@ -397,6 +414,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/ids/check/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		ids := []string{}
@@ -422,6 +440,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/ids/select/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		queryListCommons, err := model.GetQueryListCommonsFromUrlQuery(r.URL.Query())
 		if err != nil {
@@ -451,6 +470,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/ids/select/:resource_kind/:right/:limit/:offset/:orderfeature/:direction", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
@@ -487,6 +507,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/user/list/:user/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		user := ps.ByName("user")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
@@ -500,6 +521,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/user/check/:user/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		user := ps.ByName("user")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
@@ -516,6 +538,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/group/list/:group/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		group := ps.ByName("group")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
@@ -529,6 +552,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/group/check/:group/:resource_kind/:resource_id/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		group := ps.ByName("group")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
@@ -545,6 +569,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.GET("/export", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		exports, err := q.Export()
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -555,6 +580,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.PUT("/import", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		imports := map[string][]model.ResourceRights{}
 		err := json.NewDecoder(r.Body).Decode(&imports)
 		if err != nil {
@@ -572,6 +598,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -606,6 +633,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/jwt/search/:resource_kind/:query/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		query := ps.ByName("query")
@@ -640,6 +668,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/asc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")
@@ -673,6 +702,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 	})
 
 	router.POST("/jwt/list/:resource_kind/:right/:limit/:offset/:orderfeature/desc", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")
 		right := ps.ByName("right")
 		limit := ps.ByName("limit")

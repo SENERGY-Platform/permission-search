@@ -256,6 +256,7 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config c
 	if err != nil {
 		return config, q, w, err
 	}
+	config.LogDeprecatedCallsToFile = ""
 	if t != nil {
 		config.FatalErrHandler = func(v ...interface{}) {
 			log.Println("TEST-ERROR:", v)
@@ -288,7 +289,11 @@ func getTestEnvWithApi(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (c
 	if err != nil {
 		return config, q, w, err
 	}
-	server := httptest.NewServer(api.GetRouter(config, q, nil))
+	handler, err := api.GetRouter(config, q, nil)
+	if err != nil {
+		return config, q, w, err
+	}
+	server := httptest.NewServer(handler)
 	serverUrl, err := url.Parse(server.URL)
 	if err != nil {
 		return config, q, w, err

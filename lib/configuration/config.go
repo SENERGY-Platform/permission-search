@@ -55,6 +55,8 @@ type ConfigStruct struct {
 
 	PermTopic string `json:"perm_topic"`
 
+	LogDeprecatedCallsToFile string `json:"log_deprecated_calls_to_file"` //must contain valid path for a log file ore an empty sting, which signals not file logging
+
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`
 
 	ElasticUrl                  string                                       `json:"elastic_url"`

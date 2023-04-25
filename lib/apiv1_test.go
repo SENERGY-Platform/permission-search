@@ -45,6 +45,7 @@ func TestApiV1(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.LogDeprecatedCallsToFile = t.TempDir() + "/deprecated.log"
 	config.FatalErrHandler = func(v ...interface{}) {
 		log.Println("TEST-ERROR:", v)
 		t.Log(v...)

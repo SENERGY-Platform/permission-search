@@ -39,6 +39,7 @@ func TestAnnotations(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.LogDeprecatedCallsToFile = ""
 	config.FatalErrHandler = func(v ...interface{}) {
 		log.Println("TEST-ERROR:", v)
 		t.Log(v...)
@@ -164,6 +165,7 @@ func GetAnnotationsTest(useBulkWorkerForAnnotations bool, bulkInterval string, b
 			t.Error(err)
 			return
 		}
+		config.LogDeprecatedCallsToFile = ""
 		config.FatalErrHandler = func(v ...interface{}) {
 			log.Println("TEST-ERROR:", v)
 			t.Log(v...)

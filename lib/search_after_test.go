@@ -44,6 +44,7 @@ func TestSearchAfter(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	config.LogDeprecatedCallsToFile = ""
 	config.FatalErrHandler = func(v ...interface{}) {
 		log.Println("TEST-ERROR:", v)
 		t.Log(v...)

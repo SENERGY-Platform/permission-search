@@ -53,7 +53,10 @@ func Start(ctx context.Context, config configuration.Config, query Query, p *rig
 		err = nil
 	}
 
-	router := GetRouter(config, query, p)
+	router, err := GetRouter(config, query, p)
+	if err != nil {
+		return err
+	}
 	server := &http.Server{Addr: ":" + config.ServerPort, Handler: router, WriteTimeout: timeout, ReadTimeout: readtimeout}
 	go func() {
 		log.Println("listening on ", server.Addr)
@@ -69,7 +72,7 @@ func Start(ctx context.Context, config configuration.Config, query Query, p *rig
 	return
 }
 
-func GetRouter(config configuration.Config, query Query, p *rigthsproducer.Producer) http.Handler {
+func GetRouter(config configuration.Config, query Query, p *rigthsproducer.Producer) (handler http.Handler, err error) {
 	router := httprouter.New()
 	for _, e := range endpoints {
 		if e(router, config, query, p) {
@@ -77,7 +80,11 @@ func GetRouter(config configuration.Config, query Query, p *rigthsproducer.Produ
 		}
 
 	}
-	handler := util.NewCors(router)
+	handler = util.NewCors(router)
 	handler = util.NewLogger(handler)
-	return handler
+	handler, err = util.NewDeprecatedRespHeaderLogger(handler, config.LogDeprecatedCallsToFile)
+	if err != nil {
+		return handler, err
+	}
+	return handler, nil
 }
