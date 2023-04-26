@@ -26,7 +26,7 @@ import (
 )
 
 func (this *impl) GetRights(token string, kind string, resource string) (result model.ResourceRights, err error) {
-	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/administrate/rights/"+kind+"/"+resource, nil)
+	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/administrate/rights/"+url.PathEscape(kind)+"/"+url.PathEscape(resource), nil)
 	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
