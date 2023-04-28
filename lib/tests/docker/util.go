@@ -44,22 +44,24 @@ func getFreePort() (int, error) {
 }
 
 func Dockerlog(ctx context.Context, container testcontainers.Container, name string) error {
-	l, err := container.Logs(ctx)
+	container.FollowOutput(&LogWriter{logger: log.New(os.Stdout, "["+name+"] ", log.LstdFlags)})
+	err := container.StartLogProducer(context.Background())
 	if err != nil {
 		return err
 	}
-	out := &LogWriter{logger: log.New(os.Stdout, "["+name+"] ", log.LstdFlags)}
 	go func() {
-		_, err := io.Copy(out, l)
-		if err != nil {
-			log.Println("ERROR: unable to copy docker log", err)
-		}
+		<-ctx.Done()
+		log.Println("stop container log for", name, container.StopLogProducer())
 	}()
 	return nil
 }
 
 type LogWriter struct {
 	logger *log.Logger
+}
+
+func (this *LogWriter) Accept(l testcontainers.Log) {
+	this.Write(l.Content)
 }
 
 func (this *LogWriter) Write(p []byte) (n int, err error) {

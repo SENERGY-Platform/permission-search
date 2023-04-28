@@ -62,7 +62,7 @@ func Kafka(ctx context.Context, wg *sync.WaitGroup, zookeeperUrl string) (kafkaU
 		log.Println("DEBUG: remove container kafka", c.Terminate(context.Background()))
 	}()
 
-	//err = Dockerlog(ctx, c, "KAFKA")
+	err = Dockerlog(ctx, c, "KAFKA")
 	if err != nil {
 		return kafkaUrl, err
 	}
