@@ -25,7 +25,7 @@ import (
 func NewDeprecatedRespHeaderLogger(handler http.Handler, filepath string) (http.Handler, error) {
 	result := &DeprecatedRespHeader{handler: handler}
 	if filepath != "" && filepath != "-" {
-		logFile, err := os.OpenFile(filepath, os.O_CREATE|os.O_APPEND, 0644)
+		logFile, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			return nil, err
 		}
