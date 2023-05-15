@@ -241,14 +241,9 @@ func TestRightsCommand(t *testing.T) {
 	}, http.StatusOK, nil))
 
 	t.Run("check kafka message keys", func(t *testing.T) {
-		broker, err := kafka2.GetBroker(config.KafkaUrl)
-		if err != nil {
-			t.Error(err)
-			return
-		}
 		r := kafka.NewReader(kafka.ReaderConfig{
 			CommitInterval: 0, //synchronous commits
-			Brokers:        broker,
+			Brokers:        []string{config.KafkaUrl},
 			GroupID:        "test",
 			Topic:          "aspects",
 			MaxWait:        1 * time.Second,

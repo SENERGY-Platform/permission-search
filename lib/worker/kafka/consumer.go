@@ -26,26 +26,23 @@ import (
 	"time"
 )
 
-func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic string, listener func(delivery []byte) error, errhandler func(err error)) error {
-	broker, err := GetBroker(bootstrapUrl)
-	if err != nil {
-		log.Println("ERROR: unable to get broker list", err)
-		return err
-	}
-
-	err = InitTopic(bootstrapUrl, topic)
+func NewConsumer(ctx context.Context, broker string, groupId string, topic string, listener func(delivery []byte) error, errhandler func(err error)) error {
+	err := InitTopic(broker, topic)
 	if err != nil {
 		log.Println("ERROR: unable to create topic", err)
 		return err
 	}
+
 	r := kafka.NewReader(kafka.ReaderConfig{
-		CommitInterval: 0, //synchronous commits
-		Brokers:        broker,
-		GroupID:        groupId,
-		Topic:          topic,
-		MaxWait:        1 * time.Second,
-		Logger:         log.New(io.Discard, "", 0),
-		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
+		CommitInterval:         0, //synchronous commits
+		Brokers:                []string{broker},
+		GroupID:                groupId,
+		Topic:                  topic,
+		MaxWait:                1 * time.Second,
+		Logger:                 log.New(io.Discard, "", 0),
+		ErrorLogger:            log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
+		WatchPartitionChanges:  true,
+		PartitionWatchInterval: time.Minute,
 	})
 
 	go func() {
@@ -84,20 +81,15 @@ func NewConsumer(ctx context.Context, bootstrapUrl string, groupId string, topic
 	return nil
 }
 
-func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, groupId string, topics []string, debug bool, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
+func NewConsumerWithMultipleTopics(ctx context.Context, broker string, groupId string, topics []string, debug bool, listener func(topic string, delivery []byte) error, errhandler func(topice string, err error)) error {
 	if len(topics) == 0 {
 		return nil
 	}
 
 	log.Println("init topics:", topics)
-	broker, err := GetBroker(bootstrapUrl)
-	if err != nil {
-		log.Println("ERROR: unable to get broker list", err)
-		return err
-	}
 
 	for _, topic := range topics {
-		err = InitTopic(bootstrapUrl, topic)
+		err := InitTopic(broker, topic)
 		if err != nil {
 			log.Println("ERROR: unable to create topic", err)
 			return err
@@ -106,12 +98,14 @@ func NewConsumerWithMultipleTopics(ctx context.Context, bootstrapUrl string, gro
 	log.Println("consume:", topics)
 
 	r := kafka.NewReader(kafka.ReaderConfig{
-		CommitInterval: 0, //synchronous commits
-		Brokers:        broker,
-		GroupID:        groupId,
-		GroupTopics:    topics,
-		Logger:         log.New(io.Discard, "", 0),
-		ErrorLogger:    log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
+		CommitInterval:         0, //synchronous commits
+		Brokers:                []string{broker},
+		GroupID:                groupId,
+		GroupTopics:            topics,
+		Logger:                 log.New(io.Discard, "", 0),
+		ErrorLogger:            log.New(os.Stdout, "[KAFKA-ERROR] ", log.Default().Flags()),
+		WatchPartitionChanges:  true,
+		PartitionWatchInterval: time.Minute,
 	})
 
 	go func() {
