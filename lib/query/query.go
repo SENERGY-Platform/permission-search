@@ -27,6 +27,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"encoding/json"
@@ -427,7 +428,11 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 
 func (this *Query) SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+feature, value))...)
+	if !strings.HasPrefix(feature, "features.") && !strings.HasPrefix(feature, "annotations.") {
+		feature = "features." + feature
+	}
+
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery(feature, value))...)
 	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
 	if err != nil {
 		return result, err

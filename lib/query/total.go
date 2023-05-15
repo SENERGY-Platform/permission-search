@@ -21,6 +21,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/olivere/elastic/v7"
+	"strings"
 )
 
 func (this *Query) Total(tokenStr string, kind string, options model.ListOptions) (result int64, err error) {
@@ -56,7 +57,10 @@ func (this *Query) SearchListTotal(token auth.Token, kind string, query string, 
 
 func (this *Query) SelectByFeatureTotal(token auth.Token, kind string, field string, value string, rights string) (result int64, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("features."+field, value))...)
+	if !strings.HasPrefix(field, "features.") && !strings.HasPrefix(field, "annotations.") {
+		field = "features." + field
+	}
+	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery(field, value))...)
 	resp, err := this.client.Search().Index(kind).Query(query).TrackTotalHits(true).Size(1).Do(ctx)
 	if err != nil {
 		return result, err
