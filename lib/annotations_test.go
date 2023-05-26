@@ -22,6 +22,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"log"
+	"net/url"
 	"strconv"
 	"sync"
 	"testing"
@@ -138,6 +139,22 @@ func TestAnnotations(t *testing.T) {
 			},
 		},
 	}, 200, []map[string]interface{}{
+		getTestDeviceResult("device1", nil),
+		getTestDeviceResult("device5", nil),
+	}))
+
+	t.Run("sort by name", testRequest(config, "GET", "/v3/resources/devices?sort="+url.QueryEscape("name.asc"), nil, 200, []map[string]interface{}{
+		getTestDeviceResult("device1", nil),
+		getTestDeviceResult("device2", &falseVar),
+		getTestDeviceResult("device3", &trueVar),
+		getTestDeviceResult("device4", &falseVar),
+		getTestDeviceResult("device5", nil),
+	}))
+
+	t.Run("sort by connected", testRequest(config, "GET", "/v3/resources/devices?sort="+url.QueryEscape("annotations.connected.asc"), nil, 200, []map[string]interface{}{
+		getTestDeviceResult("device2", &falseVar),
+		getTestDeviceResult("device4", &falseVar),
+		getTestDeviceResult("device3", &trueVar),
 		getTestDeviceResult("device1", nil),
 		getTestDeviceResult("device5", nil),
 	}))

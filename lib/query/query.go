@@ -828,7 +828,6 @@ func setPaginationAndSort(query *elastic.SearchService, queryCommons model.Query
 	if s != defaultSort && !strings.HasPrefix(s, "features.") && !strings.HasPrefix(s, "annotations.") {
 		s = "features." + s
 	}
-
 	if queryCommons.After == nil {
 		result = query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
 	} else {

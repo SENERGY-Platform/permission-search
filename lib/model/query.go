@@ -170,7 +170,7 @@ func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCo
 	}
 
 	result.Rights = right
-	result.SortBy = strings.Split(sort, ".")[0]
+	result.SortBy = strings.TrimSuffix(strings.TrimSuffix(sort, ".desc"), ".asc")
 	result.SortDesc = strings.HasSuffix(sort, ".desc")
 
 	result.Limit, err = strconv.Atoi(limit)
