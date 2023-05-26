@@ -823,8 +823,12 @@ func setPaginationAndSort(query *elastic.SearchService, queryCommons model.Query
 	defaultSort := "resource"
 	s := defaultSort
 	if queryCommons.SortBy != "" {
-		s = "features." + queryCommons.SortBy
+		s = queryCommons.SortBy
 	}
+	if s != defaultSort && !strings.HasPrefix(s, "features.") && !strings.HasPrefix(s, "annotations.") {
+		s = "features." + s
+	}
+
 	if queryCommons.After == nil {
 		result = query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
 	} else {
