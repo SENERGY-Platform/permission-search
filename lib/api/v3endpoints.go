@@ -223,5 +223,42 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})
+
+	router.POST("/v3/query/:resource", func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		token := auth.GetAuthToken(request)
+		query := model.QueryMessage{}
+		err := json.NewDecoder(request.Body).Decode(&query)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if config.Debug {
+			temp, _ := json.Marshal(query)
+			log.Println("DEBUG:", auth.GetAuthToken(request), "\n", string(temp))
+		}
+		pathResource := params.ByName("resource")
+		if query.Resource == "" {
+			query.Resource = pathResource
+		}
+		if query.Resource != pathResource {
+			http.Error(writer, "payload resource does not match path resource", http.StatusBadRequest)
+			return
+		}
+
+		result, code, err := q.Query(token, query)
+
+		if err != nil {
+			http.Error(writer, err.Error(), code)
+			return
+		}
+
+		if config.Debug {
+			temp, _ := json.Marshal(result)
+			log.Println("DEBUG:", string(temp))
+		}
+
+		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(writer).Encode(result)
+	})
 	return true
 }

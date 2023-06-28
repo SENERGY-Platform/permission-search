@@ -808,6 +808,35 @@ func TestApiV3(t *testing.T) {
 		getTestAspectResult("aspect5"),
 	}))
 
+	t.Run("query resource", testRequest(config, "POST", "/v3/query/aspects", model.QueryMessage{
+		Resource: "aspects",
+		Find: &model.QueryFind{
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "features.name",
+					Operation: "==",
+					Value:     "aspect5_name",
+				},
+			},
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect5"),
+	}))
+
+	t.Run("query resource empty pl resource", testRequest(config, "POST", "/v3/query/aspects", model.QueryMessage{
+		Find: &model.QueryFind{
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "features.name",
+					Operation: "==",
+					Value:     "aspect5_name",
+				},
+			},
+		},
+	}, 200, []map[string]interface{}{
+		getTestAspectResult("aspect5"),
+	}))
+
 	t.Run("client query ids 5", func(t *testing.T) {
 		actual, _, err := c.Query(ctoken, client.QueryMessage{
 			Resource: "aspects",
