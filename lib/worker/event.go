@@ -17,13 +17,14 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"log"
 	"time"
 )
@@ -246,7 +247,21 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 				annotations[fieldName] = fieldValue
 			}
 		}
-		this.bulk.Add(elastic.NewBulkUpdateRequest().Index(resource).Id(idStr).Doc(map[string]interface{}{"annotations": annotations}))
+		buffer, err := json.Marshal(map[string]interface{}{"doc": map[string]interface{}{"annotations": annotations}})
+		if err != nil {
+			return err
+		}
+		err = this.bulk.Add(context.Background(),
+			opensearchutil.BulkIndexerItem{
+				Action:     "update",
+				Index:      resource,
+				DocumentID: idStr,
+
+				Body: bytes.NewReader(buffer),
+			})
+		if err != nil {
+			return err
+		}
 	} else {
 		entry, version, err := this.query.GetResourceEntry(resource, idStr)
 		if err != nil {
@@ -261,9 +276,21 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 			}
 		}
 		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-		_, err = this.query.GetClient().Index().Index(resource).Id(idStr).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			resource,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(idStr),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
 		if err != nil {
 			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
 		}
 	}
 

@@ -19,16 +19,18 @@ package lib
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/opensearchclient"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -55,13 +57,17 @@ func TestMappingUpdate(t *testing.T) {
 	}
 	config.Debug = true
 
+	config.OpenSearchInsecureSkipVerify = true
+	config.OpenSearchUsername = "admin"
+	config.OpenSearchPassword = "admin"
+
 	t.Run("start dependency containers", func(t *testing.T) {
-		port, _, err := elasticsearch(ctx, wg)
+		_, ip, err := OpenSearch(ctx, wg)
 		if err != nil {
 			t.Error(err)
 			return
 		}
-		config.ElasticUrl = "http://localhost:" + port
+		config.OpenSearchUrls = "https://" + ip + ":9200"
 
 		_, zkIp, err := Zookeeper(ctx, wg)
 		if err != nil {
@@ -102,13 +108,25 @@ func TestMappingUpdate(t *testing.T) {
 func testCheckIndexVersion(config configuration.Config, kind string, expectedCurrent string) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
-		client, err := elastic.NewClient(elastic.SetURL(config.ElasticUrl), elastic.SetRetrier(query.NewRetrier(config)))
+		client, err := opensearch.NewClient(opensearch.Config{
+			EnableRetryOnTimeout:  true,
+			MaxRetries:            config.MaxRetry,
+			RetryBackoff:          func(i int) time.Duration { return time.Duration(i) * 100 * time.Millisecond },
+			DiscoverNodesOnStart:  true,
+			DiscoverNodesInterval: time.Minute,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: config.OpenSearchInsecureSkipVerify},
+			},
+			Addresses: strings.Split(config.OpenSearchUrls, ","),
+			Username:  config.OpenSearchUsername, // For testing only. Don't store credentials in code.
+			Password:  config.OpenSearchPassword,
+		})
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		current, _, err := query.GetIndexVersionsOfAlias(client, ctx, kind)
+		current, _, err := opensearchclient.GetIndexVersionsOfAlias(client, ctx, kind)
 		if err != nil {
 			t.Error(err)
 			return
@@ -254,7 +272,7 @@ func startTestServer(config configuration.Config, mapping string, ctx context.Co
 			return
 		}
 
-		config.ElasticMapping = mappingConfig.ElasticMapping
+		config.IndexTypeMapping = mappingConfig.IndexTypeMapping
 		config.Resources = mappingConfig.Resources
 		config.ResourceList = []string{}
 		for resource := range config.Resources {
@@ -285,14 +303,14 @@ func testUpdateIndex(config configuration.Config, mapping string) func(t *testin
 			return
 		}
 
-		config.ElasticMapping = mappingConfig.ElasticMapping
+		config.IndexTypeMapping = mappingConfig.IndexTypeMapping
 		config.Resources = mappingConfig.Resources
 		config.ResourceList = []string{}
 		for resource := range config.Resources {
 			config.ResourceList = append(config.ResourceList, resource)
 		}
 
-		err = query.UpdateIndexes(config, "device-types")
+		err = opensearchclient.UpdateIndexes(config, "device-types")
 		if err != nil {
 			t.Error(err)
 			return
@@ -311,7 +329,7 @@ const confV1 = `{
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         }
 	},
-    "elastic_mapping": {
+    "index_type_mapping": {
         "device-types": {
 			"features": {
             	"name":         {"type": "keyword", "copy_to": "feature_search"}
@@ -330,7 +348,7 @@ const confV2 = `{
             "initial_group_rights":{"admin": "rwxa", "user": "rx"}
         }
 	},
-    "elastic_mapping": {
+    "index_type_mapping": {
         "device-types": {
 			"features": {
             	"name":         {"type": "keyword", "copy_to": "feature_search"},

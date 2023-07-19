@@ -22,7 +22,11 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/SENERGY-Platform/permission-search/lib/opensearchclient"
 	"github.com/SENERGY-Platform/permission-search/lib/query/modifier"
+	"github.com/opensearch-project/opensearch-go"
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"net/http"
 	"runtime/debug"
 	"sort"
@@ -33,33 +37,35 @@ import (
 	"encoding/json"
 
 	"errors"
-
-	"github.com/olivere/elastic/v7"
 )
 
 type Query struct {
-	config   configuration.Config
-	client   *elastic.Client
-	timeout  time.Duration
-	modifier *modifier.Modifier
+	config           configuration.Config
+	opensearchClient *opensearch.Client
+	timeout          time.Duration
+	modifier         *modifier.Modifier
 }
 
 func New(config configuration.Config) (result *Query, err error) {
-	timeout, err := time.ParseDuration(config.ElasticTimeout)
+	timeout, err := time.ParseDuration(config.Timeout)
 	if err != nil {
 		return result, err
 	}
-	client, err := CreateElasticClient(config)
+	client, err := opensearchclient.New(config)
 	if err != nil {
 		return result, err
 	}
 	result = &Query{
-		config:  config,
-		client:  client,
-		timeout: timeout,
+		config:           config,
+		opensearchClient: client,
+		timeout:          timeout,
 	}
 	result.modifier = modifier.New(config, result)
 	return result, err
+}
+
+func (this *Query) GetClient() *opensearch.Client {
+	return this.opensearchClient
 }
 
 func (this *Query) getTimeout() (ctx context.Context) {
@@ -71,63 +77,112 @@ func (this *Query) ResourceExists(kind string, resource string) (exists bool, er
 	return this.resourceExists(this.getTimeout(), kind, resource)
 }
 
-func (this *Query) resourceExists(context context.Context, kind string, resource string) (exists bool, err error) {
-	exists, err = elastic.NewExistsService(this.client).Index(kind).Id(resource).Do(context)
+func (this *Query) resourceExists(ctx context.Context, kind string, resource string) (exists bool, err error) {
+	resp, err := this.opensearchClient.Exists(kind, resource, this.opensearchClient.Exists.WithContext(ctx))
 	if err != nil {
-		debug.PrintStack()
+		return false, err
 	}
-	return
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		return false, fmt.Errorf("db: got HTTP code %d when it should have been either 200 or 404", resp.StatusCode)
+	}
 }
 
-func interfaceSlice(strings []string) (result []interface{}) {
-	for _, str := range strings {
-		result = append(result, str)
-	}
-	return
-}
-
-func getRightsQuery(rights string, user string, groups []string) (result []elastic.Query) {
+func getRightsQuery(rights string, user string, groups []string) (result []map[string]interface{}) {
 	if rights == "" {
 		rights = "r"
 	}
 	for _, right := range rights {
 		switch right {
 		case 'a':
-			or := []elastic.Query{}
+			or := []map[string]interface{}{}
 			if user != "" {
-				or = append(or, elastic.NewTermQuery("admin_users", user))
+				or = append(or, map[string]interface{}{
+					"term": map[string]interface{}{
+						"admin_users": user,
+					},
+				})
 			}
 			if len(groups) > 0 {
-				or = append(or, elastic.NewTermsQuery("admin_groups", interfaceSlice(groups)...))
+				or = append(or, map[string]interface{}{
+					"terms": map[string]interface{}{
+						"admin_groups": groups,
+					},
+				})
 			}
-			result = append(result, elastic.NewBoolQuery().Filter(elastic.NewBoolQuery().Should(or...)))
+			result = append(result, map[string]interface{}{
+				"bool": map[string]interface{}{
+					"should": or,
+				},
+			})
 		case 'r':
-			or := []elastic.Query{}
+			or := []map[string]interface{}{}
 			if user != "" {
-				or = append(or, elastic.NewTermQuery("read_users", user))
+				or = append(or, map[string]interface{}{
+					"term": map[string]interface{}{
+						"read_users": user,
+					},
+				})
 			}
 			if len(groups) > 0 {
-				or = append(or, elastic.NewTermsQuery("read_groups", interfaceSlice(groups)...))
+				or = append(or, map[string]interface{}{
+					"terms": map[string]interface{}{
+						"read_groups": groups,
+					},
+				})
 			}
-			result = append(result, elastic.NewBoolQuery().Filter(elastic.NewBoolQuery().Should(or...)))
+			result = append(result, map[string]interface{}{
+				"bool": map[string]interface{}{
+					"should": or,
+				},
+			})
 		case 'w':
-			or := []elastic.Query{}
+			or := []map[string]interface{}{}
 			if user != "" {
-				or = append(or, elastic.NewTermQuery("write_users", user))
+				or = append(or, map[string]interface{}{
+					"term": map[string]interface{}{
+						"write_users": user,
+					},
+				})
 			}
 			if len(groups) > 0 {
-				or = append(or, elastic.NewTermsQuery("write_groups", interfaceSlice(groups)...))
+				or = append(or, map[string]interface{}{
+					"terms": map[string]interface{}{
+						"write_groups": groups,
+					},
+				})
 			}
-			result = append(result, elastic.NewBoolQuery().Filter(elastic.NewBoolQuery().Should(or...)))
+			result = append(result, map[string]interface{}{
+				"bool": map[string]interface{}{
+					"should": or,
+				},
+			})
 		case 'x':
-			or := []elastic.Query{}
+			or := []map[string]interface{}{}
 			if user != "" {
-				or = append(or, elastic.NewTermQuery("execute_users", user))
+				or = append(or, map[string]interface{}{
+					"term": map[string]interface{}{
+						"execute_users": user,
+					},
+				})
 			}
 			if len(groups) > 0 {
-				or = append(or, elastic.NewTermsQuery("execute_groups", interfaceSlice(groups)...))
+				or = append(or, map[string]interface{}{
+					"terms": map[string]interface{}{
+						"execute_groups": groups,
+					},
+				})
 			}
-			result = append(result, elastic.NewBoolQuery().Filter(elastic.NewBoolQuery().Should(or...)))
+			result = append(result, map[string]interface{}{
+				"bool": map[string]interface{}{
+					"should": or,
+				},
+			})
 		}
 	}
 	return
@@ -135,18 +190,32 @@ func getRightsQuery(rights string, user string, groups []string) (result []elast
 
 func (this *Query) GetRightsToAdministrate(kind string, user string, groups []string) (result []model.ResourceRights, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(map[string]interface{}{
+			"query": map[string]interface{}{
+				"bool": map[string]interface{}{
+					"filter": getRightsQuery("a", user, groups),
+				},
+			},
+		})),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, entry.ToResourceRights())
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, hit.Source.ToResourceRights())
 	}
 	return
 }
@@ -162,9 +231,38 @@ func (this *Query) CheckUserOrGroup(tokenStr string, kind string, resource strin
 func (this *Query) CheckUserOrGroupFromAuthToken(token auth.Token, kind string, resource string, rights string) (err error) {
 	pureId, _ := modifier.SplitModifier(resource)
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery("resource", pureId))...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits.Value == 0 {
+	filter := getRightsQuery(rights, token.GetUserId(), token.GetRoles())
+	filter = append(filter, map[string]interface{}{
+		"term": map[string]interface{}{
+			"resource": pureId,
+		},
+	})
+	resp, err := this.opensearchClient.Search(this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(map[string]interface{}{
+			"query": map[string]interface{}{
+				"bool": map[string]interface{}{
+					"filter": filter,
+				},
+			},
+		})),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return err
+	}
+
+	if pl.Hits.Total.Value == 0 {
 		err = model.ErrAccessDenied
 	}
 	return
@@ -178,17 +276,37 @@ func (this *Query) CheckListUserOrGroup(token auth.Token, kind string, ids []str
 	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := this.client.Search().Index(kind).Query(query).Size(len(pureIds)).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), map[string]interface{}{
+					"terms": map[string]interface{}{
+						"resource": terms,
+					},
+				}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithSize(len(pureIds)),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return allowed, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return allowed, err
-		}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return allowed, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return allowed, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		entry := hit.Source
 		for _, info := range preparedModify[entry.Resource] {
 			allowed[info.RawId] = true
 		}
@@ -205,18 +323,41 @@ func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, q
 	for _, id := range pureIds {
 		terms = append(terms, id)
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermsQuery("resource", terms...))...)
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
+
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), map[string]interface{}{
+					"terms": map[string]interface{}{
+						"resource": terms,
+					},
+				}),
+			},
+		},
+	}
+
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
+	if err != nil {
+		return result, err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
 		return result, err
 	}
 	modifyCache := modifier.NewModifyResourceReferenceCache()
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
+	for _, hit := range pl.Hits.Hits {
+		entry := hit.Source
 		modifiedResults, err := this.modifier.UsePreparedModify(preparedModify, entry, kind, modifyCache)
 		if err != nil {
 			return result, err
@@ -260,36 +401,75 @@ func (this *Query) GetListForUserOrGroup(kind string, user string, groups []stri
 
 func (this *Query) getListForUserOrGroup(kind string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(limit).From(offset).Do(ctx)
+
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, user, groups),
+			},
+		},
+	}
+
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(limit),
+		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, user, groups))
 	}
 	return
 }
 
 func (this *Query) GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...)
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
+
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()),
+			},
+		},
+	}
+
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
@@ -299,27 +479,71 @@ func (this *Query) GetList(token auth.Token, kind string, queryCommons model.Que
 
 func (this *Query) GetListForUser(kind string, user string, rights string) (result []string, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, []string{})...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, user, []string{}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, entry.Resource)
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, hit.Source.Resource)
 	}
 	return
 }
 
 func (this *Query) CheckUser(kind string, resource string, user string, rights string) (err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, []string{}), elastic.NewTermQuery("resource", resource))...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits.Value == 0 {
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(rights, user, []string{}), map[string]interface{}{
+					"term": map[string]interface{}{
+						"resource": resource,
+					},
+				}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return err
+	}
+
+	if err == nil && pl.Hits.Total.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
@@ -327,27 +551,74 @@ func (this *Query) CheckUser(kind string, resource string, user string, rights s
 
 func (this *Query) GetListForGroup(kind string, groups []string, rights string) (result []string, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, "", groups)...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, "", groups),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, entry.Resource)
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, hit.Source.Resource)
 	}
 	return
 }
 
 func (this *Query) CheckGroups(kind string, resource string, groups []string, rights string) (err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, "", groups), elastic.NewTermQuery("resource", resource))...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Size(1).Do(ctx)
-	if err == nil && resp.Hits.TotalHits.Value == 0 {
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(rights, "", groups), map[string]interface{}{
+					"term": map[string]interface{}{
+						"resource": resource,
+					},
+				}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return err
+	}
+
+	if err == nil && pl.Hits.Total.Value == 0 {
 		err = errors.New("access denied")
 	}
 	return
@@ -395,18 +666,44 @@ func (this *Query) SearchRightsToAdministrate(kind string, user string, groups [
 		return result, err
 	}
 	ctx := this.getTimeout()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery("a", user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
-	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).Size(limit).From(offset).Do(ctx)
+
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery("a", user, groups),
+				"must": []map[string]interface{}{
+					{
+						"match": map[string]interface{}{
+							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+						},
+					},
+				},
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(limit),
+		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(body)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, entry.ToResourceRights())
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, hit.Source.ToResourceRights())
 	}
 	return
 }
@@ -432,18 +729,39 @@ func (this *Query) SelectByFeature(token auth.Token, kind string, feature string
 		feature = "features." + feature
 	}
 
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery(feature, value))...)
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Query(query), queryCommons).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles()), map[string]interface{}{
+					"term": map[string]interface{}{
+						feature: value,
+					},
+				}),
+			},
+		},
+	}
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
@@ -468,18 +786,39 @@ func (this *Query) SelectByFieldAll(kind string, field string, value string, use
 
 func (this *Query) selectByField(kind string, field string, value string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, user, groups), elastic.NewTermQuery("features."+field, value))...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).From(offset).Size(limit).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(rights, user, groups), map[string]interface{}{
+					"term": map[string]interface{}{
+						"features." + field: value,
+					},
+				}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(limit),
+		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, user, groups))
 	}
 	return
 }
@@ -487,26 +826,53 @@ func (this *Query) selectByField(kind string, field string, value string, user s
 // SearchList does a text search with query on the feature_search index
 // the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
 func (this *Query) SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error) {
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
+	filter := getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())
 	if selection != nil {
-		filter, err := this.GetFilter(token, *selection)
+		selectionFilter, err := this.GetFilter(token, *selection)
 		if err != nil {
 			return result, err
 		}
-		elastic_query = elastic_query.Filter(filter)
+		filter = append(filter, selectionFilter)
 	}
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": filter,
+				"must": []map[string]interface{}{
+					{
+						"match": map[string]interface{}{
+							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	ctx := this.getTimeout()
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
+
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, body, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
@@ -516,36 +882,89 @@ func (this *Query) SearchList(token auth.Token, kind string, query string, query
 
 func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
-	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).From(offset).Size(limit).Do(ctx)
+
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, user, groups),
+				"must": []map[string]interface{}{
+					{
+						"match": map[string]interface{}{
+							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+						},
+					},
+				},
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithSize(limit),
+		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(body)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, user, groups))
 	}
 	return
 }
 
 func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, user, groups)...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(elastic_query), queryCommons).Do(ctx)
+
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(queryCommons.Rights, user, groups),
+				"must": []map[string]interface{}{
+					{
+						"match": map[string]interface{}{
+							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, body, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, user, groups))
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, user, groups))
 	}
 	return
 }
@@ -557,23 +976,40 @@ func (this *Query) GetResourceEntry(kind string, resource string) (result model.
 
 func (this *Query) GetResourceInterface(kind string, resource string, result interface{}) (version model.ResourceVersion, err error) {
 	ctx := this.getTimeout()
-	resp, err := this.client.Get().Index(kind).Id(resource).Do(ctx)
-	if elasticErr, ok := err.(*elastic.Error); ok {
-		if elasticErr.Status == http.StatusNotFound {
-			return version, model.ErrNotFound
-		}
-	}
+	resp, err := this.opensearchClient.Get(
+		kind,
+		resource,
+		this.opensearchClient.Get.WithContext(ctx),
+	)
 	if err != nil {
-		debug.PrintStack()
 		return version, err
 	}
-	version.PrimaryTerm = *resp.PrimaryTerm
-	version.SeqNo = *resp.SeqNo
-	if resp.Source == nil {
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
 		return version, model.ErrNotFound
 	}
-	err = json.Unmarshal(resp.Source, result)
-	return
+	if resp.IsError() {
+		return version, errors.New(resp.String())
+	}
+	pl := model.OpenSearchGetResult{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return version, err
+	}
+	version.PrimaryTerm = pl.PrimaryTerm
+	version.SeqNo = pl.SeqNo
+	if pl.Source == nil {
+		return version, model.ErrNotFound
+	}
+	temp, err := json.Marshal(pl.Source)
+	if err != nil {
+		return version, err
+	}
+	err = json.Unmarshal(temp, result)
+	if err != nil {
+		return version, err
+	}
+	return version, nil
 }
 
 func anyMatch(aList []string, bList []string) bool {
@@ -597,23 +1033,44 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 	return
 }
 func (this *Query) GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error) {
+	filter := getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())
+	selectionFilter, err := this.GetFilter(token, selection)
+	if err != nil {
+		return result, err
+	}
+	filter = append(filter, selectionFilter)
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": filter,
+			},
+		},
+	}
+
 	ctx := this.getTimeout()
-	filter, err := this.GetFilter(token, selection)
+
+	options := []func(*opensearchapi.SearchRequest){
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+	}
+	options = append(options, withPaginationAndBody(this.opensearchClient.Search, body, queryCommons)...)
+
+	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
 		return result, err
 	}
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())...).Filter(filter)
-	resp, err := setPaginationAndSort(this.client.Search().Index(kind).Version(true).Query(query), queryCommons).Do(ctx)
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, getEntryResult(entry, token.GetUserId(), token.GetRoles()))
+
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
@@ -819,7 +1276,7 @@ func hasAdminGroup(entry model.Entry, groups []string) bool {
 	return false
 }
 
-func setPaginationAndSort(query *elastic.SearchService, queryCommons model.QueryListCommons) (result *elastic.SearchService) {
+func withPaginationAndBody(search opensearchapi.Search, query map[string]interface{}, queryCommons model.QueryListCommons) (result []func(*opensearchapi.SearchRequest)) {
 	defaultSort := "resource"
 	s := defaultSort
 	if queryCommons.SortBy != "" {
@@ -828,14 +1285,26 @@ func setPaginationAndSort(query *elastic.SearchService, queryCommons model.Query
 	if s != defaultSort && !strings.HasPrefix(s, "features.") && !strings.HasPrefix(s, "annotations.") {
 		s = "features." + s
 	}
+	sorts := []string{}
+	result = append(result, search.WithSize(queryCommons.Limit))
 	if queryCommons.After == nil {
-		result = query.From(queryCommons.Offset).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
+		result = append(result, search.WithFrom(queryCommons.Offset))
 	} else {
-		result = query.SearchAfter(queryCommons.After.SortFieldValue, queryCommons.After.Id).Size(queryCommons.Limit).Sort(s, !queryCommons.SortDesc)
+		query["search_after"] = []interface{}{queryCommons.After.SortFieldValue, queryCommons.After.Id}
 	}
-	if s != defaultSort {
-		result = result.Sort("resource", !queryCommons.SortDesc)
+	if queryCommons.SortDesc {
+		sorts = append(sorts, s+":desc")
+		if s != defaultSort {
+			sorts = append(sorts, "resource:desc")
+		}
+	} else {
+		sorts = append(sorts, s+":asc")
+		if s != defaultSort {
+			sorts = append(sorts, "resource:asc")
+		}
 	}
+	result = append(result, search.WithSort(sorts...))
+	result = append(result, search.WithBody(opensearchutil.NewJSONReader(query)))
 	return result
 }
 

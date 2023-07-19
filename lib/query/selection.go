@@ -23,13 +23,11 @@ import (
 
 	"reflect"
 	"strings"
-
-	elastic "github.com/olivere/elastic/v7"
 )
 
-func (this *Query) GetFilter(token auth.Token, selection model.Selection) (result elastic.Query, err error) {
+func (this *Query) GetFilter(token auth.Token, selection model.Selection) (result map[string]interface{}, err error) {
 	if len(selection.And) > 0 {
-		and := []elastic.Query{}
+		and := []map[string]interface{}{}
 		for _, sub := range selection.And {
 			andElement, err := this.GetFilter(token, sub)
 			if err != nil {
@@ -37,11 +35,15 @@ func (this *Query) GetFilter(token auth.Token, selection model.Selection) (resul
 			}
 			and = append(and, andElement)
 		}
-		result = elastic.NewBoolQuery().Filter(and...)
+		result = map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": and,
+			},
+		}
 		return
 	}
 	if len(selection.Or) > 0 {
-		or := []elastic.Query{}
+		or := []map[string]interface{}{}
 		for _, sub := range selection.Or {
 			orElement, err := this.GetFilter(token, sub)
 			if err != nil {
@@ -49,7 +51,11 @@ func (this *Query) GetFilter(token auth.Token, selection model.Selection) (resul
 			}
 			or = append(or, orElement)
 		}
-		result = elastic.NewBoolQuery().Should(or...)
+		result = map[string]interface{}{
+			"bool": map[string]interface{}{
+				"should": or,
+			},
+		}
 		return
 	}
 	if selection.Not != nil {
@@ -57,13 +63,17 @@ func (this *Query) GetFilter(token auth.Token, selection model.Selection) (resul
 		if err != nil {
 			return result, err
 		}
-		result = elastic.NewBoolQuery().MustNot(not)
+		result = map[string]interface{}{
+			"bool": map[string]interface{}{
+				"must_not": []map[string]interface{}{not},
+			},
+		}
 		return result, err
 	}
 	return this.GetConditionFilter(token, selection.Condition)
 }
 
-func (this *Query) GetConditionFilter(token auth.Token, condition model.ConditionConfig) (elastic.Query, error) {
+func (this *Query) GetConditionFilter(token auth.Token, condition model.ConditionConfig) (map[string]interface{}, error) {
 	if condition.Feature == "id" {
 		condition.Feature = "_id"
 	}
@@ -79,15 +89,41 @@ func (this *Query) GetConditionFilter(token auth.Token, condition model.Conditio
 	switch condition.Operation {
 	case model.QueryEqualOperation:
 		if val == nil || val == "" {
-			return elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery(condition.Feature)), nil
+			return map[string]interface{}{
+				"bool": map[string]interface{}{
+					"must_not": []map[string]interface{}{
+						{
+							"exists": map[string]interface{}{
+								"field": condition.Feature,
+							},
+						},
+					},
+				},
+			}, nil
 		} else {
-			return elastic.NewTermQuery(condition.Feature, val), nil
+			return map[string]interface{}{
+				"term": map[string]interface{}{
+					condition.Feature: val,
+				},
+			}, nil
 		}
 	case model.QueryUnequalOperation:
 		if val == nil || val == "" {
-			return elastic.NewExistsQuery(condition.Feature), nil
+			return map[string]interface{}{
+				"exists": map[string]interface{}{
+					"field": condition.Feature,
+				},
+			}, nil
 		} else {
-			return elastic.NewBoolQuery().MustNot(elastic.NewTermQuery(condition.Feature, val)), nil
+			return map[string]interface{}{
+				"must_not": []map[string]interface{}{
+					{
+						"term": map[string]interface{}{
+							condition.Feature: val,
+						},
+					},
+				},
+			}, nil
 		}
 	case model.QueryAnyValueInFeatureOperation:
 		if val == nil {
@@ -95,11 +131,11 @@ func (this *Query) GetConditionFilter(token auth.Token, condition model.Conditio
 		} else if reflect.TypeOf(val).Kind() == reflect.String {
 			val = strings.Split(val.(string), ",")
 		}
-		arr, err := InterfaceSlice(val)
-		if err != nil {
-			return nil, err
-		}
-		return elastic.NewTermsQuery(condition.Feature, arr...), nil
+		return map[string]interface{}{
+			"terms": map[string]interface{}{
+				condition.Feature: val,
+			},
+		}, nil
 	}
 	return nil, errors.New("unknown query operation type " + string(condition.Operation))
 }

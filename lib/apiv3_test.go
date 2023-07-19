@@ -53,13 +53,18 @@ func TestApiV3(t *testing.T) {
 		t.Log(v...)
 	}
 
+	config.OpenSearchInsecureSkipVerify = true
+	config.OpenSearchUsername = "admin"
+	config.OpenSearchPassword = "admin"
+	config.Debug = true
+
 	t.Run("start dependency containers", func(t *testing.T) {
-		port, _, err := elasticsearch(ctx, wg)
+		_, ip, err := OpenSearch(ctx, wg)
 		if err != nil {
 			t.Error(err)
 			return
 		}
-		config.ElasticUrl = "http://localhost:" + port
+		config.OpenSearchUrls = "https://" + ip + ":9200"
 
 		_, zkIp, err := Zookeeper(ctx, wg)
 		if err != nil {

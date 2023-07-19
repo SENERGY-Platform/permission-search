@@ -59,11 +59,10 @@ type ConfigStruct struct {
 
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`
 
-	ElasticUrl                  string                                       `json:"elastic_url"`
-	ElasticRetry                int64                                        `json:"elastic_retry"`
-	ElasticTimeout              string                                       `json:"elastic_timeout"`
+	Timeout                     string                                       `json:"timeout"`
+	MaxRetry                    int                                          `json:"max_retry"`
 	BulkFlushInterval           string                                       `json:"bulk_flush_interval"`
-	ElasticMapping              map[string]map[string]map[string]interface{} `json:"elastic_mapping"`
+	IndexTypeMapping            map[string]map[string]map[string]interface{} `json:"index_type_mapping"`
 	BulkWorkerCount             int64                                        `json:"bulk_worker_count"`
 	UseBulkWorkerForAnnotations bool                                         `json:"use_bulk_worker_for_annotations"`
 
@@ -81,6 +80,11 @@ type ConfigStruct struct {
 	HttpServerReadTimeout string `json:"http_server_read_timeout"`
 
 	FatalErrHandler func(v ...interface{}) `json:"-"`
+
+	OpenSearchInsecureSkipVerify bool   `json:"open_search_insecure_skip_verify"`
+	OpenSearchUrls               string `json:"open_search_urls"`
+	OpenSearchUsername           string `json:"open_search_username"`
+	OpenSearchPassword           string `json:"open_search_password"`
 }
 
 func (this *ConfigStruct) HandleFatalError(v ...interface{}) {

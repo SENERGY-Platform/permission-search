@@ -5,11 +5,7 @@ on:
       - master
       - main
       - dev
-    pull_request:
-      branches:
-        - master
-        - main
-        - dev
+      - opensearch
 jobs:
   test:
     runs-on: ubuntu-latest

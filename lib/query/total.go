@@ -18,9 +18,11 @@ package query
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"strings"
 )
 
@@ -45,14 +47,45 @@ func (this *Query) Total(tokenStr string, kind string, options model.ListOptions
 }
 
 func (this *Query) SearchListTotal(token auth.Token, kind string, query string, rights string) (result int64, err error) {
-	ctx := context.Background()
-	elastic_query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...).Must(elastic.NewMatchQuery("feature_search", query).Operator("AND"))
+	filter := getRightsQuery(rights, token.GetUserId(), token.GetRoles())
+	body := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": filter,
+				"must": []map[string]interface{}{
+					{
+						"match": map[string]interface{}{
+							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+						},
+					},
+				},
+			},
+		},
+	}
 
-	resp, err := this.client.Search().Index(kind).Version(true).Query(elastic_query).TrackTotalHits(true).Size(1).Do(ctx)
+	ctx := this.getTimeout()
+
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithTrackTotalHits(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(body)),
+	)
 	if err != nil {
 		return result, err
 	}
-	return resp.Hits.TotalHits.Value, nil
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	return pl.Hits.Total.Value, nil
 }
 
 func (this *Query) SelectByFeatureTotal(token auth.Token, kind string, field string, value string, rights string) (result int64, err error) {
@@ -60,20 +93,67 @@ func (this *Query) SelectByFeatureTotal(token auth.Token, kind string, field str
 	if !strings.HasPrefix(field, "features.") && !strings.HasPrefix(field, "annotations.") {
 		field = "features." + field
 	}
-	query := elastic.NewBoolQuery().Filter(append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), elastic.NewTermQuery(field, value))...)
-	resp, err := this.client.Search().Index(kind).Query(query).TrackTotalHits(true).Size(1).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": append(getRightsQuery(rights, token.GetUserId(), token.GetRoles()), map[string]interface{}{
+					"term": map[string]interface{}{
+						field: value,
+					},
+				}),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithTrackTotalHits(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	return resp.Hits.TotalHits.Value, nil
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	return pl.Hits.Total.Value, nil
 }
 
 func (this *Query) GetListTotalForUserOrGroup(token auth.Token, kind string, rights string) (result int64, err error) {
 	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).TrackTotalHits(true).Size(1).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, token.GetUserId(), token.GetRoles()),
+			},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithTrackTotalHits(true),
+		this.opensearchClient.Search.WithSize(1),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	return resp.Hits.TotalHits.Value, nil
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	return pl.Hits.Total.Value, nil
 }

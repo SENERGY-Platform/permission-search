@@ -11,10 +11,14 @@
 	"force_user": "true",
 	"force_auth": "true",
 
-    "elastic_url": "http://elastic:9200",
-    "elastic_retry": 3,
-    "elastic_timeout": "10s",
-    "bulk_flush_interval": "2s",
+    "open_search_insecure_skip_verify": true,
+    "open_search_urls": "",
+    "open_search_username": "",
+    "open_search_password": "",
+
+    "timeout": "10s",
+    "max_retry": 3,
+    "bulk_flush_interval": "1s",
     "bulk_worker_count": 1,
     "use_bulk_worker_for_annotations": true,
 
@@ -260,7 +264,7 @@
         ]
     },
 
-    "elastic_mapping": {
+    "index_type_mapping": {
         "smart_service_releases": {
             "features": {
                 "name":   {"type": "keyword", "copy_to": "feature_search"},

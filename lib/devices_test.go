@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"reflect"
 	"strings"
 	"sync"
@@ -43,12 +43,16 @@ func TestDeviceComplexPathAndAttribute(t *testing.T) {
 	}
 
 	resource := "devices"
-	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery([]string{resource}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Indices.Flush(q.GetClient().Indices.Flush.WithIndex(resource))
 	if err != nil {
 		t.Error(err)
 		return
@@ -160,12 +164,16 @@ func TestDeviceDisplayNameSort(t *testing.T) {
 	}
 
 	resource := "devices"
-	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery([]string{resource}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Indices.Flush(q.GetClient().Indices.Flush.WithIndex(resource))
 	if err != nil {
 		t.Error(err)
 		return
@@ -309,12 +317,16 @@ func TestReceiveDevice(t *testing.T) {
 	}
 
 	resource := "devices"
-	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery([]string{resource}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Indices.Flush(q.GetClient().Indices.Flush.WithIndex(resource))
 	if err != nil {
 		t.Error(err)
 		return
@@ -412,12 +424,16 @@ func TestDeviceWithSpecialCharacterAttribute(t *testing.T) {
 	}
 
 	resource := "devices"
-	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery([]string{resource}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Indices.Flush(q.GetClient().Indices.Flush.WithIndex(resource))
 	if err != nil {
 		t.Error(err)
 		return

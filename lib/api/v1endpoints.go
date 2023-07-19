@@ -285,7 +285,6 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		json.NewEncoder(res).Encode(list)
 	})
 
-	//TODO: add limit/offset variant
 	router.GET("/jwt/list/:resource_kind/:right", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		res.Header().Set("Deprecation", "true")
 		kind := ps.ByName("resource_kind")

@@ -29,7 +29,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/tests/docker"
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"io"
 	"log"
 	"net"
@@ -42,7 +42,7 @@ import (
 	"testing"
 )
 
-var elasticsearch = docker.Elasticsearch
+var OpenSearch = docker.OpenSearch
 var Zookeeper = docker.Zookeeper
 var Kafka = docker.Kafka
 
@@ -68,7 +68,7 @@ func getDtTestObj(id string, dt map[string]interface{}) (msg []byte, command mod
 }
 
 func initDb(config configuration.Config, worker *worker.Worker) {
-	config.ElasticRetry = 3
+	config.MaxRetry = 3
 	test, testCmd := getDtTestObj("test", map[string]interface{}{
 		"name":        "test",
 		"description": "something",
@@ -106,12 +106,16 @@ func initDb(config configuration.Config, worker *worker.Worker) {
 		"vendor":      map[string]interface{}{"name": "vendor"},
 	})
 
-	_, err := worker.GetClient().DeleteByQuery("device-types").Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err := worker.GetClient().DeleteByQuery([]string{"device-types"}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_, err = worker.GetClient().Flush().Index("device-types").Do(context.Background())
+	_, err = worker.GetClient().Indices.Flush(worker.GetClient().Indices.Flush.WithIndex("device-types"))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -142,7 +146,7 @@ func initDb(config configuration.Config, worker *worker.Worker) {
 		fmt.Println(err)
 		return
 	}
-	_, err = worker.GetClient().Flush().Index("device-types").Do(context.Background())
+	_, err = worker.GetClient().Indices.Flush(worker.GetClient().Indices.Flush.WithIndex("device-types"))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -166,11 +170,18 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config c
 			return
 		}
 	}
-	port, _, err := docker.Elasticsearch(ctx, wg)
+
+	config.OpenSearchInsecureSkipVerify = true
+	config.OpenSearchUsername = "admin"
+	config.OpenSearchPassword = "admin"
+
+	_, ip, err := OpenSearch(ctx, wg)
 	if err != nil {
-		return config, q, w, err
+		t.Error(err)
+		return
 	}
-	config.ElasticUrl = "http://localhost:" + port
+	config.OpenSearchUrls = "https://" + ip + ":9200"
+
 	q, err = query.New(config)
 	if err != nil {
 		return config, q, w, err

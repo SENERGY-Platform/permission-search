@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"reflect"
 	"sync"
 	"testing"
@@ -42,12 +42,16 @@ func TestReceiveAspect(t *testing.T) {
 	}
 
 	resource := "aspects"
-	_, err = q.GetClient().DeleteByQuery(resource).Query(elastic.NewMatchAllQuery()).Do(context.Background())
+	_, err = q.GetClient().DeleteByQuery([]string{resource}, opensearchutil.NewJSONReader(map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	_, err = q.GetClient().Flush().Index(resource).Do(context.Background())
+	_, err = q.GetClient().Indices.Flush(q.GetClient().Indices.Flush.WithIndex(resource))
 	if err != nil {
 		t.Error(err)
 		return

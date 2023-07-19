@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"runtime/debug"
 
 	"log"
@@ -43,8 +44,23 @@ func (this *Worker) SetUserRight(kind string, resource string, user string, righ
 		}
 		entry.RemoveUserRights(user)
 		entry.AddUserRights(user, rights)
-		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-		return err
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(resource),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
+		}
+		return nil
 	} else {
 		log.Println("WARNING: received rights command for none existing resource", kind, resource)
 	}
@@ -68,8 +84,24 @@ func (this *Worker) SetGroupRight(kind string, resource string, group string, ri
 		}
 		entry.RemoveGroupRights(group)
 		entry.AddGroupRights(group, rights)
-		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-		return err
+
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(resource),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
+		}
+		return nil
 	} else {
 		log.Println("WARNING: received rights command for none existing resource", kind, resource)
 	}
@@ -92,8 +124,23 @@ func (this *Worker) DeleteUserRight(kind string, resource string, user string) (
 			return err
 		}
 		entry.RemoveUserRights(user)
-		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-		return err
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(resource),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
+		}
+		return nil
 	} else {
 		log.Println("WARNING: received rights command for none existing resource", kind, resource)
 	}
@@ -117,8 +164,23 @@ func (this *Worker) DeleteGroupRight(kind string, resource string, group string)
 			return err
 		}
 		entry.RemoveGroupRights(group)
-		_, err = this.query.GetClient().Index().Index(kind).Id(resource).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
-		return err
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(resource),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
+		}
+		return nil
 	} else {
 		log.Println("WARNING: received rights command for none existing resource", kind, resource)
 	}
@@ -135,6 +197,7 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 	if err != nil {
 		return err
 	}
+	client := this.query.GetClient()
 	if exists {
 		entry, version, err := this.query.GetResourceEntry(kind, command.Id)
 		if err != nil {
@@ -144,18 +207,40 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
 		}
-		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(command.Id),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
 		if err != nil {
 			debug.PrintStack()
 			return err
 		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			debug.PrintStack()
+			return errors.New(resp.String())
+		}
 	} else {
 		entry := model.Entry{Resource: command.Id, Features: features, Creator: command.Owner}
 		entry.SetDefaultPermissions(this.config, kind, command.Owner)
-		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).BodyJson(entry).Do(ctx)
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(command.Id),
+			client.Index.WithContext(ctx),
+		)
 		if err != nil {
 			debug.PrintStack()
 			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			debug.PrintStack()
+			return errors.New(resp.String())
 		}
 	}
 	return nil
@@ -193,9 +278,21 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
 		}
-		_, err = this.query.GetClient().Index().Index(kind).Id(command.Id).IfPrimaryTerm(version.PrimaryTerm).IfSeqNo(version.SeqNo).BodyJson(entry).Do(ctx)
+		client := this.query.GetClient()
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			client.Index.WithDocumentID(command.Id),
+			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
+			client.Index.WithIfSeqNo(int(version.SeqNo)),
+			client.Index.WithContext(ctx),
+		)
 		if err != nil {
 			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
 		}
 	}
 	return nil
@@ -203,13 +300,25 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 
 func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (err error) {
 	ctx := context.Background()
-	exists, err := this.query.GetClient().Exists().Index(kind).Id(command.Id).Do(ctx)
+	exists, err := this.query.ResourceExists(kind, command.Id)
 	if err != nil {
 		log.Println("ERROR: DeleteFeatures() check existence ", err)
 		return err
 	}
 	if exists {
-		_, err = this.query.GetClient().Delete().Index(kind).Id(command.Id).Do(ctx)
+		client := this.query.GetClient()
+		resp, err := client.Delete(
+			kind,
+			command.Id,
+			client.Delete.WithContext(ctx),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			return errors.New(resp.String())
+		}
 	}
 	return
 }

@@ -4,7 +4,7 @@
 
 
 Service to search for resources with added permissions. 
-Receives resources from kafka and saves it to elastic search. 
+Receives resources from kafka and saves it to OpenSearch. 
 Resources will be enriched with permission information. 
 A HTTP-API provides endpoints to request for resources where the requesting user has selected permissions.
 
@@ -15,7 +15,7 @@ The Project can be started as:
 - Standalone: start HTTP-API and Kafka-Consumer. Default behavior with `./permission-search` or `./permission-search -mode=standalone`
 
 ## Events
-Data-input to the elasticsearch database id done by kafka events.
+Data-input to the OpenSearch database id done by kafka events.
 
 ### Permission-Events
 The change of permissions is governed by the permissions service. This is done by event-messaging.
@@ -98,13 +98,13 @@ These routes can be appended on most routes to define sorting and paging.
     * skips `offset` documents.
     * orders by field `order_by` ascending.
     * `order_by` may have `field.subfield` syntax.
-    * `order_by` must be descibed in ElasticMapping.
+    * `order_by` must be descibed in index_type_mapping.
 * `/:limit/:offset/:order_by/desc` 
     * returns maximal `limit` results
     * skips `offset` documents
     * orders by field `order_by` descending.
     * `order_by` may have `field.subfield` syntax.
-    * `order_by` must be descibed in ElasticMapping.
+    * `order_by` must be descibed in index_type_mapping.
 
 ### User-Defined-Selection
 
@@ -146,9 +146,9 @@ Used to combine a list of other Selections/Conditions. All conditions must apply
 ```
 
 #### Selection-Condition
-Adds a Filter/Condition to the elasticsearch query. A `condition` has the following fields:
+Adds a Filter/Condition to the OpenSearch query. A `condition` has the following fields:
 
-* `feature`: (string) reference to a feature saved in the elasticsearch document. May contain `'.'` to traverse (for example `device.name`)
+* `feature`: (string) reference to a feature saved in the OpenSearch document. May contain `'.'` to traverse (for example `device.name`)
 * `operation`: (string) operation that will be executed to determine the result of the condition.
 * `value`: (anything) value on which the operation can be executed. The type of the value is determined by the operation and target_feature.
 * `ref`: (string) uses predefined references as value.
@@ -207,22 +207,17 @@ This field describes which groups with which rights a resource initially should 
 }
 ```
 
-## ElasticMapping
+## index_type_mapping
 
-This section will be used for the Mapping in elasticsearch https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html.
+This section will be used for the Mapping in OpenSearch https://opensearch.org/docs/2.8/field-types/index/.
 The configuration for each resource will be placed under `mapping.doc.properties`.
-permissionsearch prepares a index for searches, if you want a field to be searchable in the http-api use `"copy_to": "feature_search"`.
-Types other then "Keyword" may influence results of `where` and `queries` by running elasticsearch analysis on this field (for example stemming).
-
-This Section will only be used if the configuration-field `CreateIndex` equal to `"true"` is.
-If this is not the case no index will be created and an error will be thrown if no index exists.
-Automatic creation of indexes with ElasticMapping is only with small or prototypical applications useful. Or if the mapping is static and will never change.
-If you need more control over a ES-Cluster please read the chapter Mapping-Update-On-ES and create/update your indexes manually.
+permissionsearch prepares an index for searches, if you want a field to be searchable in the http-api use `"copy_to": "feature_search"`.
+Types other than "Keyword" may influence results of `where` and `queries` by running OpenSearch analysis on this field (for example stemming).
 
 **Example:**
 
 ```
-"elastic_mapping": {
+"index_type_mapping": {
     "simple_resource": {
       "name":    {"type": "keyword"},
       "devices": {"type": "keyword"},
@@ -404,7 +399,7 @@ PUT https://api.sepl.infai.org/permission/search-db/gateway_v2
 }
 ```
 
-**2. reindexing:** https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html
+**2. reindexing:** https://opensearch.org/docs/2.8/im-plugin/reindex-data/
 ```
 POST _reindex
 {
@@ -421,7 +416,7 @@ POST _reindex
 {
   "source": {
   "remote": {
-      "host": "http://elastic.permissions.rancher.internal"
+      "host": "http://search.permissions.rancher.internal"
     },
     "index": "gateway"
   },
@@ -431,7 +426,7 @@ POST _reindex
 }
 ```
 
-**3. alias neu setzen:** https://www.elastic.co/guide/en/elasticsearch/reference/6.2/indices-aliases.html
+**3. alias neu setzen:** https://opensearch.org/docs/2.8/im-plugin/index-alias/
 ```
 POST /_aliases
 {

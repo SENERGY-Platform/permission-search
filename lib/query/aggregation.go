@@ -17,11 +17,11 @@
 package query
 
 import (
-	"context"
+	"encoding/json"
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 )
 
 func (this *Query) GetTermAggregation(tokenStr string, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error) {
@@ -36,16 +36,45 @@ func (this *Query) getTermAggregation(token auth.Token, kind string, rights stri
 	if limit == 0 {
 		limit = 100
 	}
-	ctx := context.Background()
-	query := elastic.NewBoolQuery().Filter(getRightsQuery(rights, token.GetUserId(), token.GetRoles())...)
-	aggregate := elastic.NewTermsAggregation().Field(field).Size(limit)
-	resp, err := this.client.Search().Index(kind).Version(true).Query(query).Aggregation(field, aggregate).Do(ctx)
+	ctx := this.getTimeout()
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"filter": getRightsQuery(rights, token.GetUserId(), token.GetRoles()),
+			},
+		},
+		"aggregations": map[string]interface{}{
+			field: map[string]interface{}{
+				"terms": map[string]interface{}{
+					"field": field,
+					"size":  limit,
+				},
+			},
+		},
+	}
+
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithVersion(true),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	termsAggregation, found := resp.Aggregations.Terms(field)
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+
+	pl := model.AggregationResult[model.Entry, model.TermsAggrT]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	termsAggregation, found := pl.Aggregations[field]
 	if !found {
-		return nil, errors.New("aggregation result not found in response from elasticsearch")
+		return nil, errors.New("aggregation result not found in response from database")
 	}
 	for _, bucket := range termsAggregation.Buckets {
 		result = append(result, model.TermAggregationResultElement{

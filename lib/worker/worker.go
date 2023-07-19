@@ -22,9 +22,9 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"log"
-	"runtime/debug"
 	"time"
 )
 
@@ -32,7 +32,7 @@ type Worker struct {
 	config  configuration.Config
 	query   Query
 	timeout time.Duration
-	bulk    *elastic.BulkProcessor
+	bulk    opensearchutil.BulkIndexer
 	done    *kafka.Producer
 }
 
@@ -44,42 +44,33 @@ func New(ctx context.Context, config configuration.Config, query Query) (result 
 			return nil, err
 		}
 	}
-	timeout, err := time.ParseDuration(config.ElasticTimeout)
+	timeout, err := time.ParseDuration(config.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
 	bulkFlushInterval, err := time.ParseDuration(config.BulkFlushInterval)
-
-	bulk, err := query.GetClient().BulkProcessor().
-		Name("bulkworker").
-		Workers(int(config.BulkWorkerCount)).
-		BulkActions(1000).                // commit if # requests >= 1000
-		BulkSize(2 << 20).                // commit if size of requests >= 2 MB
-		FlushInterval(bulkFlushInterval). // commit every 2s
-		After(func(executionId int64, requests []elastic.BulkableRequest, response *elastic.BulkResponse, err error) {
-			if err != nil {
-				log.Println("ERROR: bulk:", err)
-				debug.PrintStack()
-			}
-			if response != nil && response.Errors {
-				for _, items := range response.Items {
-					for _, item := range items {
-						if item.Error != nil {
-							log.Println("ERROR: bulk-response:", item.Error)
-						}
-					}
-				}
-			}
-		}).
-		Do(context.Background())
 	if err != nil {
 		return nil, err
 	}
+
+	client := query.GetClient()
+	bulk, err := opensearchutil.NewBulkIndexer(opensearchutil.BulkIndexerConfig{
+		Client:        client,                      // The OpenSearch client
+		NumWorkers:    int(config.BulkWorkerCount), // The number of worker goroutines (default: number of CPUs)
+		FlushBytes:    5e+6,                        // The flush threshold in bytes (default: 5M)
+		FlushInterval: bulkFlushInterval,
+		OnError: func(ctx context.Context, err error) {
+			log.Println("ERROR: bulk:", err)
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	go func() {
 		<-ctx.Done()
-		bulk.Flush()
-		bulk.Close()
+		bulk.Close(context.Background())
 	}()
 	return &Worker{
 		config:  config,
@@ -90,7 +81,7 @@ func New(ctx context.Context, config configuration.Config, query Query) (result 
 	}, err
 }
 
-func (this *Worker) GetClient() *elastic.Client {
+func (this *Worker) GetClient() *opensearch.Client {
 	return this.query.GetClient()
 }
 

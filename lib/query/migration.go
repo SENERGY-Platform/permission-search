@@ -19,8 +19,9 @@ package query
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	elastic "github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 )
 
 func (this *Query) Import(imports map[string][]model.ResourceRights) (err error) {
@@ -35,11 +36,23 @@ func (this *Query) Import(imports map[string][]model.ResourceRights) (err error)
 }
 
 func (this *Query) ImportResource(kind string, resource model.ResourceRights) (err error) {
-	ctx := context.Background()
+	ctx := this.getTimeout()
 	entry := model.Entry{Resource: resource.ResourceId, Features: resource.Features, Creator: resource.Creator}
 	entry.SetResourceRights(resource.ResourceRightsBase)
-	_, err = this.client.Index().Index(kind).Id(resource.ResourceId).BodyJson(entry).Do(ctx)
-	return
+	resp, err := this.opensearchClient.Index(
+		kind,
+		opensearchutil.NewJSONReader(entry),
+		this.opensearchClient.Index.WithDocumentID(resource.ResourceId),
+		this.opensearchClient.Index.WithContext(ctx),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return errors.New(resp.String())
+	}
+	return nil
 }
 
 func (this *Query) Export() (exports map[string][]model.ResourceRights, err error) {
@@ -73,18 +86,32 @@ func (this *Query) ExportKindAll(kind string) (result []model.ResourceRights, er
 
 func (this *Query) ExportKind(kind string, limit int, offset int) (result []model.ResourceRights, err error) {
 	ctx := context.Background()
-	query := elastic.NewMatchAllQuery()
-	resp, err := this.client.Search().Index(kind).Query(query).Size(limit).From(offset).Do(ctx)
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+	}
+	resp, err := this.opensearchClient.Search(
+		this.opensearchClient.Search.WithIndex(kind),
+		this.opensearchClient.Search.WithContext(ctx),
+		this.opensearchClient.Search.WithSize(limit),
+		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
+	)
 	if err != nil {
 		return result, err
 	}
-	for _, hit := range resp.Hits.Hits {
-		entry := model.Entry{}
-		err = json.Unmarshal(hit.Source, &entry)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, entry.ToResourceRights())
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return result, errors.New(resp.String())
+	}
+	pl := model.SearchResult[model.Entry]{}
+	err = json.NewDecoder(resp.Body).Decode(&pl)
+	if err != nil {
+		return result, err
+	}
+	for _, hit := range pl.Hits.Hits {
+		result = append(result, hit.Source.ToResourceRights())
 	}
 	return
 }

@@ -291,7 +291,7 @@ func (entry Entry) ToResourceRights() (result ResourceRights) {
 	return
 }
 
-const ElasticPermissionMapping = `{
+const PermissionMapping = `{
 	"admin_groups":   {"type": "keyword"},
 	"admin_users":    {"type": "keyword"},
 	"execute_groups": {"type": "keyword"},
@@ -307,18 +307,18 @@ const ElasticPermissionMapping = `{
 
 func CreateMapping(config configuration.Config, kind string) (result map[string]interface{}, err error) {
 	mapping := map[string]interface{}{}
-	err = json.Unmarshal([]byte(ElasticPermissionMapping), &mapping)
+	err = json.Unmarshal([]byte(PermissionMapping), &mapping)
 	if err != nil {
-		log.Println("ERROR while unmarshaling ElasticPermissionMapping", err)
+		log.Println("ERROR while unmarshaling PermissionMapping", err)
 		return result, err
 	}
-	if entityMappings, ok := config.ElasticMapping[kind]; ok {
-		if featureMappings, ok := entityMappings["features"]; ok {
+	if typeMappings, ok := config.IndexTypeMapping[kind]; ok {
+		if featureMappings, ok := typeMappings["features"]; ok {
 			mapping["features"] = map[string]interface{}{
 				"properties": featureMappings,
 			}
 		}
-		if annotationMappings, ok := entityMappings["annotations"]; ok {
+		if annotationMappings, ok := typeMappings["annotations"]; ok {
 			mapping["annotations"] = map[string]interface{}{
 				"properties": annotationMappings,
 			}

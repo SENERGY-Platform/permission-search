@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/SENERGY-Platform/permission-search/lib/query"
+	"github.com/SENERGY-Platform/permission-search/lib/opensearchclient"
 	"github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
-	"github.com/olivere/elastic/v7"
+	"github.com/opensearch-project/opensearch-go"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"runtime/debug"
 )
 
@@ -42,7 +43,7 @@ func ReplayPermissions(config configuration.Config, args []string) {
 	if len(args) > 0 {
 		topics = args
 	}
-	client, err := elastic.NewClient(elastic.SetURL(config.ElasticUrl), elastic.SetRetrier(query.NewRetrier(config)))
+	client, err := opensearchclient.New(config)
 	if err != nil {
 		fmt.Println("ERROR:", err)
 		debug.PrintStack()
@@ -64,7 +65,7 @@ func ReplayPermissions(config configuration.Config, args []string) {
 	}
 }
 
-func ReplayPermissionsOfResourceKind(producer *kafka.Producer, client *elastic.Client, kind string, batchSize int) {
+func ReplayPermissionsOfResourceKind(producer *kafka.Producer, client *opensearch.Client, kind string, batchSize int) {
 	for command := range GetCommands(client, kind, batchSize) {
 		msg, err := json.Marshal(command)
 		if err != nil {
@@ -84,7 +85,7 @@ func ReplayPermissionsOfResourceKind(producer *kafka.Producer, client *elastic.C
 	}
 }
 
-func GetCommands(client *elastic.Client, kind string, batchSize int) (commands chan model.PermCommandMsg) {
+func GetCommands(client *opensearch.Client, kind string, batchSize int) (commands chan model.PermCommandMsg) {
 	commands = make(chan model.PermCommandMsg)
 	entries := GetEntries(client, kind, batchSize)
 	go func() {
@@ -140,34 +141,52 @@ func GetCommands(client *elastic.Client, kind string, batchSize int) (commands c
 	return commands
 }
 
-func GetEntries(client *elastic.Client, kind string, batchSize int) (entries chan model.Entry) {
+func GetEntries(client *opensearch.Client, kind string, batchSize int) (entries chan model.Entry) {
 	lastId := ""
 	entries = make(chan model.Entry, batchSize)
 	go func() {
 		defer close(entries)
 		for {
-			query := client.Search().Index(kind).Version(true).Size(batchSize).Sort("resource", true)
-			if lastId != "" {
-				query = query.SearchAfter(lastId)
+			query := map[string]interface{}{
+				"query": map[string]interface{}{
+					"match_all": map[string]interface{}{},
+				},
 			}
-			resp, err := query.Do(context.Background())
+			if lastId != "" {
+				query["search_after"] = []interface{}{lastId}
+			}
+			resp, err := client.Search(
+				client.Search.WithIndex(kind),
+				client.Search.WithVersion(true),
+				client.Search.WithSize(batchSize),
+				client.Search.WithSort("resource:asc"),
+				client.Search.WithBody(opensearchutil.NewJSONReader(query)),
+			)
 			if err != nil {
 				fmt.Println("ERROR:", err)
 				debug.PrintStack()
 				return
 			}
-			for _, hit := range resp.Hits.Hits {
-				entry := model.Entry{}
-				err = json.Unmarshal(hit.Source, &entry)
-				if err != nil {
-					fmt.Println("ERROR:", err)
-					debug.PrintStack()
-					return
-				}
+			defer resp.Body.Close()
+			if resp.IsError() {
+				fmt.Println("ERROR:", resp.String())
+				debug.PrintStack()
+				return
+			}
+			pl := model.SearchResult[model.Entry]{}
+			err = json.NewDecoder(resp.Body).Decode(&pl)
+			if err != nil {
+				fmt.Println("ERROR:", err)
+				debug.PrintStack()
+				return
+			}
+
+			for _, hit := range pl.Hits.Hits {
+				entry := hit.Source
 				entries <- entry
 				lastId = entry.Resource
 			}
-			if len(resp.Hits.Hits) < batchSize {
+			if len(pl.Hits.Hits) < batchSize {
 				return
 			}
 		}
