@@ -52,11 +52,13 @@ func New(config configuration.Config) (client *opensearch.Client, err error) {
 		Password:  config.OpenSearchPassword,
 	})
 	if err != nil {
+		log.Println("ERROR: unable to connect to open-search-cluster", err)
 		return
 	}
 	for kind := range config.Resources {
 		err = CreateIndex(kind, client, ctx, config)
 		if err != nil {
+			log.Println("ERROR: unable to create indexes", err)
 			return
 		}
 	}

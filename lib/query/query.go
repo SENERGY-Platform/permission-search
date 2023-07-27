@@ -27,6 +27,7 @@ import (
 	"github.com/opensearch-project/opensearch-go"
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	"github.com/opensearch-project/opensearch-go/opensearchutil"
+	"log"
 	"net/http"
 	"runtime/debug"
 	"sort"
@@ -49,6 +50,7 @@ type Query struct {
 func New(config configuration.Config) (result *Query, err error) {
 	timeout, err := time.ParseDuration(config.Timeout)
 	if err != nil {
+		log.Println("ERROR: unable to parse config.Timeout", err)
 		return result, err
 	}
 	client, err := opensearchclient.New(config)
