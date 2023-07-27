@@ -69,8 +69,22 @@ func New(config configuration.Config) (client *opensearch.Client, err error) {
 	return client, nil
 }
 
+func IndexExists(client *opensearch.Client, ctx context.Context, name string) (exists bool, err error) {
+	resp, err := client.Indices.Exists([]string{name}, client.Indices.Exists.WithContext(ctx))
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if resp.IsError() {
+		return false, errors.New(resp.String())
+	}
+	return true, nil
+}
+
 func CreateIndex(kind string, client *opensearch.Client, ctx context.Context, config configuration.Config) (err error) {
-	resp, err := client.Indices.Exists([]string{kind}, client.Indices.Exists.WithContext(ctx))
+	aliasExists, err := IndexExists(client, ctx, kind)
 	if err != nil {
 		return err
 	}
@@ -80,19 +94,25 @@ func CreateIndex(kind string, client *opensearch.Client, ctx context.Context, co
 	}
 	mappingJson, _ := json.Marshal(mapping)
 	log.Println("expected index setting ", kind, string(mappingJson))
-	if resp.StatusCode == http.StatusNotFound {
-		log.Println("create new index")
-		resp, err := client.Indices.Create(kind+"_v1", client.Indices.Create.WithBody(opensearchutil.NewJSONReader(mapping)), client.Indices.Create.WithContext(ctx))
+	if !aliasExists {
+		v1IndexExists, err := IndexExists(client, ctx, kind+"_v1")
 		if err != nil {
 			return err
 		}
-		if resp.IsError() {
-			return errors.New(resp.String())
+		if !v1IndexExists {
+			log.Println("create new index")
+			resp, err := client.Indices.Create(kind+"_v1", client.Indices.Create.WithBody(opensearchutil.NewJSONReader(mapping)), client.Indices.Create.WithContext(ctx))
+			if err != nil {
+				return err
+			}
+			if resp.IsError() {
+				return errors.New(resp.String())
+			}
+			if resp.StatusCode != http.StatusOK {
+				return errors.New("index not acknowledged")
+			}
 		}
-		if resp.StatusCode != http.StatusOK {
-			return errors.New("index not acknowledged")
-		}
-		resp, err = client.Indices.PutAlias([]string{kind + "_v1"}, kind, client.Indices.PutAlias.WithContext(ctx))
+		resp, err := client.Indices.PutAlias([]string{kind + "_v1"}, kind, client.Indices.PutAlias.WithContext(ctx))
 		if err != nil {
 			return err
 		}
