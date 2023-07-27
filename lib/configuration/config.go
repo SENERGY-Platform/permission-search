@@ -81,10 +81,12 @@ type ConfigStruct struct {
 
 	FatalErrHandler func(v ...interface{}) `json:"-"`
 
-	OpenSearchInsecureSkipVerify bool   `json:"open_search_insecure_skip_verify"`
-	OpenSearchUrls               string `json:"open_search_urls"`
-	OpenSearchUsername           string `json:"open_search_username"`
-	OpenSearchPassword           string `json:"open_search_password"`
+	OpenSearchInsecureSkipVerify    bool   `json:"open_search_insecure_skip_verify"`
+	OpenSearchUrls                  string `json:"open_search_urls"`
+	OpenSearchUsername              string `json:"open_search_username"`
+	OpenSearchPassword              string `json:"open_search_password"`
+	DiscoverOpenSearchNodesOnStart  bool   `json:"discover_open_search_nodes_on_start"` //default off, we use the load balancer
+	DiscoverOpenSearchNodesInterval string `json:"discover_open_search_nodes_interval"` //default off, we use the load balancer
 }
 
 func (this *ConfigStruct) HandleFatalError(v ...interface{}) {

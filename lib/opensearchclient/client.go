@@ -38,12 +38,16 @@ import (
 
 func New(config configuration.Config) (client *opensearch.Client, err error) {
 	ctx := context.Background()
+	var discoverNodesInterval time.Duration
+	if config.DiscoverOpenSearchNodesInterval != "" {
+		discoverNodesInterval, err = time.ParseDuration(config.DiscoverOpenSearchNodesInterval)
+	}
 	client, err = opensearch.NewClient(opensearch.Config{
 		EnableRetryOnTimeout:  true,
 		MaxRetries:            config.MaxRetry,
 		RetryBackoff:          func(i int) time.Duration { return time.Duration(i) * 100 * time.Millisecond },
-		DiscoverNodesOnStart:  true,
-		DiscoverNodesInterval: time.Minute,
+		DiscoverNodesOnStart:  config.DiscoverOpenSearchNodesOnStart,
+		DiscoverNodesInterval: discoverNodesInterval,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: config.OpenSearchInsecureSkipVerify},
 		},

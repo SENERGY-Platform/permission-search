@@ -1,4 +1,4 @@
-name: 'PROD Docker Image'
+name: 'Open-Search Docker Image'
 
 on:
   push:
