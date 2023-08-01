@@ -193,10 +193,30 @@ func TestRightsCommand(t *testing.T) {
 
 	time.Sleep(10 * time.Second) //kafka latency
 
+	aspect1Users := []string{testTokenUser, secendOwnerTokenUser}
+	sort.Strings(aspect1Users)
 	t.Run("list owner after rights change", testRequestWithToken(config, testtoken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
 		getTestAspectResult("aaaa"),
-		getTestAspectResultWithPermissionHolders("aspect1", []string{testTokenUser, secendOwnerTokenUser}, false),
-		getTestAspectResult("aspect2"),
+		getTestAspectResultWithExtendedPermissionHolders("aspect1", map[string][]string{
+			"admin_users":    aspect1Users,
+			"execute_users":  aspect1Users,
+			"read_users":     aspect1Users,
+			"write_users":    aspect1Users,
+			"admin_groups":   {},
+			"execute_groups": {},
+			"read_groups":    {},
+			"write_groups":   {},
+		}, false),
+		getTestAspectResultWithExtendedPermissionHolders("aspect2", map[string][]string{
+			"admin_users":    {"testOwner"},
+			"execute_users":  {"testOwner"},
+			"read_users":     {"testOwner"},
+			"write_users":    {"testOwner"},
+			"admin_groups":   {},
+			"execute_groups": {},
+			"read_groups":    {},
+			"write_groups":   {},
+		}, false),
 		getTestAspectResult("aspect3"),
 		getTestAspectResult("aspect4"),
 		getTestAspectResult("aspect5"),
@@ -210,7 +230,16 @@ func TestRightsCommand(t *testing.T) {
 	}))
 
 	t.Run("list secondOwner after rights change", testRequestWithToken(config, secondOwnerToken, "GET", "/v3/resources/aspects?rights=a", nil, 200, []map[string]interface{}{
-		getTestAspectResultWithPermissionHolders("aspect1", []string{testTokenUser, secendOwnerTokenUser}, true),
+		getTestAspectResultWithExtendedPermissionHolders("aspect1", map[string][]string{
+			"admin_users":    aspect1Users,
+			"execute_users":  aspect1Users,
+			"read_users":     aspect1Users,
+			"write_users":    aspect1Users,
+			"admin_groups":   {},
+			"execute_groups": {},
+			"read_groups":    {},
+			"write_groups":   {},
+		}, true),
 	}))
 
 	t.Run("check done messages", func(t *testing.T) {
