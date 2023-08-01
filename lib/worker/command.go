@@ -207,6 +207,9 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
 		}
+		if entry.Creator == "" {
+			entry.Creator = command.Owner
+		}
 		resp, err := client.Index(
 			kind,
 			opensearchutil.NewJSONReader(entry),
@@ -277,6 +280,9 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
+		}
+		if entry.Creator == "" {
+			entry.Creator = command.Owner
 		}
 		client := this.query.GetClient()
 		resp, err := client.Index(
