@@ -184,11 +184,6 @@ type EntryResultPermissionHolders struct {
 	ReadUsers    []string `json:"read_users"`
 	WriteUsers   []string `json:"write_users"`
 	ExecuteUsers []string `json:"execute_users"`
-
-	AdminGroups   []string `json:"admin_groups"`
-	ReadGroups    []string `json:"read_groups"`
-	WriteGroups   []string `json:"write_groups"`
-	ExecuteGroups []string `json:"execute_groups"`
 }
 
 func (this *Entry) SetResourceRights(rights ResourceRightsBase) {

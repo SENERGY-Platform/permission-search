@@ -1256,20 +1256,12 @@ func getEntryResult(entry model.Entry, user string, groups []string) map[string]
 	sort.Strings(entry.ReadUsers)
 	sort.Strings(entry.WriteUsers)
 	sort.Strings(entry.ExecuteUsers)
-	sort.Strings(entry.AdminGroups)
-	sort.Strings(entry.ReadGroups)
-	sort.Strings(entry.WriteGroups)
-	sort.Strings(entry.ExecuteGroups)
 	if contains(entry.AdminUsers, user) || hasAdminGroup(entry, groups) {
 		permissionHolders := map[string][]string{
-			"admin_users":    entry.AdminUsers,
-			"read_users":     entry.ReadUsers,
-			"write_users":    entry.WriteUsers,
-			"execute_users":  entry.ExecuteUsers,
-			"admin_groups":   entry.AdminGroups,
-			"read_groups":    entry.ReadGroups,
-			"write_groups":   entry.WriteGroups,
-			"execute_groups": entry.ExecuteGroups,
+			"admin_users":   entry.AdminUsers,
+			"read_users":    entry.ReadUsers,
+			"write_users":   entry.WriteUsers,
+			"execute_users": entry.ExecuteUsers,
 		}
 		result["permission_holders"] = permissionHolders
 	}

@@ -357,36 +357,12 @@ func getTestAspectResultWithPermissionHolders(id string, userList []string, shar
 			"rdf_type": "aspect_type",
 		},
 		"permission_holders": map[string][]string{
-			"admin_users":    userList,
-			"execute_users":  userList,
-			"read_users":     userList,
-			"write_users":    userList,
-			"admin_groups":   {"admin"},
-			"execute_groups": {"admin", "user"},
-			"read_groups":    {"admin", "user"},
-			"write_groups":   {"admin"},
+			"admin_users":   userList,
+			"execute_users": userList,
+			"read_users":    userList,
+			"write_users":   userList,
 		},
 		"shared": shared,
-	}
-}
-
-func getTestAspectResultWithExtendedPermissionHolders(id string, permissionHolders map[string][]string, shared bool) map[string]interface{} {
-	return map[string]interface{}{
-		"creator": "testOwner",
-		"id":      id,
-		"name":    id + "_name",
-		"permissions": map[string]bool{
-			"a": true,
-			"r": true,
-			"w": true,
-			"x": true,
-		},
-		"raw": map[string]interface{}{
-			"name":     id + "_name",
-			"rdf_type": "aspect_type",
-		},
-		"permission_holders": permissionHolders,
-		"shared":             shared,
 	}
 }
 
