@@ -64,10 +64,10 @@ func TestAnnotations(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		config.KafkaUrl = zkIp + ":2181"
+		zkUrl := zkIp + ":2181"
 
 		//kafka
-		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
+		config.KafkaUrl, err = Kafka(ctx, wg, zkUrl)
 		if err != nil {
 			t.Error(err)
 			return

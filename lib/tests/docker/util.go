@@ -19,10 +19,8 @@ package docker
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -95,47 +93,4 @@ func retry(timeout time.Duration, f func() error) (err error) {
 		}
 	}
 	return err
-}
-
-func Forward(ctx context.Context, fromPort int, toAddr string) error {
-	log.Println("forward", fromPort, "to", toAddr)
-	incoming, err := net.Listen("tcp", fmt.Sprintf(":%d", fromPort))
-	if err != nil {
-		return err
-	}
-	go func() {
-		defer log.Println("closed forward incoming")
-		<-ctx.Done()
-		incoming.Close()
-	}()
-	go func() {
-		for {
-			client, err := incoming.Accept()
-			if err != nil {
-				log.Println("FORWARD ERROR:", err)
-				return
-			}
-			go handleForwardClient(client, toAddr)
-		}
-	}()
-	return nil
-}
-
-func handleForwardClient(client net.Conn, addr string) {
-	//log.Println("new forward client")
-	target, err := net.Dial("tcp", addr)
-	if err != nil {
-		log.Println("FORWARD ERROR:", err)
-		return
-	}
-	go func() {
-		defer target.Close()
-		defer client.Close()
-		io.Copy(target, client)
-	}()
-	go func() {
-		defer target.Close()
-		defer client.Close()
-		io.Copy(client, target)
-	}()
 }
