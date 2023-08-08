@@ -6,10 +6,8 @@ import (
 	"github.com/segmentio/kafka-go"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/wvanbergen/kazoo-go"
 	"log"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -109,33 +107,7 @@ func Zookeeper(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddr
 			WaitingFor: wait.ForAll(
 				wait.ForLog("binding to port"),
 				wait.ForListeningPort("2181/tcp"),
-				wait.ForNop(waitretry(1*time.Minute, func(ctx context.Context, target wait.StrategyTarget) error {
-					log.Println("try zk connection...")
-					zookeeper := kazoo.NewConfig()
-					host, err := target.Host(ctx)
-					if err != nil {
-						log.Println("host", err)
-						return err
-					}
-					port, err := target.MappedPort(ctx, "2181/tcp")
-					if err != nil {
-						log.Println("port", err)
-						return err
-					}
-					zk, chroot := kazoo.ParseConnectionString(host + ":" + port.Port())
-					zookeeper.Chroot = chroot
-					kz, err := kazoo.NewKazoo(zk, zookeeper)
-					if err != nil {
-						log.Println("kazoo", err)
-						return err
-					}
-					_, err = kz.Brokers()
-					if err != nil && strings.TrimSpace(err.Error()) != strings.TrimSpace("zk: node does not exist") {
-						log.Println("brokers", err)
-						return err
-					}
-					return nil
-				}))),
+			),
 			ExposedPorts:    []string{"2181/tcp"},
 			AlwaysPullImage: true,
 		},
