@@ -43,14 +43,10 @@ func getFreePort() (int, error) {
 
 func Dockerlog(ctx context.Context, container testcontainers.Container, name string) error {
 	container.FollowOutput(&LogWriter{logger: log.New(os.Stdout, "["+name+"] ", log.LstdFlags)})
-	err := container.StartLogProducer(context.Background())
+	err := container.StartLogProducer(ctx)
 	if err != nil {
 		return err
 	}
-	go func() {
-		<-ctx.Done()
-		log.Println("stop container log for", name, container.StopLogProducer())
-	}()
 	return nil
 }
 
