@@ -18,7 +18,7 @@ package topicconfig
 
 import (
 	"errors"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/segmentio/kafka-go"
 	"log"
 	"net"
