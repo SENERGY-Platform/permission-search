@@ -19,17 +19,21 @@ package client
 import (
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"sync"
 )
 
 type TestClient struct {
 	resourceRights map[string]map[string]model.ResourceRights
+	mux            sync.Mutex
 }
 
 func NewTestClient() *TestClient {
-	return &TestClient{resourceRights: map[string]map[string]model.ResourceRights{}}
+	return &TestClient{resourceRights: map[string]map[string]model.ResourceRights{}, mux: sync.Mutex{}}
 }
 
 func (this *TestClient) GetRights(_ string, resource string, id string) (result model.ResourceRights, err error) {
+	this.mux.Lock()
+	defer this.mux.Unlock()
 	resources, ok := this.resourceRights[resource]
 	if !ok {
 		return model.ResourceRights{}, errors.New("not found")
@@ -42,6 +46,8 @@ func (this *TestClient) GetRights(_ string, resource string, id string) (result 
 }
 
 func (this *TestClient) SetRights(resource string, id string, rights model.ResourceRights) {
+	this.mux.Lock()
+	defer this.mux.Unlock()
 	resources, ok := this.resourceRights[resource]
 	if !ok {
 		resources = map[string]model.ResourceRights{}
