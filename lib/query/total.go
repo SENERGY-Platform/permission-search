@@ -48,17 +48,12 @@ func (this *Query) Total(tokenStr string, kind string, options model.ListOptions
 
 func (this *Query) SearchListTotal(token auth.Token, kind string, query string, rights string) (result int64, err error) {
 	filter := getRightsQuery(rights, token.GetUserId(), token.GetRoles())
+	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
 	body := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": filter,
-				"must": []map[string]interface{}{
-					{
-						"match": map[string]interface{}{
-							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
-						},
-					},
-				},
+				"must":   []map[string]interface{}{{searchOperation: searchConfig}},
 			},
 		},
 	}

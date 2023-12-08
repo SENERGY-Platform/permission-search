@@ -59,12 +59,13 @@ type ConfigStruct struct {
 
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`
 
-	Timeout                     string                                       `json:"timeout"`
-	MaxRetry                    int                                          `json:"max_retry"`
-	BulkFlushInterval           string                                       `json:"bulk_flush_interval"`
-	IndexTypeMapping            map[string]map[string]map[string]interface{} `json:"index_type_mapping"`
-	BulkWorkerCount             int64                                        `json:"bulk_worker_count"`
-	UseBulkWorkerForAnnotations bool                                         `json:"use_bulk_worker_for_annotations"`
+	Timeout                             string                                       `json:"timeout"`
+	MaxRetry                            int                                          `json:"max_retry"`
+	BulkFlushInterval                   string                                       `json:"bulk_flush_interval"`
+	IndexTypeMapping                    map[string]map[string]map[string]interface{} `json:"index_type_mapping"`
+	BulkWorkerCount                     int64                                        `json:"bulk_worker_count"`
+	UseBulkWorkerForAnnotations         bool                                         `json:"use_bulk_worker_for_annotations"`
+	EnableCombinedWildcardFeatureSearch bool                                         `json:"enable_combined_wildcard_feature_search"`
 
 	JwtPubRsa string `json:"jwt_pub_rsa"`
 	ForceUser string `json:"force_user"`

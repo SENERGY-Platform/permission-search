@@ -35,6 +35,107 @@ import (
 	"time"
 )
 
+func BenchmarkSearch(b *testing.B) {
+	b.Skip("benchmark")
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config, err := configuration.LoadConfig("./../config.json")
+	if err != nil {
+		b.Error(err)
+		return
+	}
+	config.LogDeprecatedCallsToFile = ""
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		b.Log(v...)
+	}
+
+	config.OpenSearchInsecureSkipVerify = true
+	config.OpenSearchUsername = "admin"
+	config.OpenSearchPassword = "admin"
+
+	b.Run("start dependency containers", func(b *testing.B) {
+		_, ip, err := OpenSearch(ctx, wg)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		config.OpenSearchUrls = "https://" + ip + ":9200"
+
+		_, zkIp, err := Zookeeper(ctx, wg)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		config.KafkaUrl = zkIp + ":2181"
+
+		//kafka
+		config.KafkaUrl, err = Kafka(ctx, wg, config.KafkaUrl)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+	})
+
+	b.Run("start server", func(b *testing.B) {
+		freePort, err := GetFreePort()
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		config.ServerPort = strconv.Itoa(freePort)
+		err = Start(ctx, config, Standalone)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+	})
+
+	deviceNames := []string{"Plug Kühlschrank Backofen ", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "foo", "cator", "heal", "heat"}
+	/*
+		for i := len(deviceNames); i < 1000; i++ {
+			deviceNames = append(deviceNames, uuid.NewString())
+		}
+	*/
+
+	b.Run("create devices", createSearchTestDevicesForBenchmark(ctx, config, deviceNames...))
+
+	time.Sleep(10 * time.Second) //kafka latency
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		b.Run("check cost", checkDeviceSearchForBenchmark(config, "cost"))
+		b.Run("check COST", checkDeviceSearchForBenchmark(config, "COST"))
+		b.Run("check HEAT", checkDeviceSearchForBenchmark(config, "HEAT"))
+		b.Run("check heat", checkDeviceSearchForBenchmark(config, "heat"))
+
+		b.Run("check HEAT_COST", checkDeviceSearchForBenchmark(config, "HEAT_COST"))
+		b.Run("check HeatCost", checkDeviceSearchForBenchmark(config, "HeatCost"))
+		b.Run("check COST_ALLOCATOR", checkDeviceSearchForBenchmark(config, "COST_ALLOCATOR"))
+		b.Run("check CostAllocator", checkDeviceSearchForBenchmark(config, "CostAllocator"))
+
+		b.Run("check HEAT-COST", checkDeviceSearchForBenchmark(config, "HEAT-COST"))
+		b.Run("check Heat-Cost", checkDeviceSearchForBenchmark(config, "Heat-Cost"))
+		b.Run("check COST-ALLOCATOR", checkDeviceSearchForBenchmark(config, "COST-ALLOCATOR"))
+		b.Run("check Cost-Allocator", checkDeviceSearchForBenchmark(config, "Cost-Allocator"))
+
+		b.Run("check Allo", checkDeviceSearchForBenchmark(config, "Allo"))
+
+		b.Run("check Hea", checkDeviceSearchForBenchmark(config, "Hea"))
+
+		b.Run("check küh", checkDeviceSearchForBenchmark(config, "küh"))
+		b.Run("check back", checkDeviceSearchForBenchmark(config, "back"))
+
+		b.Run("check CATOR", checkDeviceSearchForBenchmark(config, "CATOR"))
+		b.Run("check cator", checkDeviceSearchForBenchmark(config, "cator"))
+	}
+
+}
+
 func TestSearch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("short")
@@ -116,10 +217,14 @@ func TestSearch(t *testing.T) {
 	t.Run("check Cost-Allocator", checkDeviceSearch(config, "Cost-Allocator", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator"))
 
 	t.Run("check Allo", checkDeviceSearch(config, "Allo", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator"))
+
 	t.Run("check Hea", checkDeviceSearch(config, "Hea", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "heal", "heat"))
 
 	t.Run("check küh", checkDeviceSearch(config, "küh", "Plug Kühlschrank Backofen "))
 	t.Run("check back", checkDeviceSearch(config, "back", "Plug Kühlschrank Backofen "))
+
+	t.Run("check CATOR", checkDeviceSearch(config, "CATOR", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "cator"))
+	t.Run("check cator", checkDeviceSearch(config, "cator", "HEAT_COST_ALLOCATOR", "HEAT-COST-ALLOCATOR", "HEAT COST ALLOCATOR", "HeatCostAllocator", "cator"))
 }
 
 func checkDeviceSearch(config configuration.Config, searchText string, expectedResultNames ...string) func(t *testing.T) {
@@ -173,9 +278,47 @@ func checkDeviceSearch(config configuration.Config, searchText string, expectedR
 		expectedNames := append([]string{}, expectedResultNames...)
 		sort.Strings(expectedNames)
 		if !reflect.DeepEqual(expectedNames, actualNames) {
-			a, _ := json.Marshal(actualNames)
-			e, _ := json.Marshal(expectedNames)
-			t.Error(string(a), "\n", string(e))
+			t.Errorf("\n%#v\n%#v\n", actualNames, expectedNames)
+		}
+	}
+}
+
+func checkDeviceSearchForBenchmark(config configuration.Config, searchText string) func(b *testing.B) {
+	return func(b *testing.B) {
+		method := "POST"
+		path := "/v3/query"
+		body := new(bytes.Buffer)
+		err := json.NewEncoder(body).Encode(model.QueryMessage{
+			Resource: "devices",
+			Find: &model.QueryFind{
+				QueryListCommons: model.QueryListCommons{
+					Limit:    100,
+					Offset:   0,
+					SortBy:   "name",
+					SortDesc: true,
+				},
+				Search: searchText,
+			},
+		})
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		req, err := http.NewRequest(method, "http://localhost:"+config.ServerPort+path, body)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		req.Header.Set("Authorization", testtoken)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		if resp.StatusCode != 200 {
+			temp, _ := io.ReadAll(resp.Body)
+			b.Error(resp.StatusCode, string(temp))
+			return
 		}
 	}
 }
@@ -197,6 +340,19 @@ func createSearchTestDevices(ctx context.Context, config configuration.Config, n
 	}
 }
 
+func createSearchTestDevicesForBenchmark(ctx context.Context, config configuration.Config, names ...string) func(b *testing.B) {
+	return func(b *testing.B) {
+		p, err := k.NewProducer(ctx, config.KafkaUrl, "devices", true)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		for _, name := range names {
+			b.Run("create "+name, createSearchTestDeviceForBenchmark(p, name))
+		}
+	}
+}
+
 func createSearchTestDevice(p *k.Producer, name string) func(t *testing.T) {
 	return func(t *testing.T) {
 		deviceMsg, deviceCmd, err := getDeviceTestObj(uuid.New().String(), map[string]interface{}{
@@ -209,6 +365,23 @@ func createSearchTestDevice(p *k.Producer, name string) func(t *testing.T) {
 		err = p.Produce(deviceCmd.Id, deviceMsg)
 		if err != nil {
 			t.Error(err)
+			return
+		}
+	}
+}
+
+func createSearchTestDeviceForBenchmark(p *k.Producer, name string) func(b *testing.B) {
+	return func(b *testing.B) {
+		deviceMsg, deviceCmd, err := getDeviceTestObj(uuid.New().String(), map[string]interface{}{
+			"name": name,
+		})
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		err = p.Produce(deviceCmd.Id, deviceMsg)
+		if err != nil {
+			b.Error(err)
 			return
 		}
 	}

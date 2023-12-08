@@ -669,17 +669,12 @@ func (this *Query) SearchRightsToAdministrate(kind string, user string, groups [
 	}
 	ctx := this.getTimeout()
 
+	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
 	body := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": getRightsQuery("a", user, groups),
-				"must": []map[string]interface{}{
-					{
-						"match": map[string]interface{}{
-							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
-						},
-					},
-				},
+				"must":   []map[string]interface{}{{searchOperation: searchConfig}},
 			},
 		},
 	}
@@ -825,6 +820,33 @@ func (this *Query) selectByField(kind string, field string, value string, user s
 	return
 }
 
+func (this *Query) getFeatureSearchInfo(query string) (operator string, config map[string]interface{}) {
+	if strings.Contains(query, "*") {
+		return "wildcard", map[string]interface{}{
+			"feature_search": map[string]interface{}{"case_insensitive": true, "value": query},
+		}
+	}
+	if !this.config.EnableCombinedWildcardFeatureSearch || strings.ContainsAny(query, " -/_:,;([{&%$") {
+		return "match", map[string]interface{}{
+			"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+		}
+	}
+	return "bool", map[string]interface{}{
+		"should": []map[string]interface{}{
+			{
+				"wildcard": map[string]interface{}{
+					"feature_search": map[string]interface{}{"case_insensitive": true, "value": "*" + query + "*"},
+				},
+			},
+			{
+				"match": map[string]interface{}{
+					"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+				},
+			},
+		},
+	}
+}
+
 // SearchList does a text search with query on the feature_search index
 // the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
 func (this *Query) SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error) {
@@ -836,17 +858,12 @@ func (this *Query) SearchList(token auth.Token, kind string, query string, query
 		}
 		filter = append(filter, selectionFilter)
 	}
+	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
 	body := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": filter,
-				"must": []map[string]interface{}{
-					{
-						"match": map[string]interface{}{
-							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
-						},
-					},
-				},
+				"must":   []map[string]interface{}{{searchOperation: searchConfig}},
 			},
 		},
 	}
@@ -885,17 +902,12 @@ func (this *Query) SearchList(token auth.Token, kind string, query string, query
 func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
 
+	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
 	body := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": getRightsQuery(rights, user, groups),
-				"must": []map[string]interface{}{
-					{
-						"match": map[string]interface{}{
-							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
-						},
-					},
-				},
+				"must":   []map[string]interface{}{{searchOperation: searchConfig}},
 			},
 		},
 	}
@@ -929,17 +941,12 @@ func (this *Query) searchList(kind string, query string, user string, groups []s
 func (this *Query) SearchOrderedList(kind string, query string, user string, groups []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
 
+	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
 	body := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
 				"filter": getRightsQuery(queryCommons.Rights, user, groups),
-				"must": []map[string]interface{}{
-					{
-						"match": map[string]interface{}{
-							"feature_search": map[string]interface{}{"operator": "AND", "query": query},
-						},
-					},
-				},
+				"must":   []map[string]interface{}{{searchOperation: searchConfig}},
 			},
 		},
 	}
