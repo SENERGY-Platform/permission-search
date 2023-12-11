@@ -35,8 +35,8 @@ func Query[Result any](client Client, token string, query model.QueryMessage) (r
 }
 
 type WithTotal[Result any] struct {
-	Total  int64
-	Result Result
+	Total  int64  `json:"total"`
+	Result Result `json:"result"`
 }
 
 func QueryWithTotal[Result any](client Client, token string, query model.QueryMessage) (result WithTotal[Result], code int, err error) {

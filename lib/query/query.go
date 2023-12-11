@@ -1134,8 +1134,8 @@ func (this *Query) GetListWithSelection(token auth.Token, kind string, queryComm
 }
 
 type WithTotal struct {
-	Total  int64
-	Result interface{}
+	Total  int64       `json:"total"`
+	Result interface{} `json:"result"`
 }
 
 func (this *Query) Query(tokenStr string, query model.QueryMessage) (result interface{}, code int, err error) {
