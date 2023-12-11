@@ -821,26 +821,27 @@ func (this *Query) selectByField(kind string, field string, value string, user s
 }
 
 func (this *Query) getFeatureSearchInfo(query string) (operator string, config map[string]interface{}) {
-	if strings.Contains(query, "*") {
+	search := strings.TrimSpace(query)
+	if strings.Contains(search, "*") {
 		return "wildcard", map[string]interface{}{
-			"feature_search": map[string]interface{}{"case_insensitive": true, "value": query},
+			"feature_search": map[string]interface{}{"case_insensitive": true, "value": search},
 		}
 	}
-	if !this.config.EnableCombinedWildcardFeatureSearch || strings.ContainsAny(query, " -/_:,;([{&%$") {
+	if !this.config.EnableCombinedWildcardFeatureSearch || strings.ContainsAny(search, " -/_:,;([{&%$") {
 		return "match", map[string]interface{}{
-			"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+			"feature_search": map[string]interface{}{"operator": "AND", "query": search},
 		}
 	}
 	return "bool", map[string]interface{}{
 		"should": []map[string]interface{}{
 			{
 				"wildcard": map[string]interface{}{
-					"feature_search": map[string]interface{}{"case_insensitive": true, "value": "*" + query + "*"},
+					"feature_search": map[string]interface{}{"case_insensitive": true, "value": "*" + search + "*"},
 				},
 			},
 			{
 				"match": map[string]interface{}{
-					"feature_search": map[string]interface{}{"operator": "AND", "query": query},
+					"feature_search": map[string]interface{}{"operator": "AND", "query": search},
 				},
 			},
 		},
