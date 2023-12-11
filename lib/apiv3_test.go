@@ -633,6 +633,48 @@ func TestApiV3(t *testing.T) {
 		}
 	})
 
+	t.Run("client query search total", func(t *testing.T) {
+		actual, _, err := client.QueryWithTotal[[]TestAspect](c, ctoken, client.QueryMessage{
+			Resource: "aspects",
+			Find: &client.QueryFind{
+				QueryListCommons: client.QueryListCommons{
+					Limit:    3,
+					Offset:   1,
+					SortBy:   "name",
+					SortDesc: true,
+				},
+				Search: "aspect",
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		temp, err := client.JsonCast[[]TestAspect]([]map[string]interface{}{
+			getTestAspectResult("aspect4"),
+			getTestAspectResult("aspect3"),
+			getTestAspectResult("aspect2"),
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		expected := client.WithTotal[[]TestAspect]{
+			Result: temp,
+			Total:  5,
+		}
+		if len(expected.Result) == 0 || expected.Result[0].Name == "" {
+			t.Error(expected)
+			return
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("\n%#v\n%#v\n", expected, actual)
+			actualJson, _ := json.Marshal(actual)
+			expectedJson, _ := json.Marshal(expected)
+			t.Log("\n", string(actualJson), "\n", string(expectedJson))
+		}
+	})
+
 	t.Run("query search", testRequest(config, "POST", "/v3/query", model.QueryMessage{
 		Resource: "aspects",
 		Find: &model.QueryFind{
@@ -717,6 +759,47 @@ func TestApiV3(t *testing.T) {
 		}
 	})
 
+	t.Run("client query search filter with total", func(t *testing.T) {
+		actual, _, err := client.QueryWithTotal[[]TestAspect](c, ctoken, client.QueryMessage{
+			Resource: "aspects",
+			Find: &client.QueryFind{
+				Filter: &client.Selection{
+					Condition: client.ConditionConfig{
+						Feature:   "features.name",
+						Operation: "==",
+						Value:     "aspect5_name",
+					},
+				},
+				Search: "aspect",
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		temp, err := client.JsonCast[[]TestAspect]([]map[string]interface{}{
+			getTestAspectResult("aspect5"),
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		expected := client.WithTotal[[]TestAspect]{
+			Result: temp,
+			Total:  1,
+		}
+		if len(expected.Result) == 0 || expected.Result[0].Name == "" {
+			t.Error(expected)
+			return
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("\n%#v\n%#v\n", expected, actual)
+			actualJson, _ := json.Marshal(actual)
+			expectedJson, _ := json.Marshal(expected)
+			t.Log("\n", string(actualJson), "\n", string(expectedJson))
+		}
+	})
+
 	t.Run("query search filter", testRequest(config, "POST", "/v3/query", model.QueryMessage{
 		Resource: "aspects",
 		Find: &model.QueryFind{
@@ -787,6 +870,46 @@ func TestApiV3(t *testing.T) {
 			return
 		}
 		if len(expected) == 0 || expected[0].Name == "" {
+			t.Error(expected)
+			return
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("\n%#v\n%#v\n", expected, actual)
+			actualJson, _ := json.Marshal(actual)
+			expectedJson, _ := json.Marshal(expected)
+			t.Log("\n", string(actualJson), "\n", string(expectedJson))
+		}
+	})
+
+	t.Run("client query filter Total", func(t *testing.T) {
+		actual, _, err := client.QueryWithTotal[[]TestAspect](c, ctoken, client.QueryMessage{
+			Resource: "aspects",
+			Find: &client.QueryFind{
+				Filter: &client.Selection{
+					Condition: client.ConditionConfig{
+						Feature:   "features.name",
+						Operation: "==",
+						Value:     "aspect5_name",
+					},
+				},
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		temp, err := client.JsonCast[[]TestAspect]([]map[string]interface{}{
+			getTestAspectResult("aspect5"),
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		expected := client.WithTotal[[]TestAspect]{
+			Result: temp,
+			Total:  1,
+		}
+		if len(expected.Result) == 0 || expected.Result[0].Name == "" {
 			t.Error(expected)
 			return
 		}
@@ -900,6 +1023,48 @@ func TestApiV3(t *testing.T) {
 			return
 		}
 		if len(expected) == 0 || expected[0].Name == "" {
+			t.Error(expected)
+			return
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("\n%#v\n%#v\n", expected, actual)
+			actualJson, _ := json.Marshal(actual)
+			expectedJson, _ := json.Marshal(expected)
+			t.Log("\n", string(actualJson), "\n", string(expectedJson))
+		}
+	})
+
+	t.Run("client query ids 5 generic total", func(t *testing.T) {
+		actual, _, err := client.QueryWithTotal[[]TestAspect](c, ctoken, client.QueryMessage{
+			Resource: "aspects",
+			ListIds: &client.QueryListIds{
+				QueryListCommons: client.QueryListCommons{
+					Limit:    3,
+					Offset:   1,
+					SortBy:   "name",
+					SortDesc: true,
+				},
+				Ids: []string{"aspect1", "aspect2", "aspect3", "aspect4", "aspect5"},
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		temp, err := client.JsonCast[[]TestAspect]([]map[string]interface{}{
+			getTestAspectResult("aspect4"),
+			getTestAspectResult("aspect3"),
+			getTestAspectResult("aspect2"),
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		expected := client.WithTotal[[]TestAspect]{
+			Result: temp,
+			Total:  5,
+		}
+		if len(expected.Result) == 0 || expected.Result[0].Name == "" {
 			t.Error(expected)
 			return
 		}

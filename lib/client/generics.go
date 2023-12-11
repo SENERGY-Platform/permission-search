@@ -34,6 +34,21 @@ func Query[Result any](client Client, token string, query model.QueryMessage) (r
 	return result, code, err
 }
 
+type WithTotal[Result any] struct {
+	Total  int64
+	Result Result
+}
+
+func QueryWithTotal[Result any](client Client, token string, query model.QueryMessage) (result WithTotal[Result], code int, err error) {
+	if query.Find != nil {
+		query.Find.QueryListCommons.WithTotal = true
+	}
+	if query.ListIds != nil {
+		query.ListIds.QueryListCommons.WithTotal = true
+	}
+	return Query[WithTotal[Result]](client, token, query)
+}
+
 func List[Result any](client Client, token string, kind string, options model.ListOptions) (result Result, err error) {
 	temp, err := client.List(token, kind, options)
 	if err != nil {

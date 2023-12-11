@@ -67,6 +67,8 @@ type QueryListCommons struct {
 	// possible modifiers can be found and configured in the configuration.json under result_modifiers
 	// example value: url.Values{"service_group_selection": {"a8ee3b1c-4cda-4f0d-9f55-4ef4882ce0af"}}
 	AddIdModifier url.Values `json:"add_id_modifier,omitempty"`
+
+	WithTotal bool `json:"with_total"`
 }
 
 type ListAfter struct {

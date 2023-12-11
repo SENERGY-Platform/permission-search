@@ -316,7 +316,7 @@ func (this *Query) CheckListUserOrGroup(token auth.Token, kind string, ids []str
 	return allowed, nil
 }
 
-func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) getListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, total int64, err error) {
 	ctx := this.getTimeout()
 	terms := []interface{}{}
 
@@ -343,26 +343,30 @@ func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, q
 		this.opensearchClient.Search.WithIndex(kind),
 	}
 	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+	if queryCommons.WithTotal {
+		options = append(options, this.opensearchClient.Search.WithTrackTotalHits(true))
+	}
 
 	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
-		return result, errors.New(resp.String())
+		return result, 0, errors.New(resp.String())
 	}
 	pl := model.SearchResult[model.Entry]{}
 	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	modifyCache := modifier.NewModifyResourceReferenceCache()
+	total = pl.Hits.Total.Value
 	for _, hit := range pl.Hits.Hits {
 		entry := hit.Source
 		modifiedResults, err := this.modifier.UsePreparedModify(preparedModify, entry, kind, modifyCache)
 		if err != nil {
-			return result, err
+			return result, 0, err
 		}
 		for _, modifiedResult := range modifiedResults {
 			result = append(result, getEntryResult(modifiedResult, token.GetUserId(), token.GetRoles()))
@@ -371,7 +375,12 @@ func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, q
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
-	return result, nil
+	return result, total, nil
+}
+
+func (this *Query) GetListFromIds(token auth.Token, kind string, ids []string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+	result, _, err = this.getListFromIds(token, kind, ids, queryCommons)
+	return
 }
 
 func (this *Query) GetFullListForUserOrGroup(kind string, user string, groups []string, rights string) (result []map[string]interface{}, err error) {
@@ -439,7 +448,7 @@ func (this *Query) getListForUserOrGroup(kind string, user string, groups []stri
 	return
 }
 
-func (this *Query) GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) getList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, total int64, err error) {
 	ctx := this.getTimeout()
 
 	query := map[string]interface{}{
@@ -456,26 +465,35 @@ func (this *Query) GetList(token auth.Token, kind string, queryCommons model.Que
 		this.opensearchClient.Search.WithVersion(true),
 	}
 	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+	if queryCommons.WithTotal {
+		options = append(options, this.opensearchClient.Search.WithTrackTotalHits(true))
+	}
 
 	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
-		return result, errors.New(resp.String())
+		return result, 0, errors.New(resp.String())
 	}
 	pl := model.SearchResult[model.Entry]{}
 	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
+	total = pl.Hits.Total.Value
 	for _, hit := range pl.Hits.Hits {
 		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
+	return
+}
+
+func (this *Query) GetList(token auth.Token, kind string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+	result, _, err = this.getList(token, kind, queryCommons)
 	return
 }
 
@@ -710,7 +728,7 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 	offset := 0
 	temp := []map[string]interface{}{}
 	for ok := true; ok; ok = len(temp) > 0 {
-		temp, err = this.searchList(kind, query, user, groups, rights, limit, offset)
+		temp, err = this.searchListAll(kind, query, user, groups, rights, limit, offset)
 		if err != nil {
 			return result, err
 		}
@@ -720,7 +738,7 @@ func (this *Query) SearchListAll(kind string, query string, user string, groups 
 	return
 }
 
-func (this *Query) SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+func (this *Query) selectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, total int64, err error) {
 	ctx := this.getTimeout()
 	if !strings.HasPrefix(feature, "features.") && !strings.HasPrefix(feature, "annotations.") {
 		feature = "features." + feature
@@ -742,27 +760,36 @@ func (this *Query) SelectByFeature(token auth.Token, kind string, feature string
 		this.opensearchClient.Search.WithIndex(kind),
 	}
 	options = append(options, withPaginationAndBody(this.opensearchClient.Search, query, queryCommons)...)
+	if queryCommons.WithTotal {
+		options = append(options, this.opensearchClient.Search.WithTrackTotalHits(true))
+	}
 
 	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
-		return result, errors.New(resp.String())
+		return result, 0, errors.New(resp.String())
 	}
 	pl := model.SearchResult[model.Entry]{}
 	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 
+	total = pl.Hits.Total.Value
 	for _, hit := range pl.Hits.Hits {
 		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
 	if len(queryCommons.AddIdModifier) > 0 {
 		result, err, _ = this.addParsedModifier(token, kind, result, queryCommons.AddIdModifier, queryCommons.Rights, queryCommons.SortBy, queryCommons.SortDesc)
 	}
+	return
+}
+
+func (this *Query) SelectByFeature(token auth.Token, kind string, feature string, value string, queryCommons model.QueryListCommons) (result []map[string]interface{}, err error) {
+	result, _, err = this.selectByFeature(token, kind, feature, value, queryCommons)
 	return
 }
 
@@ -848,14 +875,12 @@ func (this *Query) getFeatureSearchInfo(query string) (operator string, config m
 	}
 }
 
-// SearchList does a text search with query on the feature_search index
-// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
-func (this *Query) SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error) {
+func (this *Query) searchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, total int64, err error) {
 	filter := getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())
 	if selection != nil {
 		selectionFilter, err := this.GetFilter(token, *selection)
 		if err != nil {
-			return result, err
+			return result, 0, err
 		}
 		filter = append(filter, selectionFilter)
 	}
@@ -877,20 +902,24 @@ func (this *Query) SearchList(token auth.Token, kind string, query string, query
 		this.opensearchClient.Search.WithVersion(true),
 	}
 	options = append(options, withPaginationAndBody(this.opensearchClient.Search, body, queryCommons)...)
+	if queryCommons.WithTotal {
+		options = append(options, this.opensearchClient.Search.WithTrackTotalHits(true))
+	}
 
 	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
-		return result, errors.New(resp.String())
+		return result, 0, errors.New(resp.String())
 	}
 	pl := model.SearchResult[model.Entry]{}
 	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
+	total = pl.Hits.Total.Value
 	for _, hit := range pl.Hits.Hits {
 		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
@@ -900,7 +929,14 @@ func (this *Query) SearchList(token auth.Token, kind string, query string, query
 	return
 }
 
-func (this *Query) searchList(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
+// SearchList does a text search with query on the feature_search index
+// the function allows optionally additional filtering with the selection parameter. when unneeded this parameter may be nil.
+func (this *Query) SearchList(token auth.Token, kind string, query string, queryCommons model.QueryListCommons, selection *model.Selection) (result []map[string]interface{}, err error) {
+	result, _, err = this.searchList(token, kind, query, queryCommons, selection)
+	return
+}
+
+func (this *Query) searchListAll(kind string, query string, user string, groups []string, rights string, limit int, offset int) (result []map[string]interface{}, err error) {
 	ctx := this.getTimeout()
 
 	searchOperation, searchConfig := this.getFeatureSearchInfo(query)
@@ -1042,11 +1078,12 @@ func getPermissions(entry model.Entry, user string, groups []string) (result map
 	}
 	return
 }
-func (this *Query) GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error) {
+
+func (this *Query) getListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, total int64, err error) {
 	filter := getRightsQuery(queryCommons.Rights, token.GetUserId(), token.GetRoles())
 	selectionFilter, err := this.GetFilter(token, selection)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	filter = append(filter, selectionFilter)
 	body := map[string]interface{}{
@@ -1065,20 +1102,23 @@ func (this *Query) GetListWithSelection(token auth.Token, kind string, queryComm
 		this.opensearchClient.Search.WithVersion(true),
 	}
 	options = append(options, withPaginationAndBody(this.opensearchClient.Search, body, queryCommons)...)
+	if queryCommons.WithTotal {
+		options = append(options, this.opensearchClient.Search.WithTrackTotalHits(true))
+	}
 
 	resp, err := this.opensearchClient.Search(options...)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	if resp.IsError() {
-		return result, errors.New(resp.String())
+		return result, 0, errors.New(resp.String())
 	}
 	pl := model.SearchResult[model.Entry]{}
 	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
-
+	total = pl.Hits.Total.Value
 	for _, hit := range pl.Hits.Hits {
 		result = append(result, getEntryResult(hit.Source, token.GetUserId(), token.GetRoles()))
 	}
@@ -1088,12 +1128,23 @@ func (this *Query) GetListWithSelection(token auth.Token, kind string, queryComm
 	return
 }
 
+func (this *Query) GetListWithSelection(token auth.Token, kind string, queryCommons model.QueryListCommons, selection model.Selection) (result []map[string]interface{}, err error) {
+	result, _, err = this.getListWithSelection(token, kind, queryCommons, selection)
+	return
+}
+
+type WithTotal struct {
+	Total  int64
+	Result interface{}
+}
+
 func (this *Query) Query(tokenStr string, query model.QueryMessage) (result interface{}, code int, err error) {
 	token, err := auth.Parse(tokenStr)
 	if err != nil {
 		return result, model.GetErrCode(err), err
 	}
 	if query.Find != nil {
+		var total int64
 		if query.Find.Limit == 0 {
 			query.Find.Limit = 100
 		}
@@ -1106,19 +1157,19 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 		}
 		if query.Find.Search == "" {
 			if query.Find.Filter == nil {
-				result, err = this.GetList(
+				result, total, err = this.getList(
 					token,
 					query.Resource,
 					query.Find.QueryListCommons)
 			} else {
-				result, err = this.GetListWithSelection(
+				result, total, err = this.getListWithSelection(
 					token,
 					query.Resource,
 					query.Find.QueryListCommons,
 					*query.Find.Filter)
 			}
 		} else {
-			result, err = this.SearchList(
+			result, total, err = this.searchList(
 				token,
 				query.Resource,
 				query.Find.Search,
@@ -1129,6 +1180,12 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 			result, err, code = this.addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.Find.AddIdModifier, query.Find.Rights, query.Find.SortBy, query.Find.SortDesc)
 			if err != nil {
 				return
+			}
+		}
+		if query.Find.QueryListCommons.WithTotal {
+			result = WithTotal{
+				Total:  total,
+				Result: result,
 			}
 		}
 	}
@@ -1142,6 +1199,7 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 	}
 
 	if query.ListIds != nil {
+		var total int64
 		if query.ListIds.Limit == 0 {
 			query.ListIds.Limit = 100
 		}
@@ -1152,7 +1210,7 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 		if err != nil {
 			return result, model.GetErrCode(err), err
 		}
-		result, err = this.GetListFromIds(
+		result, total, err = this.getListFromIds(
 			token,
 			query.Resource,
 			query.ListIds.Ids,
@@ -1162,6 +1220,12 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 			result, err, code = this.addParsedModifier(token, query.Resource, result.([]map[string]interface{}), query.ListIds.AddIdModifier, query.ListIds.Rights, query.ListIds.SortBy, query.ListIds.SortDesc)
 			if err != nil {
 				return result, code, err
+			}
+		}
+		if query.ListIds.QueryListCommons.WithTotal {
+			result = WithTotal{
+				Total:  total,
+				Result: result,
 			}
 		}
 	}
