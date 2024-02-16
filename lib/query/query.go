@@ -1233,6 +1233,9 @@ func (this *Query) Query(tokenStr string, query model.QueryMessage) (result inte
 	if query.TermAggregate != nil {
 		result, err = this.getTermAggregation(token, query.Resource, "r", *query.TermAggregate, query.TermAggregateLimit)
 	}
+	if err != nil && code == 0 {
+		code = model.GetErrCode(err)
+	}
 	return
 }
 

@@ -248,6 +248,9 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		result, code, err := q.Query(token, query)
 
 		if err != nil {
+			if code == 0 {
+				code = http.StatusInternalServerError
+			}
 			http.Error(writer, err.Error(), code)
 			return
 		}
