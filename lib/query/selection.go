@@ -116,10 +116,12 @@ func (this *Query) GetConditionFilter(token auth.Token, condition model.Conditio
 			}, nil
 		} else {
 			return map[string]interface{}{
-				"must_not": []map[string]interface{}{
-					{
-						"term": map[string]interface{}{
-							condition.Feature: val,
+				"bool": map[string]interface{}{
+					"must_not": []map[string]interface{}{
+						{
+							"term": map[string]interface{}{
+								condition.Feature: val,
+							},
 						},
 					},
 				},

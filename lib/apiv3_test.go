@@ -1269,6 +1269,86 @@ func TestApiV3(t *testing.T) {
 
 	t.Run("get rights of unknown with admin", testRequestWithToken(config, admintoken, "GET", "/v3/administrate/rights/aspects/unknown", nil, 404, nil))
 
+	t.Run("filter creator by jwt ref", testRequestWithToken(config, admintoken, "POST", "/v3/query/aspects", model.QueryMessage{
+		Resource: "aspects",
+		Find: &model.QueryFind{
+			QueryListCommons: model.QueryListCommons{
+				Rights:   "r",
+				SortDesc: true,
+			},
+			Search: "",
+			Filter: &model.Selection{
+				Condition: model.ConditionConfig{
+					Feature:   "creator",
+					Operation: "!=",
+					Ref:       "jwt.user",
+				},
+			},
+		},
+	}, 200, nil))
+
+	t.Run("filter creator by jwt ref client", func(t *testing.T) {
+		result, code, err := client.Query[[]any](c, admintoken, model.QueryMessage{
+			Resource: "aspects",
+			Find: &model.QueryFind{
+				QueryListCommons: model.QueryListCommons{
+					Rights:   "r",
+					SortDesc: true,
+				},
+				Search: "",
+				Filter: &model.Selection{
+					Condition: model.ConditionConfig{
+						Feature:   "creator",
+						Operation: "!=",
+						Ref:       "jwt.user",
+					},
+				},
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if code != 200 {
+			t.Error(code)
+			return
+		}
+		if len(result) == 0 {
+			t.Error(result)
+			return
+		}
+
+		result, code, err = client.Query[[]any](c, testtoken, model.QueryMessage{
+			Resource: "aspects",
+			Find: &model.QueryFind{
+				QueryListCommons: model.QueryListCommons{
+					Rights:   "r",
+					SortDesc: true,
+				},
+				Search: "",
+				Filter: &model.Selection{
+					Condition: model.ConditionConfig{
+						Feature:   "creator",
+						Operation: "!=",
+						Ref:       "jwt.user",
+					},
+				},
+			},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if code != 200 {
+			t.Error(code)
+			return
+		}
+		if len(result) != 0 {
+			t.Error(result)
+			return
+		}
+	})
+
 }
 
 func jsonNormaliseMap(in []map[string]interface{}) (out []map[string]interface{}) {
