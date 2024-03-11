@@ -203,6 +203,10 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		if err != nil {
 			return err
 		}
+		if entry.Resource == "" {
+			log.Printf("WARNING: ignore UpdateFeatures without id %#v\n", command)
+			return nil
+		}
 		entry.Features = features
 		if entry.Creator == "" && len(entry.AdminUsers) > 0 {
 			entry.Creator = entry.AdminUsers[0]
@@ -267,6 +271,10 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 		entry, version, err := this.query.GetResourceEntry(kind, command.Id)
 		if err != nil {
 			return err
+		}
+		if entry.Resource == "" {
+			log.Printf("WARNING: ignore UpdateRights without id %#v\n", command)
+			return nil
 		}
 		entry.AdminUsers = []string{}
 		entry.AdminGroups = []string{}

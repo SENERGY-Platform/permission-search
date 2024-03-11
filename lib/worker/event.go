@@ -138,6 +138,14 @@ func (this *Worker) HandlePermissionCommand(msg []byte) (err error) {
 	if err != nil {
 		return
 	}
+	if command.Resource == "" {
+		log.Printf("WARNING: ignore permission command without id %#v\n", command)
+		return nil
+	}
+	if command.Kind == "" {
+		log.Printf("WARNING: ignore permission command without kind %#v\n", command)
+		return nil
+	}
 	defer func() {
 		if err == nil {
 			err = this.SendDone(model.Done{
@@ -176,6 +184,12 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 		if err != nil {
 			return
 		}
+
+		if command.Id == "" {
+			log.Printf("WARNING: ignore command without id %#v\n", command)
+			return nil
+		}
+
 		defer func() {
 			if err == nil {
 				err = this.SendDone(model.Done{
@@ -185,6 +199,7 @@ func (this *Worker) GetResourceCommandHandler(resourceName string) func(delivery
 				})
 			}
 		}()
+
 		switch command.Command {
 		case "RIGHTS":
 			//RIGHTS commands are expected to be produced in the same partition as PUT and DELETE commands for the same resource/id
@@ -229,6 +244,11 @@ func (this *Worker) HandleAnnotationMsg(annotationTopic string, resource string,
 	idStr, ok := id.(string)
 	if !ok {
 		log.Println("WARNING: _id field in annotation is not string --> ignore ", resource, annotationTopic)
+		return nil
+	}
+
+	if idStr == "" {
+		log.Printf("WARNING: ignore annotation without id %#v\n", fields)
 		return nil
 	}
 
