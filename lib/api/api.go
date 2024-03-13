@@ -23,6 +23,7 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/api/util"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/rigthsproducer"
+	"github.com/SENERGY-Platform/service-commons/pkg/accesslog"
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
@@ -81,7 +82,7 @@ func GetRouter(config configuration.Config, query Query, p *rigthsproducer.Produ
 
 	}
 	handler = util.NewCors(router)
-	handler = util.NewLogger(handler)
+	handler = accesslog.New(handler)
 	handler, err = util.NewDeprecatedRespHeaderLogger(handler, config.LogDeprecatedCallsToFile)
 	if err != nil {
 		return handler, err
