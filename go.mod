@@ -13,7 +13,7 @@ require (
 require (
 	github.com/IBM/sarama v1.43.0
 	github.com/PaesslerAG/gval v1.2.2
-	github.com/SENERGY-Platform/service-commons v0.0.0-20240313123621-ce10fbe36496
+	github.com/SENERGY-Platform/service-commons v0.0.0-20240314112519-5bde66831b0d
 	github.com/mdaverde/jsonpath v0.2.1
 	github.com/opensearch-project/opensearch-go v1.1.0
 	github.com/testcontainers/testcontainers-go v0.29.1
