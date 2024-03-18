@@ -17,78 +17,11 @@
 package auth
 
 import (
-	"errors"
-	"fmt"
-	"github.com/SENERGY-Platform/permission-search/lib/model"
-	"github.com/golang-jwt/jwt"
-	"net/http"
-	"strings"
+	"github.com/SENERGY-Platform/service-commons/pkg/jwt"
 )
 
-func Parse(token string) (claims Token, err error) {
-	orig := token
-	if len(token) > 7 && strings.ToLower(token[:7]) == "bearer " {
-		token = token[7:]
-	}
-	_, _, err = new(jwt.Parser).ParseUnverified(token, &claims)
-	if err == nil {
-		claims.Token = orig
-	} else {
-		err = fmt.Errorf("%w: %v", model.ErrInvalidAuth, err.Error())
-	}
-	return
-}
+var GetAuthToken = jwt.GetAuthToken
+var GetParsedToken = jwt.GetParsedToken
+var Parse = jwt.Parse
 
-func GetAuthToken(req *http.Request) string {
-	return req.Header.Get("Authorization")
-}
-
-func GetParsedToken(req *http.Request) (token Token, err error) {
-	return Parse(GetAuthToken(req))
-}
-
-type Token struct {
-	Token       string              `json:"-"`
-	Sub         string              `json:"sub,omitempty"`
-	RealmAccess map[string][]string `json:"realm_access,omitempty"`
-}
-
-func (this *Token) String() string {
-	return this.Token
-}
-
-func (this *Token) Jwt() string {
-	return this.Token
-}
-
-func (this *Token) Valid() error {
-	if this.Sub == "" {
-		return errors.New("missing subject")
-	}
-	return nil
-}
-
-func (this *Token) IsAdmin() bool {
-	return this.HasRole("admin")
-}
-
-func (this *Token) GetUserId() string {
-	return this.Sub
-}
-
-func (this *Token) GetRoles() []string {
-	return this.RealmAccess["roles"]
-}
-
-func (this *Token) HasRole(role string) bool {
-	return contains(this.GetRoles(), role)
-}
-
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
+type Token = jwt.Token
