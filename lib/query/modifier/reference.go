@@ -47,12 +47,12 @@ func (this *Modifier) loadReferences(references map[string]configuration.Modifie
 		}
 		value, err := jsonPathGetFirst(resourceElement, reference.Path)
 		if err != nil {
-			log.Println("WARNING: loadReferences() path error", "\n\t", reference.Path, "\n\t", resourceElement, "\n\t", err)
+			log.Printf("WARNING: loadReferences() path error path=%v \n\tresource=%#v\n\terr=%v\n", reference.Path, resourceElement, err)
 			result[name] = reference.Default
 			continue
 		}
 		if value != nil {
-			log.Println("WARNING: loadReferences() path not found", "\n\t", reference.Path, "\n\t", resourceElement)
+			log.Printf("WARNING: loadReferences() path not found path=%v \n\tresource=%#v\n", reference.Path, resourceElement)
 			result[name] = value
 		} else {
 			result[name] = reference.Default

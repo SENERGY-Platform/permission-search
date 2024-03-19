@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/segmentio/kafka-go v0.4.47

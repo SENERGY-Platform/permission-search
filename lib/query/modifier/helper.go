@@ -18,6 +18,7 @@ package modifier
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/SENERGY-Platform/permission-search/lib/jsonpath"
 	"text/template"
 )
@@ -37,7 +38,7 @@ func useTemplate(name string, tmpl string, placeholders interface{}) (result str
 }
 
 func jsonPathGetFirst(v interface{}, path string) (value interface{}, err error) {
-	value, err = jsonpath.UseJsonPathWithScriptOnObj(v, path)
+	value, err = jsonpath.UseJsonPathWithScriptOnObj(normalize(v), path)
 	if err != nil {
 		return value, err
 	}
@@ -49,4 +50,16 @@ func jsonPathGetFirst(v interface{}, path string) (value interface{}, err error)
 		}
 	}
 	return
+}
+
+func normalize(v interface{}) (result interface{}) {
+	temp, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+	err = json.Unmarshal(temp, &result)
+	if err != nil {
+		return v
+	}
+	return result
 }

@@ -53,3 +53,24 @@ func TestEncodingOrderPreserved(t *testing.T) {
 		t.Error(result)
 	}
 }
+
+func TestJsonPathGetFirst(t *testing.T) {
+	result, err := jsonPathGetFirst(map[string]interface{}{"features": map[string]interface{}{"service_groups": []interface{}{map[string]interface{}{"key": "c3b8fc33-1899-4595-a6fc-eb85ff24a0de", "name": "Total"}}}},
+		"$.features.service_groups[?@.key==\"c3b8fc33-1899-4595-a6fc-eb85ff24a0de\"].name")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result != "Total" {
+		t.Error(result)
+	}
+	result, err = jsonPathGetFirst(map[string]interface{}{"features": map[string]interface{}{"service_groups": []map[string]interface{}{{"key": "c3b8fc33-1899-4595-a6fc-eb85ff24a0de", "name": "Total"}}}},
+		"$.features.service_groups[?@.key==\"c3b8fc33-1899-4595-a6fc-eb85ff24a0de\"].name")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if result != "Total" {
+		t.Error(result)
+	}
+}
