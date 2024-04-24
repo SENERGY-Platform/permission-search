@@ -19,6 +19,7 @@ package lib
 import (
 	"context"
 	"fmt"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"reflect"
@@ -27,6 +28,55 @@ import (
 	"testing"
 	"time"
 )
+
+func TestDeviceImmediatelySearchable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short")
+	}
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, q, w, err := getTestEnv(ctx, wg, t)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	type Attribute struct {
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+		Origin string `json:"origin"`
+	}
+
+	type Device struct {
+		Id           string      `json:"id"`
+		LocalId      string      `json:"local_id"`
+		Name         string      `json:"name"`
+		Attributes   []Attribute `json:"attributes"`
+		DeviceTypeId string      `json:"device_type_id"`
+	}
+
+	deviceMsg, deviceCmd, err := getDeviceTestObj("device1", Device{
+		Id:         "device1",
+		Name:       "device1",
+		Attributes: nil,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.UpdateFeatures("devices", deviceMsg, deviceCmd)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = q.CheckUserOrGroupFromAuthToken(auth.Token{Sub: "testOwner"}, "devices", "device1", "r")
+	if err != nil {
+		t.Error(err)
+	}
+}
 
 func TestDeviceComplexPathAndAttribute(t *testing.T) {
 	if testing.Short() {

@@ -30,6 +30,7 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -232,42 +233,50 @@ func (this *Query) CheckUserOrGroup(tokenStr string, kind string, resource strin
 
 func (this *Query) CheckUserOrGroupFromAuthToken(token auth.Token, kind string, resource string, rights string) (err error) {
 	pureId, _ := modifier.SplitModifier(resource)
-	ctx := this.getTimeout()
-	filter := getRightsQuery(rights, token.GetUserId(), token.GetRoles())
-	filter = append(filter, map[string]interface{}{
-		"term": map[string]interface{}{
-			"resource": pureId,
-		},
-	})
-	resp, err := this.opensearchClient.Search(this.opensearchClient.Search.WithIndex(kind),
-		this.opensearchClient.Search.WithContext(ctx),
-		this.opensearchClient.Search.WithVersion(true),
-		this.opensearchClient.Search.WithSize(1),
-		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(map[string]interface{}{
-			"query": map[string]interface{}{
-				"bool": map[string]interface{}{
-					"filter": filter,
-				},
-			},
-		})),
-	)
-	if err != nil {
-		return err
+	e, _, err := this.GetResourceEntry(kind, pureId)
+	if errors.Is(err, model.ErrNotFound) {
+		return model.ErrAccessDenied
 	}
-	defer resp.Body.Close()
-	if resp.IsError() {
-		return errors.New(resp.String())
-	}
-	pl := model.SearchResult[model.Entry]{}
-	err = json.NewDecoder(resp.Body).Decode(&pl)
 	if err != nil {
 		return err
 	}
 
-	if pl.Hits.Total.Value == 0 {
-		err = model.ErrAccessDenied
+	if rights == "" {
+		rights = "r"
 	}
-	return
+
+	user := token.GetUserId()
+	groups := token.GetRoles()
+	for _, right := range rights {
+		switch right {
+		case 'a':
+			if !slices.Contains(e.AdminUsers, user) && !containsAny(e.AdminGroups, groups) {
+				return model.ErrAccessDenied
+			}
+		case 'r':
+			if !slices.Contains(e.ReadUsers, user) && !containsAny(e.ReadGroups, groups) {
+				return model.ErrAccessDenied
+			}
+		case 'w':
+			if !slices.Contains(e.WriteUsers, user) && !containsAny(e.WriteGroups, groups) {
+				return model.ErrAccessDenied
+			}
+		case 'x':
+			if !slices.Contains(e.ExecuteUsers, user) && !containsAny(e.ExecuteGroups, groups) {
+				return model.ErrAccessDenied
+			}
+		}
+	}
+	return nil
+}
+
+func containsAny(list []string, any []string) bool {
+	for _, e := range any {
+		if slices.Contains(list, e) {
+			return true
+		}
+	}
+	return false
 }
 
 func (this *Query) CheckListUserOrGroup(token auth.Token, kind string, ids []string, rights string) (allowed map[string]bool, err error) {

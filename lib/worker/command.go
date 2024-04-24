@@ -221,6 +221,7 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
 			client.Index.WithIfSeqNo(int(version.SeqNo)),
 			client.Index.WithContext(ctx),
+			//client.Index.WithRefresh("wait_for"), //to slow, don't use
 		)
 		if err != nil {
 			debug.PrintStack()
@@ -239,6 +240,7 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 			opensearchutil.NewJSONReader(entry),
 			client.Index.WithDocumentID(command.Id),
 			client.Index.WithContext(ctx),
+			//client.Index.WithRefresh("wait_for"), //to slow, don't use
 		)
 		if err != nil {
 			debug.PrintStack()
