@@ -102,7 +102,7 @@ func Zookeeper(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddr
 	log.Println("start zookeeper")
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image: "wurstmeister/zookeeper:latest",
+			Image: "zookeeper:latest",
 			Tmpfs: map[string]string{"/opt/zookeeper-3.4.13/data": "rw"},
 			WaitingFor: wait.ForAll(
 				wait.ForLog("binding to port"),

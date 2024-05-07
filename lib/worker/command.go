@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
 	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"runtime/debug"
 
@@ -214,14 +215,19 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		if entry.Creator == "" {
 			entry.Creator = command.Owner
 		}
-		resp, err := client.Index(
-			kind,
-			opensearchutil.NewJSONReader(entry),
+		options := []func(request *opensearchapi.IndexRequest){
 			client.Index.WithDocumentID(command.Id),
 			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
 			client.Index.WithIfSeqNo(int(version.SeqNo)),
 			client.Index.WithContext(ctx),
-			//client.Index.WithRefresh("wait_for"), //to slow, don't use
+		}
+		if command.StrictWaitBeforeDone {
+			options = append(options, client.Index.WithRefresh("wait_for"))
+		}
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			options...,
 		)
 		if err != nil {
 			debug.PrintStack()
@@ -235,12 +241,17 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 	} else {
 		entry := model.Entry{Resource: command.Id, Features: features, Creator: command.Owner}
 		entry.SetDefaultPermissions(this.config, kind, command.Owner)
+		options := []func(request *opensearchapi.IndexRequest){
+			client.Index.WithDocumentID(command.Id),
+			client.Index.WithContext(ctx),
+		}
+		if command.StrictWaitBeforeDone {
+			options = append(options, client.Index.WithRefresh("wait_for"))
+		}
 		resp, err := client.Index(
 			kind,
 			opensearchutil.NewJSONReader(entry),
-			client.Index.WithDocumentID(command.Id),
-			client.Index.WithContext(ctx),
-			//client.Index.WithRefresh("wait_for"), //to slow, don't use
+			options...,
 		)
 		if err != nil {
 			debug.PrintStack()
@@ -295,13 +306,19 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 			entry.Creator = command.Owner
 		}
 		client := this.query.GetClient()
-		resp, err := client.Index(
-			kind,
-			opensearchutil.NewJSONReader(entry),
+		options := []func(request *opensearchapi.IndexRequest){
 			client.Index.WithDocumentID(command.Id),
 			client.Index.WithIfPrimaryTerm(int(version.PrimaryTerm)),
 			client.Index.WithIfSeqNo(int(version.SeqNo)),
 			client.Index.WithContext(ctx),
+		}
+		if command.StrictWaitBeforeDone {
+			options = append(options, client.Index.WithRefresh("wait_for"))
+		}
+		resp, err := client.Index(
+			kind,
+			opensearchutil.NewJSONReader(entry),
+			options...,
 		)
 		if err != nil {
 			return err
@@ -323,10 +340,14 @@ func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (e
 	}
 	if exists {
 		client := this.query.GetClient()
+		options := []func(*opensearchapi.DeleteRequest){client.Delete.WithContext(ctx)}
+		if command.StrictWaitBeforeDone {
+			options = append(options, client.Delete.WithRefresh("wait_for"))
+		}
 		resp, err := client.Delete(
 			kind,
 			command.Id,
-			client.Delete.WithContext(ctx),
+			options...,
 		)
 		if err != nil {
 			return err
