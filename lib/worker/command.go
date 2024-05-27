@@ -221,9 +221,6 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 			client.Index.WithIfSeqNo(int(version.SeqNo)),
 			client.Index.WithContext(ctx),
 		}
-		if command.StrictWaitBeforeDone {
-			options = append(options, client.Index.WithRefresh("wait_for"))
-		}
 		resp, err := client.Index(
 			kind,
 			opensearchutil.NewJSONReader(entry),
@@ -244,9 +241,6 @@ func (this *Worker) UpdateFeatures(kind string, msg []byte, command model.Comman
 		options := []func(request *opensearchapi.IndexRequest){
 			client.Index.WithDocumentID(command.Id),
 			client.Index.WithContext(ctx),
-		}
-		if command.StrictWaitBeforeDone {
-			options = append(options, client.Index.WithRefresh("wait_for"))
 		}
 		resp, err := client.Index(
 			kind,
@@ -312,9 +306,6 @@ func (this *Worker) UpdateRights(kind string, msg []byte, command model.CommandW
 			client.Index.WithIfSeqNo(int(version.SeqNo)),
 			client.Index.WithContext(ctx),
 		}
-		if command.StrictWaitBeforeDone {
-			options = append(options, client.Index.WithRefresh("wait_for"))
-		}
 		resp, err := client.Index(
 			kind,
 			opensearchutil.NewJSONReader(entry),
@@ -341,9 +332,6 @@ func (this *Worker) DeleteFeatures(kind string, command model.CommandWrapper) (e
 	if exists {
 		client := this.query.GetClient()
 		options := []func(*opensearchapi.DeleteRequest){client.Delete.WithContext(ctx)}
-		if command.StrictWaitBeforeDone {
-			options = append(options, client.Delete.WithRefresh("wait_for"))
-		}
 		resp, err := client.Delete(
 			kind,
 			command.Id,

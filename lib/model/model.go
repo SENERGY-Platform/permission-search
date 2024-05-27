@@ -103,10 +103,12 @@ type UserCommandMsg struct {
 }
 
 type CommandWrapper struct {
-	Command              string `json:"command"`
-	Id                   string `json:"id"`
-	Owner                string `json:"owner"`
-	StrictWaitBeforeDone bool   `json:"strict_wait_before_done"`
+	Command string `json:"command"`
+	Id      string `json:"id"`
+	Owner   string `json:"owner"`
+
+	//field has been removed but can still exist as value in kafka
+	//StrictWaitBeforeDone bool   `json:"strict_wait_before_done"`
 }
 
 //RIGHTS commands are expected to be produced in the same partition as PUT and DELETE commands for the same resource/id
