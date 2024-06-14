@@ -148,7 +148,8 @@
             "features": [
                 {"Name": "name", "Path": "$.hub.name"},
                 {"Name": "device_local_ids", "Path": "$.hub.device_local_ids"},
-                {"Name": "device_ids", "Path": "$.hub.device_ids"}
+                {"Name": "device_ids", "Path": "$.hub.device_ids"},
+                {"Name": "owner_id", "Path": "$.hub.owner_id"}
             ],
             "annotations": {
                 "gateway_log": [
@@ -369,6 +370,7 @@
                 },
                 "device_type_id":  {"type": "keyword"},
                 "local_id":     {"type": "keyword"},
+                "owner_id":     {"type": "keyword"},
                 "attributes":{
                     "properties":{
                         "key":{"type":"keyword"},
