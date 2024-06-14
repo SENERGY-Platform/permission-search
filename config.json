@@ -86,7 +86,8 @@
                 },
                 {"Name": "device_type_id", "Path": "$.device.device_type_id"},
                 {"Name": "local_id", "Path": "$.device.local_id"},
-                {"Name": "attributes", "Path": "$.device.attributes"}
+                {"Name": "attributes", "Path": "$.device.attributes"},
+                {"Name": "owner_id", "Path": "$.device.owner_id"}
             ],
             "annotations": {
                 "device_log": [
@@ -393,7 +394,8 @@
             "features": {
                 "name":             {"type": "keyword", "copy_to": "feature_search"},
                 "device_local_ids": {"type": "keyword"},
-                "device_ids":       {"type": "keyword"}
+                "device_ids":       {"type": "keyword"},
+                "owner_id":     {"type": "keyword"}
             },
             "annotations": {
                 "connected": {"type":"boolean"}

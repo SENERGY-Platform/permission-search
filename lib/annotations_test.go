@@ -335,6 +335,7 @@ func getTestDeviceResult(id string, connected *bool) (result map[string]interfac
 		"attributes":     nil,
 		"device_type_id": nil,
 		"local_id":       nil,
+		"owner_id":       nil,
 		"permissions": map[string]bool{
 			"a": true,
 			"r": true,
