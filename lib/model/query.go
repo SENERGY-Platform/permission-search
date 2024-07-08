@@ -17,9 +17,7 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -72,8 +70,7 @@ type QueryListCommons struct {
 }
 
 type ListAfter struct {
-	SortFieldValue interface{} `json:"sort_field_value"`
-	Id             string      `json:"id"`
+	Id string `json:"id"`
 }
 
 func (this QueryListCommons) Validate() error {
@@ -87,11 +84,11 @@ func (this QueryListCommons) Validate() error {
 		return fmt.Errorf("%w: limit + offset may not be bigger than 10000. pleas use after.id and after.sort_field_value", ErrBadRequest)
 	}
 	if this.After != nil {
+		if this.SortBy != "id" && this.SortBy != "resource" {
+			return fmt.Errorf("%w: sort_by should be 'id' or 'resource' if 'after' is used", ErrBadRequest)
+		}
 		if this.Offset != 0 {
 			return fmt.Errorf("%w: 'offset' should be 0 if 'after' is used", ErrBadRequest)
-		}
-		if this.After.SortFieldValue == nil {
-			return fmt.Errorf("%w: 'after' needs sort_field_value", ErrBadRequest)
 		}
 		if this.After.Id == "" {
 			return fmt.Errorf("%w: 'after' needs id value", ErrBadRequest)
@@ -121,19 +118,8 @@ func (this QueryListCommons) QueryValues() (result url.Values) {
 	if this.Rights != "" {
 		result["rights"] = []string{this.Rights}
 	}
-	if this.After != nil {
-		if this.After.SortFieldValue != nil {
-			temp, err := json.Marshal(this.After.SortFieldValue)
-			if err != nil {
-				log.Println("WARNING: QueryListCommons.QueryValues() fall back to fmt.Sprint() for this.After.SortFieldValue")
-				result["after.sort_field_value"] = []string{fmt.Sprint(this.After.SortFieldValue)}
-			} else {
-				result["after.sort_field_value"] = []string{string(temp)}
-			}
-		}
-		if this.After.Id != "" {
-			result["after.id"] = []string{this.After.Id}
-		}
+	if this.After != nil && this.After.Id != "" {
+		result["after.id"] = []string{this.After.Id}
 	}
 	if len(this.AddIdModifier) > 0 {
 		result["add_id_modifier"] = []string{this.AddIdModifier.Encode()}
@@ -160,14 +146,7 @@ func GetQueryListCommonsFromUrlQuery(queryParams url.Values) (result QueryListCo
 	after := ListAfter{
 		Id: queryParams.Get("after.id"),
 	}
-	afterSortStr := queryParams.Get("after.sort_field_value")
-	if afterSortStr != "" {
-		err = json.Unmarshal([]byte(afterSortStr), &after.SortFieldValue)
-		if err != nil {
-			return
-		}
-	}
-	if after.SortFieldValue != nil || after.Id != "" {
+	if after.Id != "" {
 		result.After = &after
 	}
 

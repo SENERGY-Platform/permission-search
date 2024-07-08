@@ -1368,28 +1368,39 @@ func withPaginationAndBody(search opensearchapi.Search, query map[string]interfa
 	if queryCommons.SortBy != "" {
 		s = queryCommons.SortBy
 	}
+	if s == "id" {
+		s = defaultSort
+	}
 	if s != defaultSort && !strings.HasPrefix(s, "features.") && !strings.HasPrefix(s, "annotations.") {
 		s = "features." + s
 	}
-	sorts := []string{}
 	result = append(result, search.WithSize(queryCommons.Limit))
 	if queryCommons.After == nil {
 		result = append(result, search.WithFrom(queryCommons.Offset))
 	} else {
-		query["search_after"] = []interface{}{queryCommons.After.SortFieldValue, queryCommons.After.Id}
+		query["search_after"] = []interface{}{queryCommons.After.Id}
 	}
 	if queryCommons.SortDesc {
-		sorts = append(sorts, s+":desc")
+		query["sort"] = []map[string]interface{}{
+			{s: "desc"},
+		}
 		if s != defaultSort {
-			sorts = append(sorts, "resource:desc")
+			query["sort"] = []map[string]interface{}{
+				{s: "desc"},
+				{"resource": "desc"},
+			}
 		}
 	} else {
-		sorts = append(sorts, s+":asc")
+		query["sort"] = []map[string]interface{}{
+			{s: "asc"},
+		}
 		if s != defaultSort {
-			sorts = append(sorts, "resource:asc")
+			query["sort"] = []map[string]interface{}{
+				{s: "asc"},
+				{"resource": "asc"},
+			}
 		}
 	}
-	result = append(result, search.WithSort(sorts...))
 	result = append(result, search.WithBody(opensearchutil.NewJSONReader(query)))
 	return result
 }

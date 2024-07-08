@@ -23,7 +23,6 @@ import (
 	"github.com/SENERGY-Platform/permission-search/lib/worker"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"sync"
 	"testing"
@@ -123,17 +122,53 @@ func TestSearchAfter(t *testing.T) {
 		getTestAspectResult("009903"),
 	}))
 
-	t.Run("list after 009900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&after.id=009900&after.sort_field_value="+url.QueryEscape(`"009900_name"`), nil, 200, []map[string]interface{}{
+	t.Run("list after 009900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=id&after.id=009900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("009901"),
+		getTestAspectResult("009902"),
+		getTestAspectResult("009903"),
+	}))
+	t.Run("list after 009900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=resource&after.id=009900", nil, 200, []map[string]interface{}{
 		getTestAspectResult("009901"),
 		getTestAspectResult("009902"),
 		getTestAspectResult("009903"),
 	}))
 
-	t.Run("list offset 19900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&offset=19900", nil, http.StatusBadRequest, nil))
+	t.Run("list after 009900 desc", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=id.desc&after.id=009900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("009899"),
+		getTestAspectResult("009898"),
+		getTestAspectResult("009897"),
+	}))
+	t.Run("list after 009900 desc", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=resource.desc&after.id=009900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("009899"),
+		getTestAspectResult("009898"),
+		getTestAspectResult("009897"),
+	}))
 
-	t.Run("list after 019900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=name&after.id=019900&after.sort_field_value="+url.QueryEscape(`"019900_name"`), nil, 200, []map[string]interface{}{
+	t.Run("list offset 19900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=id&offset=19900", nil, http.StatusBadRequest, nil))
+
+	t.Run("list offset 19900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=resource&offset=19900", nil, http.StatusBadRequest, nil))
+
+	t.Run("list after 019900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=id&after.id=019900", nil, 200, []map[string]interface{}{
 		getTestAspectResult("019901"),
 		getTestAspectResult("019902"),
 		getTestAspectResult("019903"),
+	}))
+
+	t.Run("list after 019900", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=resource&after.id=019900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("019901"),
+		getTestAspectResult("019902"),
+		getTestAspectResult("019903"),
+	}))
+
+	t.Run("list after 019900 desc", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=id.desc&after.id=019900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("019899"),
+		getTestAspectResult("019898"),
+		getTestAspectResult("019897"),
+	}))
+
+	t.Run("list after 019900 desc", testRequest(config, "GET", "/v3/resources/aspects?limit=3&sort=resource.desc&after.id=019900", nil, 200, []map[string]interface{}{
+		getTestAspectResult("019899"),
+		getTestAspectResult("019898"),
+		getTestAspectResult("019897"),
 	}))
 }
