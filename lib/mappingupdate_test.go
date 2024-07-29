@@ -21,11 +21,14 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/SENERGY-Platform/permission-search/lib/opensearchclient"
 	k "github.com/SENERGY-Platform/permission-search/lib/worker/kafka"
 	"github.com/opensearch-project/opensearch-go"
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
+	"github.com/opensearch-project/opensearch-go/opensearchutil"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,6 +38,168 @@ import (
 	"testing"
 	"time"
 )
+
+func TestMappingUpdateForNewField(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	defer wg.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config, err := configuration.LoadConfig("./../config.json")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	config.LogDeprecatedCallsToFile = ""
+	config.FatalErrHandler = func(v ...interface{}) {
+		log.Println("TEST-ERROR:", v)
+		t.Log(v...)
+	}
+	config.Debug = true
+
+	config.OpenSearchInsecureSkipVerify = true
+	config.OpenSearchUsername = "admin"
+	config.OpenSearchPassword = "admin"
+
+	config.TryMappingUpdateOnStartup = true
+
+	t.Run("start dependency containers", func(t *testing.T) {
+		_, ip, err := OpenSearch(ctx, wg)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		config.OpenSearchUrls = "https://" + ip + ":9200"
+	})
+
+	config.Resources = map[string]configuration.ResourceConfig{"test_resource_kind": {}}
+	config.ResourceList = []string{"test_resource_kind"}
+	config.IndexTypeMapping = map[string]map[string]map[string]interface{}{}
+
+	var client *opensearch.Client
+
+	t.Run("init", func(t *testing.T) {
+		config.IndexTypeMapping["test_resource_kind"] = map[string]map[string]interface{}{
+			"features": {
+				"stable":  map[string]interface{}{"type": "keyword"},
+				"removed": map[string]interface{}{"type": "keyword"},
+				"changed": map[string]interface{}{"type": "keyword"},
+			},
+		}
+		client, err = opensearchclient.New(config)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	})
+
+	t.Run("add doc after init", func(t *testing.T) {
+		options := []func(request *opensearchapi.IndexRequest){
+			client.Index.WithDocumentID("init"),
+			client.Index.WithContext(ctx),
+		}
+		resp, err := client.Index(
+			"test_resource_kind",
+			opensearchutil.NewJSONReader(map[string]interface{}{
+				"stable":  "stable",
+				"removed": "removed",
+				"changed": "changed",
+			}),
+			options...,
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			t.Error(errors.New(resp.String()))
+			return
+		}
+	})
+
+	t.Run("add and remove", func(t *testing.T) {
+		config.IndexTypeMapping["test_resource_kind"] = map[string]map[string]interface{}{
+			"features": {
+				"stable":  map[string]interface{}{"type": "keyword"},
+				"added":   map[string]interface{}{"type": "keyword"},
+				"changed": map[string]interface{}{"type": "keyword"},
+			},
+		}
+		_, err = opensearchclient.New(config)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	})
+
+	t.Run("add doc after add/remove", func(t *testing.T) {
+		options := []func(request *opensearchapi.IndexRequest){
+			client.Index.WithDocumentID("add_remove"),
+			client.Index.WithContext(ctx),
+		}
+		resp, err := client.Index(
+			"test_resource_kind",
+			opensearchutil.NewJSONReader(map[string]interface{}{
+				"stable":  "stable",
+				"added":   "added",
+				"changed": "changed",
+			}),
+			options...,
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			t.Error(errors.New(resp.String()))
+			return
+		}
+	})
+
+	t.Run("change", func(t *testing.T) {
+		t.Log("illegal change --> error will be logged but ignored")
+		config.IndexTypeMapping["test_resource_kind"] = map[string]map[string]interface{}{
+			"features": {
+				"stable":  map[string]interface{}{"type": "keyword"},
+				"added":   map[string]interface{}{"type": "keyword"},
+				"changed": map[string]interface{}{"type": "boolean"},
+			},
+		}
+		_, err = opensearchclient.New(config)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	})
+
+	t.Run("add doc after change", func(t *testing.T) {
+		options := []func(request *opensearchapi.IndexRequest){
+			client.Index.WithDocumentID("change"),
+			client.Index.WithContext(ctx),
+		}
+		resp, err := client.Index(
+			"test_resource_kind",
+			opensearchutil.NewJSONReader(map[string]interface{}{
+				"stable":  "stable",
+				"added":   "added",
+				"changed": true,
+			}),
+			options...,
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.IsError() {
+			t.Error(errors.New(resp.String()))
+			return
+		}
+	})
+
+}
 
 func TestMappingUpdate(t *testing.T) {
 	if testing.Short() {

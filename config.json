@@ -29,6 +29,8 @@
 
     "enable_combined_wildcard_feature_search": true,
 
+    "try_mapping_update_on_startup": false,
+
 	"resources": {
         "smart_service_releases": {
             "features":[

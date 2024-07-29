@@ -88,6 +88,8 @@ type ConfigStruct struct {
 	OpenSearchPassword              string `json:"open_search_password"`
 	DiscoverOpenSearchNodesOnStart  bool   `json:"discover_open_search_nodes_on_start"` //default off, we use the load balancer
 	DiscoverOpenSearchNodesInterval string `json:"discover_open_search_nodes_interval"` //default off, we use the load balancer
+
+	TryMappingUpdateOnStartup bool `json:"try_mapping_update_on_startup"`
 }
 
 func (this *ConfigStruct) HandleFatalError(v ...interface{}) {

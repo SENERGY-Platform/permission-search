@@ -63,7 +63,7 @@ func New(config configuration.Config) (client *opensearch.Client, err error) {
 		err = CreateIndex(kind, client, ctx, config)
 		if err != nil {
 			log.Println("ERROR: unable to create indexes", err)
-			return
+			return client, err
 		}
 	}
 	return client, nil
@@ -100,7 +100,7 @@ func CreateIndex(kind string, client *opensearch.Client, ctx context.Context, co
 			return err
 		}
 		if !v1IndexExists {
-			log.Println("create new index")
+			log.Println("create new index", kind+"_v1")
 			resp, err := client.Indices.Create(kind+"_v1", client.Indices.Create.WithBody(opensearchutil.NewJSONReader(mapping)), client.Indices.Create.WithContext(ctx))
 			if err != nil {
 				return err
@@ -119,8 +119,33 @@ func CreateIndex(kind string, client *opensearch.Client, ctx context.Context, co
 		if resp.IsError() {
 			return errors.New(resp.String())
 		}
+	} else if config.TryMappingUpdateOnStartup {
+		err = updateIndexMappingWithoutReindex(kind, client, ctx, mapping)
+		if err != nil {
+			log.Println("WARNING: unable to update index mapping", err)
+			return nil //ignore error
+		}
 	}
 	return
+}
+
+func updateIndexMappingWithoutReindex(kind string, client *opensearch.Client, ctx context.Context, mapping map[string]interface{}) (err error) {
+	currentVersion, _, err := GetIndexVersionsOfAlias(client, ctx, kind)
+	if err != nil {
+		return err
+	}
+	log.Println("update index", currentVersion)
+	resp, err := client.Indices.PutMapping(opensearchutil.NewJSONReader(mapping["mappings"]), client.Indices.PutMapping.WithIndex(currentVersion), client.Indices.PutMapping.WithContext(ctx))
+	if err != nil {
+		return err
+	}
+	if resp.IsError() {
+		return errors.New(resp.String())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("index not acknowledged")
+	}
+	return nil
 }
 
 func UpdateIndexes(config configuration.Config, resourceNames ...string) error {
