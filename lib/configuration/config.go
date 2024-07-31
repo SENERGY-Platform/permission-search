@@ -84,8 +84,8 @@ type ConfigStruct struct {
 
 	OpenSearchInsecureSkipVerify    bool   `json:"open_search_insecure_skip_verify"`
 	OpenSearchUrls                  string `json:"open_search_urls"`
-	OpenSearchUsername              string `json:"open_search_username"`
-	OpenSearchPassword              string `json:"open_search_password"`
+	OpenSearchUsername              string `json:"open_search_username" config:"secret"`
+	OpenSearchPassword              string `json:"open_search_password" config:"secret"`
 	DiscoverOpenSearchNodesOnStart  bool   `json:"discover_open_search_nodes_on_start"` //default off, we use the load balancer
 	DiscoverOpenSearchNodesInterval string `json:"discover_open_search_nodes_interval"` //default off, we use the load balancer
 
@@ -141,10 +141,13 @@ func HandleEnvironmentVars(config Config) {
 	configType := configValue.Type()
 	for index := 0; index < configType.NumField(); index++ {
 		fieldName := configType.Field(index).Name
+		fieldConfig := configType.Field(index).Tag.Get("config")
 		envName := fieldNameToEnvName(fieldName)
 		envValue := os.Getenv(envName)
 		if envValue != "" {
-			fmt.Println("use environment variable: ", envName, " = ", envValue)
+			if !strings.Contains(fieldConfig, "secret") {
+				fmt.Println("use environment variable: ", envName, " = ", envValue)
+			}
 			if configValue.FieldByName(fieldName).Kind() == reflect.Int64 {
 				i, _ := strconv.ParseInt(envValue, 10, 64)
 				configValue.FieldByName(fieldName).SetInt(i)
