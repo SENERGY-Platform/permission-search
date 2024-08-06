@@ -49,7 +49,7 @@ func TestApiV2(t *testing.T) {
 
 	config.OpenSearchInsecureSkipVerify = true
 	config.OpenSearchUsername = "admin"
-	config.OpenSearchPassword = "admin"
+	config.OpenSearchPassword = "01J1iEnT#>kE"
 
 	t.Run("start dependency containers", func(t *testing.T) {
 		_, ip, err := OpenSearch(ctx, wg)

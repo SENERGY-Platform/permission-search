@@ -55,6 +55,9 @@ type ConfigStruct struct {
 
 	PermTopic string `json:"perm_topic"`
 
+	OpenSearchIndexShards   int64 `json:"open_search_index_shards"`
+	OpenSearchIndexReplicas int64 `json:"open_search_index_replicas"`
+
 	LogDeprecatedCallsToFile string `json:"log_deprecated_calls_to_file"` //must contain valid path for a log file ore an empty sting, which signals not file logging
 
 	ResultModifiers map[string][]ResultModifier `json:"result_modifiers"`

@@ -33,9 +33,10 @@ func OpenSearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAdd
 	log.Println("start opensearch")
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image: "public.ecr.aws/opensearchproject/opensearch:2.8.0",
+			Image: "public.ecr.aws/opensearchproject/opensearch:2.15.0",
 			Env: map[string]string{
-				"discovery.type": "single-node",
+				"discovery.type":                    "single-node",
+				"OPENSEARCH_INITIAL_ADMIN_PASSWORD": "01J1iEnT#>kE",
 			},
 			WaitingFor: wait.ForAll(
 				wait.ForListeningPort("9200/tcp"),
@@ -99,7 +100,7 @@ func tryOpenSearchConnection(ip string, port string) error {
 		},
 		Addresses: []string{"https://" + ip + ":" + port},
 		Username:  "admin", // For testing only. Don't store credentials in code.
-		Password:  "admin",
+		Password:  "01J1iEnT#>kE",
 	})
 	if err != nil {
 		return err

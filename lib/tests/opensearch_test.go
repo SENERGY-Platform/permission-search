@@ -41,7 +41,7 @@ func TestOpenSearchStartup(t *testing.T) {
 	}
 	config.OpenSearchInsecureSkipVerify = true
 	config.OpenSearchUsername = "admin"
-	config.OpenSearchPassword = "admin"
+	config.OpenSearchPassword = "01J1iEnT#>kE"
 
 	wg := &sync.WaitGroup{}
 	defer wg.Wait()

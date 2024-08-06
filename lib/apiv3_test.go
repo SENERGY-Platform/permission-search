@@ -55,7 +55,7 @@ func TestApiV3(t *testing.T) {
 
 	config.OpenSearchInsecureSkipVerify = true
 	config.OpenSearchUsername = "admin"
-	config.OpenSearchPassword = "admin"
+	config.OpenSearchPassword = "01J1iEnT#>kE"
 	config.Debug = true
 
 	t.Run("start dependency containers", func(t *testing.T) {

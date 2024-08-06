@@ -332,6 +332,10 @@ func CreateMapping(config configuration.Config, kind string) (result map[string]
 			"properties": mapping,
 		},
 		"settings": map[string]interface{}{
+			"index": map[string]interface{}{
+				"number_of_shards":   config.OpenSearchIndexShards,
+				"number_of_replicas": config.OpenSearchIndexReplicas,
+			},
 			"analysis": map[string]interface{}{
 				"filter": map[string]interface{}{
 					"autocomplete_filter": map[string]interface{}{

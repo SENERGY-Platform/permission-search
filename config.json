@@ -31,6 +31,9 @@
 
     "try_mapping_update_on_startup": false,
 
+    "open_search_index_shards": 1,
+    "open_search_index_replicas": 0,
+
 	"resources": {
         "smart_service_releases": {
             "features":[

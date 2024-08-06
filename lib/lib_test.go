@@ -173,7 +173,7 @@ func getTestEnv(ctx context.Context, wg *sync.WaitGroup, t *testing.T) (config c
 
 	config.OpenSearchInsecureSkipVerify = true
 	config.OpenSearchUsername = "admin"
-	config.OpenSearchPassword = "admin"
+	config.OpenSearchPassword = "01J1iEnT#>kE"
 
 	_, ip, err := OpenSearch(ctx, wg)
 	if err != nil {
