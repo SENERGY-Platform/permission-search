@@ -33,7 +33,7 @@ func PermissionSearch(ctx context.Context, wg *sync.WaitGroup, containerLog bool
 				"KAFKA_URL":                        kafkaUrl,
 				"OPEN_SEARCH_URLS":                 "https://" + dbIp + ":9200",
 				"OPEN_SEARCH_USERNAME":             "admin",
-				"OPEN_SEARCH_PASSWORD":             "admin",
+				"OPEN_SEARCH_PASSWORD":             OpenSearchTestPw,
 				"OPEN_SEARCH_INSECURE_SKIP_VERIFY": "true",
 			},
 			ExposedPorts:    []string{"8080/tcp"},

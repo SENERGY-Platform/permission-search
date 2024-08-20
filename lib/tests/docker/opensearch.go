@@ -29,6 +29,8 @@ import (
 	"time"
 )
 
+const OpenSearchTestPw = "01J1iEnT#>kE"
+
 func OpenSearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAddress string, err error) {
 	log.Println("start opensearch")
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -36,7 +38,7 @@ func OpenSearch(ctx context.Context, wg *sync.WaitGroup) (hostPort string, ipAdd
 			Image: "public.ecr.aws/opensearchproject/opensearch:2.15.0",
 			Env: map[string]string{
 				"discovery.type":                    "single-node",
-				"OPENSEARCH_INITIAL_ADMIN_PASSWORD": "01J1iEnT#>kE",
+				"OPENSEARCH_INITIAL_ADMIN_PASSWORD": OpenSearchTestPw,
 			},
 			WaitingFor: wait.ForAll(
 				wait.ForListeningPort("9200/tcp"),
