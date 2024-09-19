@@ -119,6 +119,7 @@
                 {"Name": "criteria", "Path": "$.device_group.criteria"},
                 {"Name": "criteria_short", "Path": "$.device_group.criteria_short"},
                 {"Name": "attributes", "Path": "$.device_group.attributes"},
+                {"Name": "auto_generated_by_device", "Path": "$.device_group.auto_generated_by_device"},
                 {"Name": "attribute_list", "Path": "$.device_group.attributes", "ConcatListElementFields":  ["$.key", "=", "$.value"]}
             ],
             "initial_group_rights":{ "system": "rwxa" }
@@ -305,6 +306,7 @@
                 "name":         {"type": "keyword", "copy_to": "feature_search"},
                 "image":        {"type": "keyword"},
                 "device_ids":   {"type": "keyword"},
+                "auto_generated_by_device": {"type": "keyword"},
                 "criteria_short": {"type": "keyword"},
                 "attributes":{
                     "properties":{
