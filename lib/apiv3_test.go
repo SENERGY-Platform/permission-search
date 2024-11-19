@@ -102,6 +102,60 @@ func TestApiV3(t *testing.T) {
 
 	time.Sleep(10 * time.Second) //kafka latency
 
+	t.Run("export", func(t *testing.T) {
+		list, err := c.ExportKind(admintoken, "aspects", 3, 1)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if len(list) != 3 {
+			t.Error(len(list))
+			return
+		}
+		expected := []model.ResourceRights{
+			{
+				ResourceRightsBase: model.ResourceRightsBase{
+					UserRights: map[string]model.Right{"testOwner": {Read: true, Write: true, Execute: true, Administrate: true}},
+					GroupRights: map[string]model.Right{
+						"admin": {Read: true, Write: true, Execute: true, Administrate: true},
+						"user":  {Read: true, Write: false, Execute: true, Administrate: false},
+					},
+				},
+				ResourceId: "aspect1",
+				Features:   map[string]interface{}{"name": "aspect1_name", "raw": map[string]interface{}{"name": "aspect1_name", "rdf_type": "aspect_type"}},
+				Creator:    "testOwner",
+			},
+			{
+				ResourceRightsBase: model.ResourceRightsBase{
+					UserRights: map[string]model.Right{"testOwner": {Read: true, Write: true, Execute: true, Administrate: true}},
+					GroupRights: map[string]model.Right{
+						"admin": {Read: true, Write: true, Execute: true, Administrate: true},
+						"user":  {Read: true, Write: false, Execute: true, Administrate: false},
+					},
+				},
+				ResourceId: "aspect2",
+				Features:   map[string]interface{}{"name": "aspect2_name", "raw": map[string]interface{}{"name": "aspect2_name", "rdf_type": "aspect_type"}},
+				Creator:    "testOwner",
+			},
+			{
+				ResourceRightsBase: model.ResourceRightsBase{
+					UserRights: map[string]model.Right{"testOwner": {Read: true, Write: true, Execute: true, Administrate: true}},
+					GroupRights: map[string]model.Right{
+						"admin": {Read: true, Write: true, Execute: true, Administrate: true},
+						"user":  {Read: true, Write: false, Execute: true, Administrate: false},
+					},
+				},
+				ResourceId: "aspect3",
+				Features:   map[string]interface{}{"name": "aspect3_name", "raw": map[string]interface{}{"name": "aspect3_name", "rdf_type": "aspect_type"}},
+				Creator:    "testOwner",
+			},
+		}
+		if !reflect.DeepEqual(expected, list) {
+			t.Errorf("\ne:%#v\na:%#v\n", expected, list)
+			return
+		}
+	})
+
 	t.Run("client list", func(t *testing.T) {
 		actual, err := c.List(ctoken, "aspects", client.ListOptions{})
 		if err != nil {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
 	"github.com/opensearch-project/opensearch-go/opensearchutil"
 )
@@ -55,10 +56,10 @@ func (this *Query) ImportResource(kind string, resource model.ResourceRights) (e
 	return nil
 }
 
-func (this *Query) Export() (exports map[string][]model.ResourceRights, err error) {
+func (this *Query) Export(token string) (exports map[string][]model.ResourceRights, err error) {
 	exports = map[string][]model.ResourceRights{}
 	for kind := range this.config.Resources {
-		exports[kind], err = this.ExportKindAll(kind)
+		exports[kind], err = this.ExportKindAll(token, kind)
 		if err != nil {
 			return
 		}
@@ -66,12 +67,12 @@ func (this *Query) Export() (exports map[string][]model.ResourceRights, err erro
 	return
 }
 
-func (this *Query) ExportKindAll(kind string) (result []model.ResourceRights, err error) {
+func (this *Query) ExportKindAll(token string, kind string) (result []model.ResourceRights, err error) {
 	result = []model.ResourceRights{}
 	limit := 100
 	offset := 0
 	for {
-		temp, err := this.ExportKind(kind, limit, offset)
+		temp, err := this.ExportKind(token, kind, limit, offset)
 		if err != nil {
 			return result, err
 		}
@@ -81,10 +82,16 @@ func (this *Query) ExportKindAll(kind string) (result []model.ResourceRights, er
 		}
 		offset = offset + limit
 	}
-	return
 }
 
-func (this *Query) ExportKind(kind string, limit int, offset int) (result []model.ResourceRights, err error) {
+func (this *Query) ExportKind(tokenStr string, kind string, limit int, offset int) (result []model.ResourceRights, err error) {
+	token, err := auth.Parse(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if !token.IsAdmin() {
+		return nil, errors.New("only admins may export")
+	}
 	ctx := context.Background()
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
@@ -96,6 +103,7 @@ func (this *Query) ExportKind(kind string, limit int, offset int) (result []mode
 		this.opensearchClient.Search.WithContext(ctx),
 		this.opensearchClient.Search.WithSize(limit),
 		this.opensearchClient.Search.WithFrom(offset),
+		this.opensearchClient.Search.WithSort("resource:asc"),
 		this.opensearchClient.Search.WithBody(opensearchutil.NewJSONReader(query)),
 	)
 	if err != nil {

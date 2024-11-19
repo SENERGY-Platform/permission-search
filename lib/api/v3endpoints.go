@@ -18,6 +18,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/SENERGY-Platform/permission-search/lib/auth"
 	"github.com/SENERGY-Platform/permission-search/lib/configuration"
 	"github.com/SENERGY-Platform/permission-search/lib/model"
@@ -263,5 +264,37 @@ func V3Endpoints(router *httprouter.Router, config configuration.Config, q Query
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(writer).Encode(result)
 	})
+
+	router.GET("/v3/export/:resource", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		var err error
+		token := auth.GetAuthToken(r)
+		resource := ps.ByName("resource")
+		limit := 100
+		limitStr := r.URL.Query().Get("limit")
+		if limitStr != "" {
+			limit, err = strconv.Atoi(limitStr)
+			if err != nil {
+				http.Error(res, fmt.Sprintf("invalit limit: %v", err.Error()), http.StatusBadRequest)
+				return
+			}
+		}
+		offset := 0
+		offsetStr := r.URL.Query().Get("offset")
+		if offsetStr != "" {
+			offset, err = strconv.Atoi(offsetStr)
+			if err != nil {
+				http.Error(res, fmt.Sprintf("invalit offset: %v", err.Error()), http.StatusBadRequest)
+				return
+			}
+		}
+		exports, err := q.ExportKind(token, resource, limit, offset)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(res).Encode(exports)
+	})
+
 	return true
 }

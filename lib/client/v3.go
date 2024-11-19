@@ -52,40 +52,50 @@ func (this *impl) Query(token string, query model.QueryMessage) (result interfac
 
 func (this *impl) List(token string, kind string, options model.ListOptions) (result []map[string]interface{}, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
-	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
+	req.Header.Set("Authorization", token)
 	result, _, err = do[[]map[string]interface{}](req)
 	return
 }
 
 func (this *impl) Total(token string, kind string, options model.ListOptions) (result int64, err error) {
 	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/total/"+url.PathEscape(kind)+"?"+options.QueryValues().Encode(), nil)
-	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
+	req.Header.Set("Authorization", token)
 	result, _, err = do[int64](req)
 	return
 }
 
 func (this *impl) CheckUserOrGroup(token string, kind string, resource string, rights string) (err error) {
 	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/resources/"+url.PathEscape(kind)+"/"+url.PathEscape(resource)+"?rights="+rights, nil)
-	req.Header.Set("Authorization", token)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Authorization", token)
 	_, err = head(req)
 	return
 }
 
 func (this *impl) GetTermAggregation(token string, kind string, rights string, term string, limit int) (result []model.TermAggregationResultElement, err error) {
 	req, err := http.NewRequest(http.MethodHead, this.baseUrl+"/v3/aggregates/term/"+url.PathEscape(kind)+"/"+url.PathEscape(term)+"?limit="+strconv.Itoa(limit)+"&rights="+rights, nil)
-	req.Header.Set("Authorization", token)
 	if err != nil {
 		return result, err
 	}
+	req.Header.Set("Authorization", token)
 	result, _, err = do[[]model.TermAggregationResultElement](req)
+	return
+}
+
+func (this *impl) ExportKind(token string, kind string, limit int, offset int) (result []model.ResourceRights, err error) {
+	req, err := http.NewRequest(http.MethodGet, this.baseUrl+"/v3/export/"+url.PathEscape(kind)+"?limit="+strconv.Itoa(limit)+"&offset="+strconv.Itoa(offset), nil)
+	if err != nil {
+		return result, err
+	}
+	req.Header.Set("Authorization", token)
+	result, _, err = do[[]model.ResourceRights](req)
 	return
 }

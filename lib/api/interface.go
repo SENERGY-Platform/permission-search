@@ -50,7 +50,7 @@ type Query interface {
 
 	//migration
 	Import(imports map[string][]model.ResourceRights) (err error)
-	Export() (exports map[string][]model.ResourceRights, err error)
+	Export(token string) (exports map[string][]model.ResourceRights, err error)
 }
 
 type V3 interface {
@@ -63,4 +63,6 @@ type V3 interface {
 	GetRights(token string, kind string, resource string) (result model.ResourceRights, err error)
 
 	GetTermAggregation(token string, kind string, rights string, field string, limit int) (result []model.TermAggregationResultElement, err error)
+
+	ExportKind(token string, kind string, limit int, offset int) (result []model.ResourceRights, err error)
 }

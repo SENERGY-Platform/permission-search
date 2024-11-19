@@ -67,7 +67,7 @@ func (entry *Entry) AddGroupRights(group string, rights string) {
 		case 'w':
 			entry.WriteGroups = append(entry.WriteGroups, group)
 		case 'x':
-			entry.ExecuteGroups = append(entry.AdminGroups, group)
+			entry.ExecuteGroups = append(entry.ExecuteGroups, group)
 		}
 	}
 }

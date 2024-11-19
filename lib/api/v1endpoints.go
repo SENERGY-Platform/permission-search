@@ -569,7 +569,7 @@ func V1Endpoints(router *httprouter.Router, config configuration.Config, q Query
 
 	router.GET("/export", func(res http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		res.Header().Set("Deprecation", "true")
-		exports, err := q.Export()
+		exports, err := q.Export(auth.GetAuthToken(r))
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
